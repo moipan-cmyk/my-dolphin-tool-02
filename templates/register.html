@@ -1,0 +1,710 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Register - Dolphin Bypass Tool</title>
+    <style>
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+            font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+        }
+
+        body {
+            background: linear-gradient(135deg, #7c7f8b 0%, #764ba2 100%);
+            min-height: 100vh;
+            display: flex;
+            flex-direction: column;
+        }
+
+        /* Navbar */
+        .navbar {
+            background: rgba(255, 255, 255, 0.1);
+            backdrop-filter: blur(10px);
+            padding: 1rem 2rem;
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            border-bottom: 1px solid rgba(255,255,255,0.2);
+        }
+
+        .logo {
+            font-size: 1.5rem;
+            font-weight: bold;
+            color: white;
+            display: flex;
+            align-items: center;
+            gap: 10px;
+        }
+
+        .nav-links {
+            display: flex;
+            gap: 20px;
+        }
+
+        .nav-links a {
+            color: white;
+            text-decoration: none;
+            padding: 8px 16px;
+            border-radius: 5px;
+            transition: background 0.3s;
+        }
+
+        .nav-links a:hover {
+            background: rgba(255,255,255,0.2);
+        }
+
+        .nav-links a.active {
+            background: rgba(255,255,255,0.3);
+        }
+
+        /* Container */
+        .container {
+            flex: 1;
+            display: flex;
+            justify-content: center;
+            align-items: center;
+            padding: 2rem;
+        }
+
+        /* Card */
+        .card {
+            background: white;
+            border-radius: 20px;
+            padding: 2.5rem;
+            width: 100%;
+            max-width: 550px;
+            box-shadow: 0 20px 60px rgba(0,0,0,0.3);
+        }
+
+        .card h1 {
+            color: #333;
+            font-size: 2rem;
+            margin-bottom: 10px;
+            text-align: center;
+        }
+
+        .card .subtitle {
+            color: #666;
+            text-align: center;
+            margin-bottom: 2rem;
+        }
+
+        /* Alert Messages */
+        .alert {
+            padding: 12px;
+            border-radius: 8px;
+            margin-bottom: 20px;
+            display: none;
+        }
+
+        .alert-success {
+            background: #d4edda;
+            color: #155724;
+            border: 1px solid #c3e6cb;
+        }
+
+        .alert-error, .alert-danger {
+            background: #f8d7da;
+            color: #721c24;
+            border: 1px solid #f5c6cb;
+        }
+
+        .alert-info {
+            background: #d1ecf1;
+            color: #0c5460;
+            border: 1px solid #bee5eb;
+        }
+
+        /* Form */
+        .form-group {
+            margin-bottom: 1.5rem;
+        }
+
+        label {
+            display: block;
+            margin-bottom: 8px;
+            color: #555;
+            font-weight: 600;
+            font-size: 0.95rem;
+        }
+
+        .input-group {
+            position: relative;
+            display: flex;
+            align-items: center;
+        }
+
+        .input-icon {
+            position: absolute;
+            left: 12px;
+            color: #667eea;
+            font-size: 1.2rem;
+        }
+
+        input, select {
+            width: 100%;
+            padding: 12px 12px 12px 40px;
+            border: 2px solid #e1e1e1;
+            border-radius: 10px;
+            font-size: 1rem;
+            transition: all 0.3s;
+            background: white;
+        }
+
+        select {
+            padding: 12px 12px 12px 40px;
+            cursor: pointer;
+            appearance: none;
+            background-image: url("data:image/svg+xml;charset=UTF-8,%3csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 24 24' fill='none' stroke='currentColor' stroke-width='2' stroke-linecap='round' stroke-linejoin='round'%3e%3cpolyline points='6 9 12 15 18 9'%3e%3c/polyline%3e%3c/svg%3e");
+            background-repeat: no-repeat;
+            background-position: right 12px center;
+            background-size: 20px;
+        }
+
+        input:focus, select:focus {
+            outline: none;
+            border-color: #667eea;
+            box-shadow: 0 0 0 3px rgba(102,126,234,0.1);
+        }
+
+        input.error, select.error {
+            border-color: #dc3545;
+        }
+
+        /* Password Strength */
+        .password-strength {
+            margin-top: 8px;
+        }
+
+        .strength-bar {
+            height: 4px;
+            background: #e1e1e1;
+            border-radius: 2px;
+            overflow: hidden;
+            margin-bottom: 5px;
+        }
+
+        .strength-fill {
+            height: 100%;
+            width: 0%;
+            transition: width 0.3s, background 0.3s;
+        }
+
+        .strength-text {
+            font-size: 0.85rem;
+            color: #666;
+        }
+
+        .strength-weak .strength-fill {
+            background: #dc3545;
+            width: 33%;
+        }
+
+        .strength-medium .strength-fill {
+            background: #ffc107;
+            width: 66%;
+        }
+
+        .strength-strong .strength-fill {
+            background: #28a745;
+            width: 100%;
+        }
+
+        /* Requirements List */
+        .requirements {
+            margin-top: 10px;
+            padding: 10px;
+            background: #f8f9fa;
+            border-radius: 5px;
+        }
+
+        .requirement {
+            font-size: 0.85rem;
+            color: #666;
+            margin: 5px 0;
+        }
+
+        .requirement.met {
+            color: #28a745;
+        }
+
+        .requirement i {
+            margin-right: 5px;
+        }
+
+        /* Checkbox */
+        .checkbox-group {
+            display: flex;
+            align-items: center;
+            gap: 10px;
+            margin-bottom: 1.5rem;
+        }
+
+        .checkbox-group input {
+            width: auto;
+            padding: 0;
+        }
+
+        .checkbox-group label {
+            margin: 0;
+            font-weight: normal;
+        }
+
+        .checkbox-group a {
+            color: #667eea;
+            text-decoration: none;
+        }
+
+        .checkbox-group a:hover {
+            text-decoration: underline;
+        }
+
+        /* Button */
+        .btn {
+            width: 100%;
+            padding: 14px;
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            color: white;
+            border: none;
+            border-radius: 10px;
+            font-size: 1rem;
+            font-weight: 600;
+            cursor: pointer;
+            transition: transform 0.3s, box-shadow 0.3s;
+        }
+
+        .btn:hover {
+            transform: translateY(-2px);
+            box-shadow: 0 10px 20px rgba(102,126,234,0.3);
+        }
+
+        .btn:disabled {
+            opacity: 0.6;
+            cursor: not-allowed;
+            transform: none;
+        }
+
+        /* Links */
+        .login-link {
+            text-align: center;
+            margin-top: 20px;
+            color: #666;
+        }
+
+        .login-link a {
+            color: #667eea;
+            text-decoration: none;
+            font-weight: 600;
+        }
+
+        .login-link a:hover {
+            text-decoration: underline;
+        }
+
+        /* Terms Modal */
+        .modal {
+            display: none;
+            position: fixed;
+            z-index: 1000;
+            left: 0;
+            top: 0;
+            width: 100%;
+            height: 100%;
+            background-color: rgba(0,0,0,0.5);
+        }
+
+        .modal-content {
+            background-color: white;
+            margin: 10% auto;
+            padding: 30px;
+            border-radius: 10px;
+            width: 90%;
+            max-width: 600px;
+            max-height: 70vh;
+            overflow-y: auto;
+            position: relative;
+        }
+
+        .close {
+            position: absolute;
+            right: 20px;
+            top: 15px;
+            color: #aaa;
+            font-size: 28px;
+            font-weight: bold;
+            cursor: pointer;
+        }
+
+        .close:hover {
+            color: #333;
+        }
+
+        /* Footer */
+        .footer {
+            background: rgba(0,0,0,0.3);
+            backdrop-filter: blur(10px);
+            color: white;
+            padding: 1rem;
+            text-align: center;
+        }
+
+        /* Loading Spinner */
+        .spinner {
+            display: inline-block;
+            width: 20px;
+            height: 20px;
+            border: 3px solid rgba(255,255,255,0.3);
+            border-radius: 50%;
+            border-top-color: white;
+            animation: spin 1s ease-in-out infinite;
+            margin-right: 10px;
+        }
+
+        @keyframes spin {
+            to { transform: rotate(360deg); }
+        }
+
+        /* Success Card */
+        .success-card {
+            text-align: center;
+            padding: 2rem;
+        }
+
+        .success-icon {
+            font-size: 4rem;
+            margin-bottom: 1rem;
+            color: #28a745;
+        }
+
+        .success-title {
+            color: #333;
+            font-size: 1.8rem;
+            margin-bottom: 1rem;
+        }
+
+        .admission-box {
+            background: #f8f9fa;
+            padding: 1.5rem;
+            border-radius: 10px;
+            margin: 1.5rem 0;
+        }
+
+        .admission-label {
+            color: #666;
+            margin-bottom: 0.5rem;
+        }
+
+        .admission-number {
+            font-size: 2rem;
+            font-weight: bold;
+            color: #667eea;
+            letter-spacing: 2px;
+        }
+
+        /* Responsive */
+        @media (max-width: 768px) {
+            .card {
+                padding: 1.5rem;
+            }
+        }
+    </style>
+</head>
+<body>
+    <div class="navbar">
+        <div class="logo">
+            <span>🐬</span>
+            <span>Dolphin Bypass Tool</span>
+        </div>
+        <div class="nav-links">
+            <a href="/">Home</a>
+            <a href="/supported-models">Supported Models</a>
+            <a href="/resellers">Resellers</a>
+            <a href="/login">Login</a>
+            <a href="/register" class="active">Register</a>
+        </div>
+    </div>
+
+    <div class="container">
+        <div class="card">
+            <!-- Registration Form (Visible) -->
+            <div id="registrationForm">
+                <h1>📝 Create Account</h1>
+                <p class="subtitle">Join thousands of technicians worldwide</p>
+
+                <!-- Alert Message -->
+                <div id="alertMessage" class="alert"></div>
+
+                <!-- FIXED: Changed action to /register and method to POST -->
+                <form id="registerForm" method="POST" action="/register">
+                    <div class="form-group">
+                        <label for="username">Username</label>
+                        <div class="input-group">
+                            <span class="input-icon">👤</span>
+                            <input type="text" id="username" name="username" placeholder="Choose a username" required>
+                        </div>
+                    </div>
+
+                    <div class="form-group">
+                        <label for="email">Email Address</label>
+                        <div class="input-group">
+                            <span class="input-icon">📧</span>
+                            <input type="email" id="email" name="email" placeholder="your@email.com" required>
+                        </div>
+                    </div>
+
+                    <!-- Country Field -->
+                    <div class="form-group">
+                        <label for="country">Country</label>
+                        <div class="input-group">
+                            <span class="input-icon">🌍</span>
+                            <select id="country" name="country" required>
+                                <option value="">Select your country</option>
+                                <option value="Kenya">🇰🇪 Kenya</option>
+                                <option value="Uganda">🇺🇬 Uganda</option>
+                                <option value="Tanzania">🇹🇿 Tanzania</option>
+                                <option value="Nigeria">🇳🇬 Nigeria</option>
+                                <option value="South Africa">🇿🇦 South Africa</option>
+                                <option value="Ghana">🇬🇭 Ghana</option>
+                                <option value="Egypt">🇪🇬 Egypt</option>
+                                <option value="Morocco">🇲🇦 Morocco</option>
+                                <option value="Algeria">🇩🇿 Algeria</option>
+                                <option value="Ethiopia">🇪🇹 Ethiopia</option>
+                                <option value="India">🇮🇳 India</option>
+                                <option value="America">🇺🇸 United States</option>
+                                <option value="United Kingdom">🇬🇧 United Kingdom</option>
+                                <option value="Canada">🇨🇦 Canada</option>
+                                <option value="Australia">🇦🇺 Australia</option>
+                                <option value="Other">🌎 Other</option>
+                            </select>
+                        </div>
+                    </div>
+
+                    <div class="form-group">
+                        <label for="password">Password</label>
+                        <div class="input-group">
+                            <span class="input-icon">🔒</span>
+                            <input type="password" id="password" name="password" placeholder="••••••••" required>
+                        </div>
+                        
+                        <!-- Password Strength -->
+                        <div class="password-strength" id="passwordStrength">
+                            <div class="strength-bar">
+                                <div class="strength-fill" id="strengthFill"></div>
+                            </div>
+                            <span class="strength-text" id="strengthText">Enter password</span>
+                        </div>
+
+                        <!-- Password Requirements -->
+                        <div class="requirements">
+                            <div class="requirement" id="reqLength">
+                                <i>🔴</i> At least 6 characters
+                            </div>
+                            <div class="requirement" id="reqNumber">
+                                <i>🔴</i> At least 1 number
+                            </div>
+                            <div class="requirement" id="reqLower">
+                                <i>🔴</i> At least 1 lowercase letter
+                            </div>
+                            <div class="requirement" id="reqUpper">
+                                <i>🔴</i> At least 1 uppercase letter
+                            </div>
+                        </div>
+                    </div>
+
+                    <div class="form-group">
+                        <label for="confirmPassword">Confirm Password</label>
+                        <div class="input-group">
+                            <span class="input-icon">🔒</span>
+                            <input type="password" id="confirmPassword" name="confirm_password" placeholder="••••••••" required>
+                        </div>
+                    </div>
+
+                    <div class="checkbox-group">
+                        <input type="checkbox" id="terms" name="terms" required>
+                        <label for="terms">I agree to the <a href="#" onclick="showTerms()">Terms of Service</a> and <a href="#" onclick="showPrivacy()">Privacy Policy</a></label>
+                    </div>
+
+                    <button type="submit" class="btn" id="registerBtn">Create Account</button>
+                </form>
+
+                <div class="login-link">
+                   Do You Already have an account? <a href="/login">Login here</a>
+                </div>
+            </div>
+
+            <!-- Success Message (Hidden Initially) -->
+            <div id="successMessage" style="display: none;">
+                <div class="success-card">
+                    <div class="success-icon">🎉</div>
+                    <h2 class="success-title">Registration Successful!</h2>
+                    <p style="color: #666; margin-bottom: 1.5rem;">Your account has been created successfully.</p>
+                    
+                    <div class="admission-box">
+                        <div class="admission-label">Your Admission Number</div>
+                        <div class="admission-number" id="admissionNumber">---</div>
+                    </div>
+
+                    <p style="color: #666; margin-bottom: 1.5rem;">Please save this number. You'll need it to login.</p>
+
+                    <a href="/login" class="btn" style="text-decoration: none; display: inline-block;">Go to Login</a>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- Terms Modal -->
+    <div id="termsModal" class="modal">
+        <div class="modal-content">
+            <span class="close" onclick="closeModal('termsModal')">&times;</span>
+            <h2>Terms of Service</h2>
+            <div style="margin: 20px 0;">
+                <p>1. You must be at least 18 years old to use this service.</p>
+                <p>2. You are responsible for maintaining the security of your account.</p>
+                <p>3. You may not use the service for any illegal purposes.</p>
+                <p>4. We reserve the right to terminate accounts that violate these terms.</p>
+                <p>5. We may update these terms at any time.</p>
+            </div>
+            <button class="btn" onclick="closeModal('termsModal')">Close</button>
+        </div>
+    </div>
+
+    <!-- Privacy Modal -->
+    <div id="privacyModal" class="modal">
+        <div class="modal-content">
+            <span class="close" onclick="closeModal('privacyModal')">&times;</span>
+            <h2>Privacy Policy</h2>
+            <div style="margin: 20px 0;">
+                <p>1. We collect your email, username, and country information.</p>
+                <p>2. Your data is encrypted and stored securely.</p>
+                <p>3. We never share your personal information with third parties.</p>
+                <p>4. You can request deletion of your data at any time.</p>
+                <p>5. We use cookies to improve your experience.</p>
+                <p>6. By using our service, you consent to this policy.</p>
+            </div>
+            <button class="btn" onclick="closeModal('privacyModal')">Close</button>
+        </div>
+    </div>
+
+    <div class="footer">
+        <p>🐬 Dolphin Bypass Tool - Professional Flashing & Bypass Solution</p>
+        <p style="margin-top: 5px; font-size: 0.9rem; opacity: 0.8;">Made with ❤️ in Kenya by Kenyans</p>
+    </div>
+
+    <script>
+        // Password strength checker
+        function checkPasswordStrength() {
+            const password = document.getElementById('password').value;
+            const strengthFill = document.getElementById('strengthFill');
+            const strengthText = document.getElementById('strengthText');
+            
+            const hasLength = password.length >= 6;
+            const hasNumber = /\d/.test(password);
+            const hasLower = /[a-z]/.test(password);
+            const hasUpper = /[A-Z]/.test(password);
+            
+            // Update requirements
+            updateRequirement('reqLength', hasLength);
+            updateRequirement('reqNumber', hasNumber);
+            updateRequirement('reqLower', hasLower);
+            updateRequirement('reqUpper', hasUpper);
+            
+            // Calculate strength
+            let strength = 0;
+            if (hasLength) strength++;
+            if (hasNumber) strength++;
+            if (hasLower) strength++;
+            if (hasUpper) strength++;
+            
+            // Update strength bar
+            const strengthBar = document.querySelector('.password-strength');
+            strengthBar.classList.remove('strength-weak', 'strength-medium', 'strength-strong');
+            
+            if (password.length === 0) {
+                strengthText.textContent = 'Enter password';
+            } else if (strength <= 2) {
+                strengthBar.classList.add('strength-weak');
+                strengthText.textContent = 'Weak password';
+            } else if (strength === 3) {
+                strengthBar.classList.add('strength-medium');
+                strengthText.textContent = 'Medium password';
+            } else if (strength === 4) {
+                strengthBar.classList.add('strength-strong');
+                strengthText.textContent = 'Strong password';
+            }
+        }
+
+        function updateRequirement(id, met) {
+            const el = document.getElementById(id);
+            const text = el.textContent.substring(2);
+            if (met) {
+                el.innerHTML = '<i>✅</i> ' + text;
+                el.classList.add('met');
+            } else {
+                el.innerHTML = '<i>🔴</i> ' + text;
+                el.classList.remove('met');
+            }
+        }
+
+        // Show success message with admission number
+        function showSuccess(admissionNumber) {
+            document.getElementById('registrationForm').style.display = 'none';
+            document.getElementById('successMessage').style.display = 'block';
+            document.getElementById('admissionNumber').textContent = admissionNumber;
+        }
+
+        // Handle form submission with flash messages
+        function showAlert(message, type) {
+            const alert = document.getElementById('alertMessage');
+            alert.textContent = message;
+            alert.className = `alert alert-${type}`;
+            alert.style.display = 'block';
+            
+            setTimeout(() => {
+                alert.style.display = 'none';
+            }, 5000);
+        }
+
+        // Check for flash messages from server
+        document.addEventListener('DOMContentLoaded', function() {
+            const flashMessages = document.querySelectorAll('.alert');
+            flashMessages.forEach(msg => {
+                if (msg.textContent.trim()) {
+                    msg.style.display = 'block';
+                }
+            });
+        });
+
+        function showTerms() {
+            document.getElementById('termsModal').style.display = 'block';
+        }
+
+        function showPrivacy() {
+            document.getElementById('privacyModal').style.display = 'block';
+        }
+
+        function closeModal(modalId) {
+            document.getElementById(modalId).style.display = 'none';
+        }
+
+        // Event listeners for password validation
+        document.getElementById('password').addEventListener('input', checkPasswordStrength);
+        document.getElementById('confirmPassword').addEventListener('input', checkPasswordStrength);
+
+        // Close modals when clicking outside
+        window.onclick = function(event) {
+            const termsModal = document.getElementById('termsModal');
+            const privacyModal = document.getElementById('privacyModal');
+            
+            if (event.target == termsModal) {
+                termsModal.style.display = 'none';
+            }
+            if (event.target == privacyModal) {
+                privacyModal.style.display = 'none';
+            }
+        }
+    </script>
+</body>
+</html>
