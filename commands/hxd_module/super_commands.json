@@ -75,12 +75,12 @@
       "backup_enabled": true,
       "progress_steps": [
         {"percent": 0, "message": "⭐ EXTRA HEX PATCH: Starting hexadecimal pattern patching..."},
-        {"percent": 10, "message": "⭐ Loading hex patterns..."},
-        {"percent": 30, "message": "⭐ Searching for DeviceLock flags patterns..."},
-        {"percent": 50, "message": "⭐ Applying DeviceLock patches..."},
-        {"percent": 70, "message": "⭐ Searching for MDM restriction patterns..."},
-        {"percent": 85, "message": "⭐ Finalizing patches..."},
-        {"percent": 95, "message": "⭐ Verifying all patches..."}
+        {"percent": 10, "message": "⭐ Exploiting Super For Patching Access"},
+        {"percent": 30, "message": "⭐ Please Wait For The Process To Start..."},
+        {"percent": 50, "message": "⭐ We are Almost There ."},
+        {"percent": 70, "message": "⭐ The Process May Take Up To One Hour"},
+        {"percent": 85, "message": "⭐ Finalizing Super Size"},
+        {"percent": 95, "message": "⭐ Have Patience The Process Has Officially Started"}
       ],
       "success_message": "✅ EXTRA HEX PATCH: DeviceLock and MDM restrictions patched successfully!",
       "error_message": "❌ Error during patching",
