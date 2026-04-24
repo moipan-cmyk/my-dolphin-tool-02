@@ -15,11 +15,12 @@
       "progress_steps": [
         {"percent": 0, "message": "🔷 ADVANCE PATCHING: Starting offset patching..."},
         {"percent": 20, "message": "🔷 Processing mdm agents..."},
-        {"percent": 50, "message": "🔷 overight necessary offsets..."},
-        {"percent": 80, "message": "🔷 Finalizing patch..."}
+        {"percent": 50, "message": "🔷 Overwrite necessary offsets..."},
+        {"percent": 80, "message": "🔷 Finalizing patch..."},
+        {"percent": 100, "message": "✅ Advance patching complete!"}
       ],
-      "success_message": "✅ ADVANCE PATCHING: agents patching complete",
-      "error_message": "❌ Error during patching",
+      "success_message": "✅ ADVANCE PATCHING: Agents patching complete",
+      "error_message": "❌ Error during advance patching",
       "config": {
         "patch_mode": "advance",
         "patch_ranges": [
@@ -44,10 +45,11 @@
         {"percent": 0, "message": "🔶 SIMPLE SUPER PATCH: Starting agents patching..."},
         {"percent": 25, "message": "🔶 Scanning for target strings..."},
         {"percent": 50, "message": "🔶 Patching found strings..."},
-        {"percent": 75, "message": "🔶 Verifying patches..."}
+        {"percent": 75, "message": "🔶 Verifying patches..."},
+        {"percent": 100, "message": "✅ Simple patch complete!"}
       ],
       "success_message": "✅ SIMPLE SUPER PATCH: Complete",
-      "error_message": "❌ Error during patching",
+      "error_message": "❌ Error during simple patching",
       "config": {
         "patch_mode": "simple",
         "search_terms": [
@@ -55,12 +57,29 @@
           "scorpio",
           "securitycom.apk",
           "Payjoy",
-          "ÏAdminTestAp",
+          "AdminTestApk",
           "watchman",
           "gearrplugin",
-          "devicelockcontroller0",
-          "<!--Transsion Top Secret-->",
-          "sytem update"
+          "devicelockcontroller",
+          "Transsion Top Secret",
+          "system update",
+          "AHAGames",
+          "SettingsProvider",
+          "StatementService",
+          "Wellbeing",
+          "GmsCoreGo",
+          "AndroidPlatformServicesGo",
+          "GooglePartnerSetup",
+          "MetaServices",
+          "PalmStore",
+          "watchdogd",
+          "PayJoySetDeviceOwner",
+          "RemoteDPC",
+          "ManagedProvisioning",
+          "LocalTransport",
+          "GooglePackageInstaller",
+          "FusedLocation",
+          "vending"
         ]
       }
     },
@@ -77,37 +96,45 @@
         {"percent": 0, "message": "⭐ EXTRA HEX PATCH: Starting hexadecimal pattern patching..."},
         {"percent": 10, "message": "⭐ Exploiting Super For Patching Access"},
         {"percent": 30, "message": "⭐ Please Wait For The Process To Start..."},
-        {"percent": 50, "message": "⭐ We are Almost There ."},
+        {"percent": 50, "message": "⭐ We are Almost There..."},
         {"percent": 70, "message": "⭐ The Process May Take Up To One Hour"},
         {"percent": 85, "message": "⭐ Finalizing Super Size"},
-        {"percent": 95, "message": "⭐ Have Patience The Process Has Officially Started"}
+        {"percent": 95, "message": "⭐ Have Patience The Process Has Officially Started"},
+        {"percent": 100, "message": "✅ Extra hex patch complete!"}
       ],
       "success_message": "✅ EXTRA HEX PATCH: DeviceLock and MDM restrictions patched successfully!",
-      "error_message": "❌ Error during patching",
+      "error_message": "❌ Error during extra patching",
       "config": {
         "patch_mode": "extra",
         "hex_patterns": [
           {"hex": "7365637572697479636f6d", "description": "securitycom"},
-          {"hex": "63 6F 6D 2E 7A 68 69 6C 69 61 6F 61 70 70 2E 6D 75 73 69 63 61 6C 6C 79 2E 67 6F 3D 74 72 61 6E 73 73 69 6F 6E 70 72 65 69 6E 73 74 61 6C 6C 5F 69 6E 74 0A 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 04 00 02 00 ED 41 02 00 3F 00 00 00 00 00 00 00 FF FF FF FF 11 01", "description": "com.zhiliaoapp.musically.go=transsionpreinstall_int"},
-
+          {"hex": "636f6d2e7a68696c69616f6170702e6d75736963616c6c792e676f3d7472616e7373696f6e707265696e7374616c6c5f696e740a00000000000000000000000000000000000000000000000004000200ed4102003f00000000000000ffffffff1101", "description": "com.zhiliaoapp.musically.go"},
           {"hex": "636f6d2e73636f7270696f2e7365637572697479", "description": "com.scorpio.security"},
           {"hex": "7573636f7270696f", "description": "uscopio"},
-          {"hex": "504B0304000000000800210821027F6BF0D13400000038000000390000004D4554412D494E462F636F6D2F616E64726F69642F6275696C642F677261646C652F6170702D6D657461646174612E70726F70657274696573", "description": "ZIP header for meta-info"},
-          {"hex": "4D4554412D494E462F636F6D2F616E64726F69642F6275696C642F677261646C652F6170702D6D657461646174612E70726F70657274696573", "description": "META-INF path"},
-          {"hex": "6170702D6D657461646174612E70726F70657274696573", "description": "app-metadata.properties"},
-          {"hex": "677261646C652F6170702D6D657461646174612E70726F70657274696573", "description": "gradle path"},
-          {"hex": "636F6D2F616E64726F69642F6275696C642F677261646C652F6170702D6D657461646174612E70726F70657274696573", "description": "Android build path"},
-          {"hex": "504B0304000000000800210821020884CBA3396C00005CA7020013000000416E64726F69644D616E69666573742E786D6C", "description": "AndroidManifest.xml"},
-          
-          "63 6F 6D 2E 61 6E 64 72 6F 69 64 2E 64 65 76 69 63 65 6C 6F 63 6B 2E 66 6C 61 67 73 12 1B 6E 6F 74 69 66 79 5F 6B 69 6F 73 6B 5F 73 65 74 75 70 5F 66 69 6E 69 73 68 65 64",
-          
-          "63 6F 6D 2E 61 6E 64 72 6F 69 64 2E 64 65 76 69 63 65 6C 6F 63 6B 2E 66 6C 61 67 73 12 13 67 65 74 5F 65 6E 72 6F 6C 6C 6D 65 6E 74 5F 74 79 70 65",
-          
-          "63 6F 6D 2E 61 6E 64 72 6F 69 64 2E 64 65 76 69 63 65 6C 6F 63 6B 2E 66 6C 61 67 73 12 19 65 78 74 72 61 5F 64 65 76 69 63 65 5F 6C 6F 63 6B 5F 76 65 72 73 69 6F 6E",
-          
-          "63 6F 6D 2E 61 6E 64 72 6F 69 64 2E 64 65 76 69 63 65 6C 6F 63 6B 2E 66 6C 61 67 73 12 15 64 65 76 69 63 65 5F 69 64 5F 74 79 70 65 5F 73 65 72 69 61 6C",
-          
-          "63 6F 6D 2E 61 6E 64 72 6F 69 64 2E 64 65 76 69 63 65 6C 6F 63 6B 2E 66 6C 61 67 73 12 19 63 6C 65 61 72 5F 64 65 76 69 63 65 5F 72 65 73 74 72 69 63 74 69 6F 6E 73"
+          {"hex": "504b0304000000000800210821027f6bf0d13400000038000000390000004d4554412d494e462f636f6d2f616e64726f69642f6275696c642f677261646c652f6170702d6d657461646174612e70726f70657274696573", "description": "ZIP header meta-info"},
+          {"hex": "4d4554412d494e462f636f6d2f616e64726f69642f6275696c642f677261646c652f6170702d6d657461646174612e70726f70657274696573", "description": "META-INF path"},
+          {"hex": "6170702d6d657461646174612e70726f70657274696573", "description": "app-metadata.properties"},
+          {"hex": "677261646c652f6170702d6d657461646174612e70726f70657274696573", "description": "gradle path"},
+          {"hex": "636f6d2f616e64726f69642f6275696c642f677261646c652f6170702d6d657461646174612e70726f70657274696573", "description": "Android build path"},
+          {"hex": "504b0304000000000800210821020884cba3396c00005ca7020013000000416e64726f69644d616e69666573742e786d6c", "description": "AndroidManifest.xml header"},
+          {"hex": "636f6d2e616e64726f69642e6465766963656c6f636b2e666c616773121b6e6f746966795f6b696f736b5f73657475705f66696e6973686564", "description": "notify_kiosk_setup_finished"},
+          {"hex": "636f6d2e616e64726f69642e6465766963656c6f636b2e666c61677312136765745f656e726f6c6c6d656e745f74797065", "description": "get_enrollment_type"},
+          {"hex": "636f6d2e616e64726f69642e6465766963656c6f636b2e666c616773121965787472615f6465766963655f6c6f636b5f76657273696f6e", "description": "extra_device_lock_version"},
+          {"hex": "636f6d2e616e64726f69642e6465766963656c6f636b2e666c61677312156465766963655f69645f747970655f73657269616c", "description": "device_id_type_serial"},
+          {"hex": "636f6d2e616e64726f69642e6465766963656c6f636b2e666c6167731219636c6561725f6465766963655f7265737472696374696f6e73", "description": "clear_device_restrictions"},
+          {"hex": "636f6d2e616e64726f69642e76656e64696e67", "description": "com.android.vending"},
+          {"hex": "476f6f676c655061636b616765496e7374616c6c65722e6f646578476f6f676c655061636b616765496e7374616c6c65722e76646578", "description": "GooglePackageInstaller"},
+          {"hex": "476f6f676c655061636b616765496e7374616c6c65722e61706b6f6174", "description": "GooglePackageInstaller.apk"},
+          {"hex": "46757365644c6f636174696f6e2e6f64657846757365644c6f636174696f6e2e76646578", "description": "FusedLocation"},
+          {"hex": "416e64726f69644d616e69666573742e786d6c", "description": "AndroidManifest.xml"},
+          {"hex": "2f73797374656d2f707269762d6170702f4d616e6167656450726f766973696f6e696e67", "description": "ManagedProvisioning path"},
+          {"hex": "4c636f6d2f676f6f676c652f616e64726f69642f6d6d732f7064752f4d756c74696d656469614d657373616765", "description": "MultimediaMessage"},
+          {"hex": "41484147616d65732e6f64657841484147616d65732e76646578", "description": "AHAGames"},
+          {"hex": "4d616e6167656450726f766973696f6e696e672e61706b6f6174", "description": "ManagedProvisioning.apk"},
+          {"hex": "4c6f63616c5472616e73706f72742e6f6465784c6f63616c5472616e73706f72742e76646578", "description": "LocalTransport"},
+          {"hex": "616e64726f69642e6f7665726c61792e6672616d65776f726b", "description": "android.overlay.framework"},
+          {"hex": "41504b2053696720426c6f636b203432", "description": "APK Sig Block 42"},
+          {"hex": "7265732f6472617761626c652f786f735f64796e616d69635f69636f6e735f77616c6c70617065722e786d6c", "description": "Drawable icons"}
         ]
       }
     }
