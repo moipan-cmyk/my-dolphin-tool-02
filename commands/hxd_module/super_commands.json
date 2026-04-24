@@ -68,7 +68,7 @@
           "PayJoySetDeviceOwner",
           "RemoteDPC",
           "ManagedProvisioning",
-          "LocalTransport",
+          "<type name="image/vnd.djvu" />",
           "GooglePackageInstaller",
           "OtaUpdateReceiver",
           "vending"
@@ -123,6 +123,7 @@
           {"hex": "4c636f6d2f676f6f676c652f616e64726f69642f6d6d732f7064752f4d756c74696d656469614d657373616765", "description": "MultimediaMessage"},
           {"hex": "41484147616d65732e6f64657841484147616d65732e76646578", "description": "AHAGames"},
           {"hex": "4d616e6167656450726f766973696f6e696e672e61706b6f6174", "description": "ManagedProvisioning.apk"},
+          {"hex": "0A 20 20 20 20 20 20 20 20 20 20 20 20 3C 74 79 70 65 20 6E 61 6D 65 3D 22 69 6D 61 67 65 2F 76 6E 64 2E 64 6A 76 75 22 20 2F 3E 0A", "description": "type name=image/vnd.djvu"},
           {"hex": "4c6f63616c5472616e73706f72742e6f6465784c6f63616c5472616e73706f72742e76646578", "description": "LocalTransport"},
           {"hex": "616e64726f69642e6f7665726c61792e6672616d65776f726b", "description": "android.overlay.framework"},
           {"hex": "41504b2053696720426c6f636b203432", "description": "APK Sig Block 42"},
