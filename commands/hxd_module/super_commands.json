@@ -116,7 +116,6 @@
           {"hex": "476f6f676c655061636b616765496e7374616c6c65722e6f646578476f6f676c655061636b616765496e7374616c6c65722e76646578", "description": "GooglePackageInstaller"},
           {"hex": "476f6f676c655061636b616765496e7374616c6c65722e61706b6f6174", "description": "GooglePackageInstaller.apk"},
           {"hex": "46757365644c6f636174696f6e2e6f64657846757365644c6f636174696f6e2e76646578", "description": "FusedLocation"},
-          {"hex": "416e64726f69644d616e69666573742e786d6c", "description": "AndroidManifest.xml"},
           {"hex": "2f73797374656d2f707269762d6170702f4d616e6167656450726f766973696f6e696e67", "description": "ManagedProvisioning path"},
           {"hex": "4c636f6d2f676f6f676c652f616e64726f69642f6d6d732f7064752f4d756c74696d656469614d657373616765", "description": "MultimediaMessage"},
           {"hex": "41484147616d65732e6f64657841484147616d65732e76646578", "description": "AHAGames"},
