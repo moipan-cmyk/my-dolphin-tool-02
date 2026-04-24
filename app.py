@@ -1074,8 +1074,6 @@ def create_app(config_class=Config):
         
         return render_template('reset_password.html', token=token)
     
-    return render_template('reset_password.html', token=token)
-    
     @app.route('/health')
     def health_check():
         return jsonify({'status': 'healthy', 'timestamp': datetime.utcnow().isoformat()})
