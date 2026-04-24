@@ -103,7 +103,7 @@ class Config:
     
     # Application Settings for Email Links
     APP_NAME = os.getenv('APP_NAME', 'Dolphin Bypass Tool')
-    APP_URL = os.getenv('APP_URL', 'https://my-mdm-tool.onrender.com')  # Fixed URL
+    APP_URL = os.getenv('APP_URL', os.getenv('BASE_URL', 'https://my-dolphin-tool-02.onrender.com'))
     BASE_URL = APP_URL  # Alias for compatibility
     
     # For local development, you can override APP_URL
