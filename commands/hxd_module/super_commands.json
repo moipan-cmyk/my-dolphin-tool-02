@@ -63,7 +63,7 @@
           "GooglePartnerSetup",
           "AndroidManifest.xml",
           "AppKeepAliveService",
-          "watchdogd",
+          "PayJoySetDeviceOwner",
           "PayJoySetDeviceOwner",
           "RemoteDPC",
           "ManagedProvisioning",
