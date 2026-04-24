@@ -1,0 +1,191 @@
+{
+  "module": "mtp",
+  "version": "1.0.0",
+  "requires_adb": true,
+  "functions": {
+    "read_info": {
+      "type": "adb_sequence",
+      "description": "Read device information via MTP/ADB",
+      "requires_device": true,
+      "device_type": "adb",
+      "pre_commands": [
+        {
+          "type": "wait_for_device",
+          "timeout": 30,
+          "message": "Waiting for ADB device..."
+        }
+      ],
+      "commands": [
+        "adb shell getprop"
+      ],
+      "filter_keywords": {
+        "ro.product.manufacturer": "Manufacturer",
+        "ro.product.model": "Model",
+        "ro.build.version.release": "Android Version",
+        "ro.serialno": "Serial Number",
+        "ro.build.version.security_patch": "Security Patch"
+      },
+      "unique_filters": {
+        "Manufacturer": true,
+        "Model": true,
+        "Android Version": true,
+        "Serial Number": true,
+        "Security Patch": true
+      },
+      "success_message": "✅ Device info read complete",
+      "progress_steps": [
+        {"percent": 0, "message": "🔵 Reading device information via MTP..."},
+        {"percent": 30, "message": "📱 Retrieving device properties..."},
+        {"percent": 70, "message": "📊 Processing device data..."}
+      ]
+    },
+    
+    "frp_bypass": {
+      "type": "adb_sequence",
+      "description": "FRP Bypass via MTP method",
+      "requires_device": true,
+      "device_type": "adb",
+      "pre_commands": [
+        {
+          "type": "wait_for_device",
+          "timeout": 30,
+          "message": "Waiting for ADB device..."
+        }
+      ],
+      "commands": [
+        "adb shell settings put global development_settings_enabled 1",
+        "adb shell settings put global verifier_verify_adb_installs 0",
+        "adb shell settings put secure user_setup_complete 1",
+        "adb shell settings put global device_provisioned 1",
+        "adb shell am start -a android.intent.action.MAIN -n com.google.android.setupwizard/.SetupWizardTestActivity",
+        "adb shell am broadcast -a android.intent.action.MASTER_CLEAR"
+      ],
+      "success_message": "✅ FRP Bypass completed! Device may reboot.",
+      "error_message": "❌ FRP Bypass failed",
+      "progress_steps": [
+        {"percent": 0, "message": "🔓 Starting FRP Bypass..."},
+        {"percent": 20, "message": "📱 Configuring device settings..."},
+        {"percent": 40, "message": "🔧 Bypassing Google verification..."},
+        {"percent": 60, "message": "📡 Setting up device as provisioned..."},
+        {"percent": 80, "message": "✅ Bypass completed..."}
+      ]
+    },
+    
+    "enable_mtp": {
+      "type": "adb_commands",
+      "description": "Enable MTP mode on device",
+      "requires_device": true,
+      "device_type": "adb",
+      "pre_commands": [
+        {
+          "type": "wait_for_device",
+          "timeout": 30,
+          "message": "Waiting for ADB device..."
+        }
+      ],
+      "commands": [
+        "adb shell setprop persist.sys.usb.config mtp,adb",
+        "adb shell setprop sys.usb.config mtp,adb",
+        "adb shell svc usb setFunctions mtp",
+        "adb reboot"
+      ],
+      "success_message": "✅ MTP mode enabled. Device will reboot to apply changes.",
+      "error_message": "❌ Failed to enable MTP mode",
+      "progress_steps": [
+        {"percent": 0, "message": "🔌 Enabling MTP mode..."},
+        {"percent": 25, "message": "📱 Configuring USB settings..."},
+        {"percent": 50, "message": "📡 Setting MTP as default USB mode..."},
+        {"percent": 75, "message": "🔄 Rebooting device to apply changes..."}
+      ]
+    },
+    
+    "disable_mtp": {
+      "type": "adb_commands",
+      "description": "Disable MTP mode on device",
+      "requires_device": true,
+      "device_type": "adb",
+      "pre_commands": [
+        {
+          "type": "wait_for_device",
+          "timeout": 30,
+          "message": "Waiting for ADB device..."
+        }
+      ],
+      "commands": [
+        "adb shell setprop persist.sys.usb.config adb",
+        "adb shell setprop sys.usb.config adb",
+        "adb shell svc usb setFunctions adb",
+        "adb reboot"
+      ],
+      "success_message": "✅ MTP mode disabled. Device will reboot to apply changes.",
+      "error_message": "❌ Failed to disable MTP mode",
+      "progress_steps": [
+        {"percent": 0, "message": "🔌 Disabling MTP mode..."},
+        {"percent": 25, "message": "📱 Configuring USB settings..."},
+        {"percent": 50, "message": "📡 Setting ADB only mode..."},
+        {"percent": 75, "message": "🔄 Rebooting device to apply changes..."}
+      ]
+    },
+    
+    "transfer_files": {
+      "type": "mtp_transfer",
+      "description": "Open MTP file transfer window",
+      "requires_device": true,
+      "device_type": "mtp",
+      "pre_commands": [
+        {
+          "type": "wait_for_device",
+          "timeout": 30,
+          "message": "Waiting for ADB device..."
+        }
+      ],
+      "commands": [
+        "adb shell am start -a android.intent.action.VIEW -d file:///storage/emulated/0 -t resource/folder",
+        "explorer.exe"  
+      ],
+      "success_message": "✅ File transfer window opened",
+      "error_message": "❌ Failed to open file transfer",
+      "progress_steps": [
+        {"percent": 0, "message": "📂 Opening file transfer window..."},
+        {"percent": 50, "message": "📱 Preparing MTP connection..."},
+        {"percent": 100, "message": "✅ File manager launched"}
+      ]
+    },
+    
+    "usb_debugging": {
+      "type": "adb_sequence",
+      "description": "Enable USB Debugging on device",
+      "requires_device": true,
+      "device_type": "adb",
+      "pre_commands": [
+        {
+          "type": "wait_for_device",
+          "timeout": 30,
+          "message": "Waiting for ADB device..."
+        }
+      ],
+      "commands": [
+        "adb shell settings put global development_settings_enabled 1",
+        "adb shell settings put global adb_enabled 1",
+        "adb shell setprop persist.adb.enable 1",
+        "adb shell setprop persist.service.adb.enable 1"
+      ],
+      "success_message": "✅ USB Debugging enabled. Please check device for authorization prompt.",
+      "error_message": "❌ Failed to enable USB Debugging",
+      "progress_steps": [
+        {"percent": 0, "message": "🔧 Enabling USB Debugging..."},
+        {"percent": 25, "message": "📱 Enabling developer settings..."},
+        {"percent": 50, "message": "📡 Configuring ADB service..."},
+        {"percent": 75, "message": "✅ USB Debugging activated..."}
+      ]
+    },
+    
+    "stop_operation": {
+      "type": "stop",
+      "description": "Stop current operation",
+      "requires_device": false,
+      "success_message": "✅ Operation stopped",
+      "progress_steps": []
+    }
+  }
+}

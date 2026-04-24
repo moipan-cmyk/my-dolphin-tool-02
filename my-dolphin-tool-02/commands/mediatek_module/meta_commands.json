@@ -1,0 +1,299 @@
+{
+  "module": "meta",
+  "version": "1.0.0",
+  "description": "MTK Meta Mode operations",
+  "requires_serial": true,
+  "baudrate": 115200,
+  
+  "functions": {
+    "boot_meta": {
+      "type": "meta_boot",
+      "description": "Boot device into Meta Mode",
+      "timeout": 45,
+      "progress_steps": [
+        {"percent": 0, "message": "META MODE BOOT"},
+        {"percent": 5, "message": "Step 1: Waiting for PreLoader device..."},
+        {"percent": 10, "message": "Power OFF your device completely"},
+        {"percent": 15, "message": "Connect USB cable (DO NOT press any button)"}
+      ],
+      "preloader_detection": {
+        "timeout": 45,
+        "search_methods": [
+          {"type": "serial_port", "keywords": ["preloader", "mediatek preloader", "mtk usb port"]},
+          {"type": "vid_pid", "vid": 3725},
+          {"type": "description", "keywords": ["media tek", "mtk"]}
+        ],
+        "progress_start": 0,
+        "progress_end": 35,
+        "success_message": "PreLoader detected on {port}",
+        "error_message": "PreLoader not detected"
+      },
+      "boot_methods": [
+        {
+          "type": "usb_boot",
+          "vid": 3725,
+          "transfers": [
+            {"request_type": 64, "request": 1, "value": 1, "index": 0, "data": "01"},
+            {"request_type": 64, "request": 2, "value": 0, "index": 0, "data": "METAMETA"}
+          ],
+          "progress": 45,
+          "message": "Booting to Meta via USB..."
+        },
+        {
+          "type": "serial_boot",
+          "baudrate": 115200,
+          "commands": [
+            {"data": "A0 00 00 00", "delay": 0.5},
+            {"data": "METAMETA", "delay": 0.2}
+          ],
+          "progress": 50,
+          "message": "Booting to Meta via Serial..."
+        }
+      ],
+      "meta_detection": {
+        "timeout": 30,
+        "search_methods": [
+          {"type": "serial_port", "keywords": ["vcom", "mediatek"]},
+          {"type": "description", "keywords": ["usb vcom"]},
+          {"type": "vid_pid", "vid": 3725, "pid": 8192}
+        ],
+        "progress_start": 50,
+        "progress_end": 85,
+        "success_message": "Meta mode detected on {port}",
+        "error_message": "Meta mode not detected"
+      },
+      "handshake": {
+        "baudrate": 115200,
+        "timeout": 5,
+        "steps": [
+          {
+            "action": "wait_for_ready",
+            "timeout": 10,
+            "expected": "READY",
+            "message": "   Waiting for READY signal..."
+          },
+          {
+            "action": "send_data",
+            "data": "METAMETA",
+            "delay": 0.2,
+            "message": "   Sending META mode..."
+          },
+          {
+            "action": "wait_for_response",
+            "expected": ["METASLA", "ATEMEVDX", "ATEMATEM"],
+            "timeout": 10,
+            "message": "   Waiting for response..."
+          },
+          {
+            "action": "conditional",
+            "if_response": "METASLA",
+            "then": [
+              {"action": "send_data", "data": "SLASTART", "delay": 0.2},
+              {"action": "read_response", "length": 256, "timeout": 5}
+            ]
+          },
+          {
+            "action": "conditional",
+            "if_response": "RANDOM",
+            "then": [
+              {"action": "extract_bytes", "start": 6, "length": 4, "name": "time_val"},
+              {"action": "calculate_md5", "data": "time_val + secret", "secret": "4C EECB 1C B4 B1 1D 2B 43 18 84 3F"},
+              {"action": "send_data", "data": "{md5_hash}"},
+              {"action": "read_response", "length": 64, "timeout": 2}
+            ]
+          }
+        ],
+        "progress": 90,
+        "success_message": "META handshake successful!",
+        "error_message": "Handshake incomplete"
+      },
+      "final_progress": 100,
+      "success_message": "META MODE CONNECTED SUCCESSFULLY!",
+      "error_message": "META connection failed"
+    },
+    
+    "factory_reset": {
+      "type": "meta_action",
+      "description": "Factory reset via Meta mode",
+      "requires_connection": true,
+      "requires_auth": true,
+      "action_command": "FACTORY_RESET",
+      "progress_steps": [
+        {"percent": 10, "message": "Factory Reset in progress..."},
+        {"percent": 20, "message": "Sending factory reset command..."},
+        {"percent": 30, "message": "Processing..."},
+        {"percent": 50, "message": "Executing reset..."},
+        {"percent": 80, "message": "Completing..."}
+      ],
+      "timeout": 30,
+      "success_message": "Factory Reset completed successfully!",
+      "error_message": "Factory Reset failed"
+    },
+    
+    "frp": {
+      "type": "meta_action",
+      "description": "FRP reset via Meta mode",
+      "requires_connection": true,
+      "requires_auth": true,
+      "action_command": "FRP_RESET",
+      "progress_steps": [
+        {"percent": 10, "message": "FRP Removal in progress..."},
+        {"percent": 20, "message": "Sending FRP reset command..."},
+        {"percent": 40, "message": "Processing FRP data..."},
+        {"percent": 70, "message": "Clearing FRP partition..."}
+      ],
+      "timeout": 30,
+      "success_message": "FRP removed successfully!",
+      "error_message": "FRP removal failed"
+    },
+    
+    "read_info": {
+      "type": "meta_command",
+      "description": "Read device information via Meta mode",
+      "requires_connection": true,
+      "requires_auth": true,
+      "command": "GET_INFO",
+      "response_length": 1024,
+      "progress_steps": [
+        {"percent": 10, "message": "Reading device information..."},
+        {"percent": 30, "message": "Getting platform info..."},
+        {"percent": 60, "message": "Processing device data..."}
+      ],
+      "parse_response": {
+        "type": "binary",
+        "extract": [
+          {"key": "platform", "pattern": "platform", "display": "Platform"},
+          {"key": "model", "pattern": "model", "display": "Model"},
+          {"key": "serial", "pattern": "serial", "display": "Serial Number"}
+        ]
+      },
+      "default_info": [
+        "   Status: META Mode Active",
+        "   Platform: MTK Device"
+      ],
+      "success_message": "Device Info read successfully",
+      "error_message": "Read info failed"
+    },
+    
+    "read_nvram": {
+      "type": "nvram_operation",
+      "operation": "read",
+      "description": "Read NVRAM backup via Meta mode",
+      "requires_connection": true,
+      "requires_auth": true,
+      "partitions": ["nvram", "nvdata", "protect1", "protect2", "secro"],
+      "commands": {
+        "read": {
+          "command": "READ_NVRAM",
+          "data_format": "{partition_name}\\x00",
+          "response_length": 65536,
+          "timeout": 10
+        }
+      },
+      "progress_per_partition": 80,
+      "success_message": "NVRAM backup saved to {backup_path}",
+      "error_message": "NVRAM backup failed",
+      "output_format": "pickle"
+    },
+    
+    "restore_nvram": {
+      "type": "nvram_operation",
+      "operation": "write",
+      "description": "Restore NVRAM from backup via Meta mode",
+      "requires_connection": true,
+      "requires_auth": true,
+      "commands": {
+        "write": {
+          "command": "WRITE_NVRAM",
+          "data_format": "{partition_name}\\x00{data}",
+          "response_length": 256,
+          "timeout": 10,
+          "expected_response": "OK"
+        }
+      },
+      "progress_per_partition": 80,
+      "success_message": "NVRAM restore completed!",
+      "error_message": "NVRAM restore failed",
+      "input_format": "pickle"
+    },
+    
+    "imei_repair": {
+      "type": "imei_operation",
+      "operation": "write",
+      "description": "Repair IMEI via Meta mode",
+      "requires_connection": true,
+      "requires_auth": true,
+      "requires_imei": true,
+      "command": "WRITE_IMEI",
+      "data_format": "{imei1}\\x00{imei2}\\x00",
+      "response_length": 256,
+      "timeout": 30,
+      "expected_response": "OK",
+      "progress_steps": [
+        {"percent": 10, "message": "Repairing IMEI..."},
+        {"percent": 30, "message": "Writing IMEI1..."},
+        {"percent": 60, "message": "Writing IMEI2..."},
+        {"percent": 80, "message": "Verifying..."}
+      ],
+      "success_message": "IMEI repair completed successfully!",
+      "error_message": "IMEI repair failed"
+    },
+    
+    "read_imei": {
+      "type": "imei_operation",
+      "operation": "read",
+      "description": "Read current IMEI via Meta mode",
+      "requires_connection": true,
+      "requires_auth": true,
+      "command": "READ_IMEI",
+      "response_length": 256,
+      "timeout": 10,
+      "parse_response": {
+        "type": "binary_string",
+        "separator": "\\x00",
+        "fields": ["imei1", "imei2"]
+      },
+      "progress_steps": [
+        {"percent": 20, "message": "Reading current IMEI..."},
+        {"percent": 50, "message": "Processing IMEI data..."}
+      ],
+      "success_message": "IMEI read successfully",
+      "error_message": "Could not read IMEI"
+    },
+    
+    "stop_operation": {
+      "type": "stop",
+      "description": "Stop current operation and disconnect",
+      "requires_connection": false,
+      "disconnect_command": "DISCONNECT",
+      "disconnect_delay": 0.5,
+      "success_message": "Operation stopped",
+      "reset_connection": true
+    }
+  },
+  
+  "packet_format": {
+    "command": {
+      "structure": "<I{cmd_len}{cmd}<I{data_len}{data}",
+      "fields": [
+        {"name": "cmd_len", "type": "uint32", "position": 0},
+        {"name": "cmd", "type": "bytes", "position": 4, "length": "cmd_len"},
+        {"name": "data_len", "type": "uint32", "position": "4+cmd_len"},
+        {"name": "data", "type": "bytes", "position": "8+cmd_len", "length": "data_len"}
+      ]
+    },
+    "response": {
+      "structure": "<I{data_len}{data}",
+      "fields": [
+        {"name": "data_len", "type": "uint32", "position": 0},
+        {"name": "data", "type": "bytes", "position": 4, "length": "data_len"}
+      ]
+    }
+  },
+  
+  "authentication": {
+    "secret": "4C EECB 1C B4 B1 1D 2B 43 18 84 3F",
+    "algorithm": "md5",
+    "hash_format": "binary"
+  }
+}

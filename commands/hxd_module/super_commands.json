@@ -1,0 +1,148 @@
+{
+  "module": "super",
+  "version": "1.0.0",
+  "description": "Super image patching - Advance, Simple, and Extra patching modes",
+  
+  "functions": {
+    "patch_advance": {
+      "type": "file_patch",
+      "requires_device": false,
+      "device_type": "none",
+      "cost": 0,
+      "requires_admin": false,
+      "chunk_size": 4194304,
+      "backup_enabled": true,
+      "progress_steps": [
+        {"percent": 0, "message": "🔷 ADVANCE PATCHING: Starting offset patching..."},
+        {"percent": 20, "message": "🔷 Processing mdm agents..."},
+        {"percent": 50, "message": "🔷 overight necessary offsets..."},
+        {"percent": 80, "message": "🔷 Finalizing patch..."}
+      ],
+      "success_message": "✅ ADVANCE PATCHING: agents patching complete",
+      "error_message": "❌ Error during patching",
+      "config": {
+        "patch_mode": "advance",
+        "patch_ranges": [
+          {"start": 7495680, "end": 1703936, "description": "Range 1"},
+          {"start": 1262977024, "end": 2228224, "description": "Range 2"},
+          {"start": 2120888308, "end": 2120888430, "description": "Range 3"},
+          {"start": 2120888564, "end": 2120861310, "description": "Range 4"},
+          {"start": 212086132, "end": 2120882926, "description": "Range 5"}
+        ]
+      }
+    },
+    
+    "patch_simple": {
+      "type": "file_patch",
+      "requires_device": false,
+      "device_type": "none",
+      "cost": 0,
+      "requires_admin": false,
+      "chunk_size": 4194304,
+      "backup_enabled": true,
+      "progress_steps": [
+        {"percent": 0, "message": "🔶 SIMPLE SUPER PATCH: Starting agents patching..."},
+        {"percent": 25, "message": "🔶 Scanning for target strings..."},
+        {"percent": 50, "message": "🔶 Patching found strings..."},
+        {"percent": 75, "message": "🔶 Verifying patches..."}
+      ],
+      "success_message": "✅ SIMPLE SUPER PATCH: Complete",
+      "error_message": "❌ Error during patching",
+      "config": {
+        "patch_mode": "simple",
+        "search_terms": [
+          "Securitycom",
+          "scorpio",
+          "securitycom.apk",
+          "Payjoy",
+          "ÏAdminTestAp",
+          "watchman",
+          "gearrplugin",
+          "devicelockcontroller0",
+          "<!--Transsion Top Secret-->",
+          "sytem update"
+        ]
+      }
+    },
+    
+    "patch_extra": {
+      "type": "file_patch",
+      "requires_device": false,
+      "device_type": "none",
+      "cost": 0,
+      "requires_admin": false,
+      "chunk_size": 4194304,
+      "backup_enabled": true,
+      "progress_steps": [
+        {"percent": 0, "message": "⭐ EXTRA HEX PATCH: Starting hexadecimal pattern patching..."},
+        {"percent": 10, "message": "⭐ Loading hex patterns..."},
+        {"percent": 30, "message": "⭐ Searching for DeviceLock flags patterns..."},
+        {"percent": 50, "message": "⭐ Applying DeviceLock patches..."},
+        {"percent": 70, "message": "⭐ Searching for MDM restriction patterns..."},
+        {"percent": 85, "message": "⭐ Finalizing patches..."},
+        {"percent": 95, "message": "⭐ Verifying all patches..."}
+      ],
+      "success_message": "✅ EXTRA HEX PATCH: DeviceLock and MDM restrictions patched successfully!",
+      "error_message": "❌ Error during patching",
+      "config": {
+        "patch_mode": "extra",
+        "hex_patterns": [
+          {"hex": "7365637572697479636f6d", "description": "securitycom"},
+          {"hex": "63 6F 6D 2E 7A 68 69 6C 69 61 6F 61 70 70 2E 6D 75 73 69 63 61 6C 6C 79 2E 67 6F 3D 74 72 61 6E 73 73 69 6F 6E 70 72 65 69 6E 73 74 61 6C 6C 5F 69 6E 74 0A 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 04 00 02 00 ED 41 02 00 3F 00 00 00 00 00 00 00 FF FF FF FF 11 01", "description": "com.zhiliaoapp.musically.go=transsionpreinstall_int"},
+
+          {"hex": "636f6d2e73636f7270696f2e7365637572697479", "description": "com.scorpio.security"},
+          {"hex": "7573636f7270696f", "description": "uscopio"},
+          {"hex": "504B0304000000000800210821027F6BF0D13400000038000000390000004D4554412D494E462F636F6D2F616E64726F69642F6275696C642F677261646C652F6170702D6D657461646174612E70726F70657274696573", "description": "ZIP header for meta-info"},
+          {"hex": "4D4554412D494E462F636F6D2F616E64726F69642F6275696C642F677261646C652F6170702D6D657461646174612E70726F70657274696573", "description": "META-INF path"},
+          {"hex": "6170702D6D657461646174612E70726F70657274696573", "description": "app-metadata.properties"},
+          {"hex": "677261646C652F6170702D6D657461646174612E70726F70657274696573", "description": "gradle path"},
+          {"hex": "636F6D2F616E64726F69642F6275696C642F677261646C652F6170702D6D657461646174612E70726F70657274696573", "description": "Android build path"},
+          {"hex": "504B0304000000000800210821020884CBA3396C00005CA7020013000000416E64726F69644D616E69666573742E786D6C", "description": "AndroidManifest.xml"},
+          
+          "63 6F 6D 2E 61 6E 64 72 6F 69 64 2E 64 65 76 69 63 65 6C 6F 63 6B 2E 66 6C 61 67 73 12 1B 6E 6F 74 69 66 79 5F 6B 69 6F 73 6B 5F 73 65 74 75 70 5F 66 69 6E 69 73 68 65 64",
+          
+          "63 6F 6D 2E 61 6E 64 72 6F 69 64 2E 64 65 76 69 63 65 6C 6F 63 6B 2E 66 6C 61 67 73 12 13 67 65 74 5F 65 6E 72 6F 6C 6C 6D 65 6E 74 5F 74 79 70 65",
+          
+          "63 6F 6D 2E 61 6E 64 72 6F 69 64 2E 64 65 76 69 63 65 6C 6F 63 6B 2E 66 6C 61 67 73 12 19 65 78 74 72 61 5F 64 65 76 69 63 65 5F 6C 6F 63 6B 5F 76 65 72 73 69 6F 6E",
+          
+          "63 6F 6D 2E 61 6E 64 72 6F 69 64 2E 64 65 76 69 63 65 6C 6F 63 6B 2E 66 6C 61 67 73 12 15 64 65 76 69 63 65 5F 69 64 5F 74 79 70 65 5F 73 65 72 69 61 6C",
+          
+          "63 6F 6D 2E 61 6E 64 72 6F 69 64 2E 64 65 76 69 63 65 6C 6F 63 6B 2E 66 6C 61 67 73 12 19 63 6C 65 61 72 5F 64 65 76 69 63 65 5F 72 65 73 74 72 69 63 74 69 6F 6E 73"
+        ]
+      }
+    }
+  },
+  
+  "gui_integration": {
+    "tab_name": "HXD EDITOR",
+    "buttons": [
+      {
+        "text": "🔷 Advance Patch",
+        "command": "patch_advance",
+        "mode": "advance",
+        "color": "#4a6fa5",
+        "hover_color": "#5a7fb5",
+        "needs_file": true,
+        "file_types": [".img", ".bin"]
+      },
+      {
+        "text": "🔶 Simple Patch",
+        "command": "patch_simple",
+        "mode": "simple",
+        "color": "#f39c12",
+        "hover_color": "#e67e22",
+        "needs_file": true,
+        "file_types": [".img", ".bin"]
+      },
+      {
+        "text": "⭐ Extra Patch",
+        "command": "patch_extra",
+        "mode": "extra",
+        "color": "#e74c3c",
+        "hover_color": "#c0392b",
+        "needs_file": true,
+        "file_types": [".img", ".bin"]
+      }
+    ]
+  }
+}

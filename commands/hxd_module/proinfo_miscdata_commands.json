@@ -1,0 +1,61 @@
+{
+  "module": "proinfo_miscdata",
+  "description": "Proinfo and Miscdata patching commands",
+  "functions": {
+    "patch_proinfo": {
+      "type": "file_patch",
+      "requires_device": false,
+      "device_type": "none",
+      "cost": 0,
+      "requires_admin": false,
+      "chunk_size": 4096,
+      "backup_enabled": true,
+      "progress_steps": [
+        {"percent": 0, "message": "📦 PROINFO PATCH: Starting..."},
+        {"percent": 50, "message": "📦 Applying patches..."},
+        {"percent": 100, "message": "📦 Finalizing..."}
+      ],
+      "success_message": "✅ PROINFO patch completed successfully",
+      "error_message": "❌ PROINFO patch failed",
+      "config": {
+        "patch_mode": "proinfo"
+      }
+    },
+    "patch_miscdata": {
+      "type": "file_patch",
+      "requires_device": false,
+      "device_type": "none",
+      "cost": 0,
+      "requires_admin": false,
+      "chunk_size": 4096,
+      "backup_enabled": true,
+      "progress_steps": [
+        {"percent": 0, "message": "📦 MISCDATA PATCH: Starting..."},
+        {"percent": 50, "message": "📦 Applying patches..."},
+        {"percent": 100, "message": "📦 Finalizing..."}
+      ],
+      "success_message": "✅ MISCDATA patch completed successfully",
+      "error_message": "❌ MISCDATA patch failed",
+      "config": {
+        "patch_mode": "miscdata"
+      }
+    },
+    "patch_proinfo_online": {
+      "type": "online_patch",
+      "requires_device": false,
+      "device_type": "none",
+      "cost": 0,
+      "requires_admin": false,
+      "progress_steps": [
+        {"percent": 0, "message": "🌐 ONLINE PATCH: Opening browser..."},
+        {"percent": 100, "message": "🌐 Browser opened"}
+      ],
+      "success_message": "✅ ONLINE patch completed",
+      "error_message": "❌ Failed to open browser",
+      "config": {
+        "patch_mode": "online",
+        "url": "https://my-dolphin-tool-2.onrender.com/patch"
+      }
+    }
+  }
+}

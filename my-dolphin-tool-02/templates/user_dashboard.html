@@ -1,0 +1,1163 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>User Dashboard - Dolphin Bypass Tool</title>
+    <style>
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+            font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+        }
+
+        body {
+            background: #0f0f1a;
+            min-height: 100vh;
+            padding-bottom: 100px;
+        }
+
+        /* Navbar */
+        .navbar {
+            background: linear-gradient(135deg, #1a1a2e 0%, #16213e 100%);
+            color: white;
+            padding: 1rem 2rem;
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            box-shadow: 0 2px 10px rgba(0,0,0,0.3);
+            flex-wrap: wrap;
+            gap: 10px;
+            border-bottom: 1px solid #667eea33;
+        }
+
+        .logo {
+            font-size: 1.5rem;
+            font-weight: bold;
+            display: flex;
+            align-items: center;
+            gap: 10px;
+        }
+
+        .logo span:first-child {
+            font-size: 1.8rem;
+        }
+
+        .user-menu {
+            display: flex;
+            align-items: center;
+            gap: 20px;
+        }
+
+        .user-name {
+            font-weight: 500;
+            color: #a0aec0;
+        }
+
+        .logout-btn {
+            background: rgba(255,255,255,0.1);
+            color: white;
+            padding: 8px 16px;
+            border-radius: 8px;
+            text-decoration: none;
+            transition: 0.3s;
+        }
+
+        .logout-btn:hover {
+            background: rgba(255,255,255,0.2);
+        }
+
+        /* Main Container */
+        .container {
+            max-width: 1400px;
+            margin: 2rem auto;
+            padding: 0 2rem;
+        }
+
+        /* Stats Row */
+        .stats-row {
+            display: grid;
+            grid-template-columns: repeat(4, 1fr);
+            gap: 1.5rem;
+            margin-bottom: 2rem;
+        }
+
+        .stat-card {
+            background: linear-gradient(135deg, #1a1a2e 0%, #16213e 100%);
+            border-radius: 15px;
+            padding: 1.5rem;
+            text-align: center;
+            border: 1px solid #667eea33;
+            transition: transform 0.3s;
+        }
+
+        .stat-card:hover {
+            transform: translateY(-5px);
+        }
+
+        .stat-value {
+            font-size: 2.5rem;
+            font-weight: bold;
+            color: #667eea;
+        }
+
+        .stat-label {
+            color: #a0aec0;
+            font-size: 0.9rem;
+            margin-top: 5px;
+        }
+
+        /* Welcome Card */
+        .welcome-card {
+            background: linear-gradient(135deg, #1a1a2e 0%, #16213e 100%);
+            border-radius: 15px;
+            padding: 2rem;
+            margin-bottom: 2rem;
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            flex-wrap: wrap;
+            gap: 20px;
+            border: 1px solid #667eea33;
+        }
+
+        .welcome-text h1 {
+            color: white;
+            margin-bottom: 10px;
+        }
+
+        .welcome-text p {
+            color: #a0aec0;
+        }
+
+        .license-badge {
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            color: white;
+            padding: 15px 30px;
+            border-radius: 10px;
+            text-align: center;
+        }
+
+        .license-badge .type {
+            font-size: 1.2rem;
+            font-weight: bold;
+            margin-bottom: 5px;
+        }
+
+        .license-badge .days {
+            font-size: 0.9rem;
+            opacity: 0.9;
+        }
+
+        /* Dashboard Grid */
+        .dashboard-grid {
+            display: grid;
+            grid-template-columns: repeat(2, 1fr);
+            gap: 1.5rem;
+            margin-bottom: 1.5rem;
+        }
+
+        /* Cards */
+        .card {
+            background: #1a1a2e;
+            border-radius: 15px;
+            padding: 1.5rem;
+            border: 1px solid #667eea33;
+        }
+
+        .card-header {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            margin-bottom: 1.5rem;
+            padding-bottom: 1rem;
+            border-bottom: 1px solid #2d2d44;
+        }
+
+        .card-header h2 {
+            color: white;
+            font-size: 1.2rem;
+            display: flex;
+            align-items: center;
+            gap: 10px;
+        }
+
+        /* Info Grid */
+        .info-grid {
+            display: grid;
+            grid-template-columns: repeat(2, 1fr);
+            gap: 1rem;
+        }
+
+        .info-item {
+            background: #0f0f1a;
+            padding: 1rem;
+            border-radius: 10px;
+        }
+
+        .info-item .label {
+            color: #a0aec0;
+            font-size: 0.8rem;
+            margin-bottom: 5px;
+        }
+
+        .info-item .value {
+            color: white;
+            font-size: 1rem;
+            font-weight: 600;
+        }
+
+        .value.banned {
+            color: #dc3545;
+        }
+
+        .value.active {
+            color: #28a745;
+        }
+
+        /* License Info */
+        .license-info {
+            display: flex;
+            flex-direction: column;
+            gap: 12px;
+        }
+
+        .license-item {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            padding: 10px;
+            background: #0f0f1a;
+            border-radius: 8px;
+        }
+
+        .license-label {
+            color: #a0aec0;
+            font-size: 0.85rem;
+        }
+
+        .license-value {
+            font-weight: 600;
+            color: white;
+        }
+
+        .progress-bar {
+            width: 100%;
+            height: 6px;
+            background: #2d2d44;
+            border-radius: 3px;
+            margin: 10px 0;
+            overflow: hidden;
+        }
+
+        .progress-fill {
+            height: 100%;
+            background: linear-gradient(90deg, #667eea, #764ba2);
+            border-radius: 3px;
+            transition: width 0.3s ease;
+        }
+
+        /* Device Limit */
+        .device-limit {
+            margin-top: 15px;
+            padding: 15px;
+            background: linear-gradient(135deg, #667eea20 0%, #764ba220 100%);
+            border-radius: 10px;
+            border: 1px solid #667eea33;
+        }
+
+        .device-limit .header {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            margin-bottom: 10px;
+            color: white;
+        }
+
+        .device-count {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            font-size: 1rem;
+            color: white;
+        }
+
+        .device-count .number {
+            font-size: 1.5rem;
+            font-weight: bold;
+            color: #667eea;
+        }
+
+        .device-progress {
+            width: 100%;
+            height: 6px;
+            background: #2d2d44;
+            border-radius: 3px;
+            margin-top: 10px;
+            overflow: hidden;
+        }
+
+        .device-progress-fill {
+            height: 100%;
+            background: #667eea;
+            border-radius: 3px;
+            transition: width 0.3s ease;
+        }
+
+        /* Buttons */
+        .btn {
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            color: white;
+            padding: 10px 20px;
+            border: none;
+            border-radius: 8px;
+            font-size: 0.9rem;
+            font-weight: 600;
+            cursor: pointer;
+            transition: 0.3s;
+        }
+
+        .btn:hover {
+            transform: translateY(-2px);
+            opacity: 0.9;
+        }
+
+        .btn-secondary {
+            background: #2d2d44;
+        }
+
+        .btn-secondary:hover {
+            background: #3d3d5c;
+        }
+
+        .btn-danger {
+            background: linear-gradient(135deg, #dc3545 0%, #c82333 100%);
+        }
+
+        .btn-sm {
+            padding: 5px 12px;
+            font-size: 0.8rem;
+        }
+
+        .btn-block {
+            width: 100%;
+            margin-top: 10px;
+        }
+
+        /* Devices List */
+        .devices-list {
+            max-height: 300px;
+            overflow-y: auto;
+            margin-bottom: 15px;
+        }
+
+        .device-item {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            padding: 12px;
+            background: #0f0f1a;
+            border-radius: 10px;
+            margin-bottom: 10px;
+        }
+
+        .device-info h4 {
+            color: white;
+            margin-bottom: 5px;
+            font-size: 0.9rem;
+        }
+
+        .device-info p {
+            color: #a0aec0;
+            font-size: 0.75rem;
+        }
+
+        .device-badge {
+            padding: 2px 6px;
+            border-radius: 4px;
+            font-size: 0.7rem;
+            font-weight: 600;
+            margin-left: 8px;
+        }
+
+        .badge-active {
+            background: #28a74520;
+            color: #28a745;
+            border: 1px solid #28a745;
+        }
+
+        .badge-inactive {
+            background: #dc354520;
+            color: #dc3545;
+            border: 1px solid #dc3545;
+        }
+
+        /* Reset Options */
+        .reset-options {
+            display: flex;
+            flex-direction: column;
+            gap: 10px;
+        }
+
+        .reset-option {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            padding: 12px;
+            background: #0f0f1a;
+            border-radius: 10px;
+        }
+
+        .reset-option h4 {
+            color: white;
+            font-size: 0.9rem;
+        }
+
+        .reset-option p {
+            color: #a0aec0;
+            font-size: 0.8rem;
+        }
+
+        .cost-badge {
+            background: #667eea;
+            color: white;
+            padding: 2px 8px;
+            border-radius: 4px;
+            font-size: 0.7rem;
+            font-weight: 600;
+        }
+
+        /* Logs Section */
+        .logs-card {
+            background: #1a1a2e;
+            border-radius: 15px;
+            padding: 1.5rem;
+            margin-top: 0;
+            border: 1px solid #667eea33;
+        }
+
+        .logs-header {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            margin-bottom: 1.5rem;
+            flex-wrap: wrap;
+            gap: 15px;
+        }
+
+        .logs-header h2 {
+            color: white;
+            font-size: 1.2rem;
+        }
+
+        .filter-buttons {
+            display: flex;
+            gap: 8px;
+            flex-wrap: wrap;
+        }
+
+        .filter-btn {
+            background: #0f0f1a;
+            color: #a0aec0;
+            border: 1px solid #2d2d44;
+            padding: 5px 12px;
+            border-radius: 20px;
+            cursor: pointer;
+            font-size: 0.75rem;
+            transition: 0.3s;
+        }
+
+        .filter-btn:hover, .filter-btn.active {
+            background: #667eea;
+            color: white;
+            border-color: #667eea;
+        }
+
+        .logs-container {
+            max-height: 400px;
+            overflow-y: auto;
+        }
+
+        .logs-table {
+            width: 100%;
+            border-collapse: collapse;
+        }
+
+        .logs-table th {
+            text-align: left;
+            padding: 10px;
+            color: #a0aec0;
+            font-weight: 600;
+            font-size: 0.75rem;
+            position: sticky;
+            top: 0;
+            background: #1a1a2e;
+            border-bottom: 1px solid #2d2d44;
+        }
+
+        .logs-table td {
+            padding: 10px;
+            border-bottom: 1px solid #2d2d44;
+            color: #cbd5e0;
+            font-size: 0.8rem;
+        }
+
+        .logs-table tr:hover {
+            background: #0f0f1a;
+        }
+
+        .log-type {
+            display: inline-block;
+            padding: 2px 8px;
+            border-radius: 4px;
+            font-size: 0.7rem;
+            font-weight: 600;
+        }
+
+        .log-type.success { background: #28a74520; color: #28a745; }
+        .log-type.info { background: #17a2b820; color: #17a2b8; }
+        .log-type.warning { background: #ffc10720; color: #ffc107; }
+        .log-type.error { background: #dc354520; color: #dc3545; }
+        .log-type.device { background: #6f42c120; color: #6f42c1; }
+        .log-type.connection { background: #20c99720; color: #20c997; }
+        .log-type.scan { background: #fd7e1420; color: #fd7e14; }
+
+        /* Form */
+        .password-form {
+            display: flex;
+            flex-direction: column;
+            gap: 12px;
+        }
+
+        .form-group {
+            display: flex;
+            flex-direction: column;
+            gap: 5px;
+        }
+
+        .form-group label {
+            color: #a0aec0;
+            font-size: 0.8rem;
+            font-weight: 500;
+        }
+
+        .form-group input {
+            padding: 10px;
+            background: #0f0f1a;
+            border: 1px solid #2d2d44;
+            border-radius: 8px;
+            color: white;
+            font-size: 0.9rem;
+        }
+
+        .form-group input:focus {
+            outline: none;
+            border-color: #667eea;
+        }
+
+        .form-group input::placeholder {
+            color: #4a4a6a;
+        }
+
+        /* Alert */
+        .alert {
+            padding: 12px;
+            border-radius: 8px;
+            margin-bottom: 15px;
+            display: none;
+        }
+
+        .alert-success {
+            background: #28a74520;
+            color: #28a745;
+            border: 1px solid #28a745;
+        }
+
+        .alert-error {
+            background: #dc354520;
+            color: #dc3545;
+            border: 1px solid #dc3545;
+        }
+
+        /* Modal */
+        .modal {
+            display: none;
+            position: fixed;
+            top: 0;
+            left: 0;
+            width: 100%;
+            height: 100%;
+            background: rgba(0,0,0,0.7);
+            justify-content: center;
+            align-items: center;
+            z-index: 1000;
+        }
+
+        .modal.active {
+            display: flex;
+        }
+
+        .modal-content {
+            background: #1a1a2e;
+            border-radius: 15px;
+            padding: 2rem;
+            max-width: 450px;
+            width: 90%;
+            border: 1px solid #667eea33;
+        }
+
+        .modal-header {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            margin-bottom: 1.5rem;
+            color: white;
+        }
+
+        .close-btn {
+            background: none;
+            border: none;
+            font-size: 1.5rem;
+            cursor: pointer;
+            color: #a0aec0;
+        }
+
+        /* Spinner */
+        .spinner {
+            display: inline-block;
+            width: 20px;
+            height: 20px;
+            border: 2px solid #2d2d44;
+            border-top-color: #667eea;
+            border-radius: 50%;
+            animation: spin 1s linear infinite;
+        }
+
+        @keyframes spin {
+            to { transform: rotate(360deg); }
+        }
+
+        /* Bottom Status Bar */
+        .bottom-bar {
+            background: #0f0f1a;
+            color: white;
+            padding: 8px 20px;
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            position: fixed;
+            bottom: 0;
+            left: 0;
+            right: 0;
+            z-index: 100;
+            flex-wrap: wrap;
+            gap: 10px;
+            border-top: 1px solid #2d2d44;
+            font-size: 0.8rem;
+        }
+
+        .status-item {
+            padding: 4px 12px;
+            border-radius: 20px;
+            font-weight: 500;
+        }
+
+        .status-name { background: #28a745; }
+        .status-days { background: #ffc107; color: #1a1a2e; }
+        .status-credits { background: #17a2b8; }
+        .status-devices { background: #6f42c1; }
+
+        @media (max-width: 1024px) {
+            .dashboard-grid {
+                grid-template-columns: 1fr;
+            }
+            .stats-row {
+                grid-template-columns: repeat(2, 1fr);
+            }
+        }
+
+        @media (max-width: 768px) {
+            .stats-row {
+                grid-template-columns: 1fr;
+            }
+            .navbar {
+                flex-direction: column;
+                text-align: center;
+            }
+            .bottom-bar {
+                flex-direction: column;
+                align-items: stretch;
+                text-align: center;
+            }
+        }
+    </style>
+</head>
+<body>
+    <div class="navbar">
+        <div class="logo">
+            <span>🐬</span>
+            <span>Dolphin Bypass Tool</span>
+        </div>
+        <div class="user-menu">
+            <span class="user-name" id="displayName">Loading...</span>
+            <a href="/logout" class="logout-btn">Logout</a>
+        </div>
+    </div>
+
+    <div class="container">
+        <div class="stats-row">
+            <div class="stat-card">
+                <div class="stat-value" id="statDays">0</div>
+                <div class="stat-label">Days left</div>
+            </div>
+            <div class="stat-card">
+                <div class="stat-value" id="statCredits">0</div>
+                <div class="stat-label">Credits</div>
+            </div>
+            <div class="stat-card">
+                <div class="stat-value" id="statDevices">0/0</div>
+                <div class="stat-label">Devices</div>
+            </div>
+            <div class="stat-card">
+                <div class="stat-value" id="statStatus">Active</div>
+                <div class="stat-label">Status</div>
+            </div>
+        </div>
+
+        <div class="welcome-card">
+            <div class="welcome-text">
+                <h1>Welcome back, <span id="userName">User</span>!</h1>
+                <p id="userEmail">Loading your dashboard...</p>
+            </div>
+            <div class="license-badge" id="licenseBadge">
+                <div class="type" id="licenseType">Loading...</div>
+                <div class="days" id="daysLeft">...</div>
+            </div>
+        </div>
+
+        <div id="successAlert" class="alert alert-success"></div>
+        <div id="errorAlert" class="alert alert-error"></div>
+
+        <div class="dashboard-grid">
+            <!-- Account Information Card -->
+            <div class="card">
+                <div class="card-header">
+                    <h2>👤 Account information</h2>
+                </div>
+                <div class="info-grid">
+                    <div class="info-item"><div class="label">Username</div><div class="value" id="username">-</div></div>
+                    <div class="info-item"><div class="label">Email</div><div class="value" id="email">-</div></div>
+                    <div class="info-item"><div class="label">Admission no.</div><div class="value" id="admission">-</div></div>
+                    <div class="info-item"><div class="label">Ban status</div><div class="value" id="banStatus">-</div></div>
+                    <div class="info-item"><div class="label">Credits</div><div class="value" id="credits">0</div></div>
+                    <div class="info-item"><div class="label">Commission</div><div class="value" id="commissionRate">0%</div></div>
+                    <div class="info-item"><div class="label">Total earned</div><div class="value" id="totalCommission">KES 0</div></div>
+                    <div class="info-item"><div class="label">Member since</div><div class="value" id="registeredSince">-</div></div>
+                </div>
+                <div class="device-limit">
+                    <div class="header"><span>📱 Device usage</span><span id="deviceCount">0 / 0</span></div>
+                    <div class="device-count"><span>Devices registered</span><span class="number" id="deviceNumber">0</span></div>
+                    <div class="device-progress"><div class="device-progress-fill" id="deviceProgress" style="width: 0%"></div></div>
+                    <div style="margin-top: 8px; color: #a0aec0; font-size: 0.8rem;"><span id="devicesLeft">0</span> device slot remaining</div>
+                </div>
+            </div>
+
+            <!-- License Details Card -->
+            <div class="card">
+                <div class="card-header"><h2>🔑 License details</h2></div>
+                <div class="license-info">
+                    <div class="license-item"><span class="license-label">License type</span><span class="license-value" id="licenseTypeValue">-</span></div>
+                    <div class="license-item"><span class="license-label">Device limit</span><span class="license-value" id="deviceLimitValue">-</span></div>
+                    <div class="license-item"><span class="license-label">Status</span><span class="license-value" id="licenseStatus">-</span></div>
+                    <div class="license-item"><span class="license-label">Activated</span><span class="license-value" id="activatedDate">-</span></div>
+                    <div class="license-item"><span class="license-label">Expires</span><span class="license-value" id="expiryDate">-</span></div>
+                    <div class="license-item"><span class="license-label">Days remaining</span><span class="license-value" id="daysRemaining">-</span></div>
+                    <div class="progress-bar"><div class="progress-fill" id="licenseProgress" style="width: 0%"></div></div>
+                    <div style="text-align:center; color:#a0aec0; font-size:0.75rem;" id="licensePercent">0% elapsed</div>
+                </div>
+            </div>
+
+            <!-- Registered Devices Card -->
+            <div class="card">
+                <div class="card-header"><h2>📱 Registered devices</h2><button class="btn-secondary btn-sm" onclick="loadDevices()">↻ Refresh</button></div>
+                <div class="devices-list" id="devicesList"><div style="text-align:center;padding:20px;"><div class="spinner"></div><p style="color:#a0aec0;">Loading devices...</p></div></div>
+                <button class="btn btn-sm btn-block" onclick="showResetCostModal()">🔄 Reset HWID options</button>
+            </div>
+
+            <!-- HWID Reset Options Card -->
+            <div class="card">
+                <div class="card-header"><h2>🔄 HWID reset options</h2></div>
+                <div class="reset-options" id="resetOptions"><div style="text-align:center;padding:20px;"><div class="spinner"></div><p style="color:#a0aec0;">Loading options...</p></div></div>
+            </div>
+
+            <!-- Change Password Card -->
+            <div class="card">
+                <div class="card-header"><h2>🔒 Change password</h2></div>
+                <form id="passwordForm" class="password-form">
+                    <div class="form-group"><label>Current password</label><input type="password" id="currentPassword" placeholder="Enter current password"></div>
+                    <div class="form-group"><label>New password</label><input type="password" id="newPassword" placeholder="Min 6 characters"></div>
+                    <div class="form-group"><label>Confirm password</label><input type="password" id="confirmPassword" placeholder="Repeat new password"></div>
+                    <button type="submit" class="btn" id="changePasswordBtn">Update password</button>
+                </form>
+            </div>
+        </div>
+
+        <!-- Activity Logs Card -->
+        <div class="logs-card">
+            <div class="logs-header">
+                <h2>📋 Activity logs</h2>
+                <div class="filter-buttons">
+                    <button class="filter-btn active" data-filter="all">All</button>
+                    <button class="filter-btn" data-filter="success">Success</button>
+                    <button class="filter-btn" data-filter="error">Error</button>
+                    <button class="filter-btn" data-filter="warning">Warning</button>
+                    <button class="filter-btn" data-filter="device">Device</button>
+                    <button class="filter-btn" data-filter="connection">Connection</button>
+                    <button class="filter-btn" data-filter="scan">Scan</button>
+                    <button class="filter-btn" onclick="refreshLogs()">↻ Refresh</button>
+                </div>
+            </div>
+            <div class="logs-container">
+                <table class="logs-table">
+                    <thead><tr><th>Time</th><th>Type</th><th>Activity</th></tr></thead>
+                    <tbody id="logsBody"><tr><td colspan="3" style="text-align:center;padding:20px;"><div class="spinner"></div><p style="color:#a0aec0;">Loading logs...</p></td></tr></tbody>
+                </table>
+            </div>
+        </div>
+    </div>
+
+    <!-- Modals -->
+    <div class="modal" id="resetModal"><div class="modal-content"><div class="modal-header"><h3>Reset HWID Options</h3><button class="close-btn" onclick="closeResetModal()">&times;</button></div><div id="resetModalContent"></div></div></div>
+    <div class="modal" id="confirmModal"><div class="modal-content"><div class="modal-header"><h3>Confirm Reset</h3><button class="close-btn" onclick="closeConfirmModal()">&times;</button></div><div id="confirmModalContent"></div></div></div>
+
+    <!-- Bottom Status Bar -->
+    <div class="bottom-bar">
+        <div class="status-item status-name" id="bottomName">USER: —</div>
+        <div class="status-item status-days" id="bottomDays">DAYS: —</div>
+        <div class="status-item status-credits" id="bottomCredits">CREDITS: —</div>
+        <div class="status-item status-devices" id="bottomDevices">DEVICES: —</div>
+    </div>
+
+    <script>
+        let currentFilter = 'all';
+        let allLogs = [];
+
+        document.addEventListener('DOMContentLoaded', function() {
+            loadUserData();
+            loadDevices();
+            loadResetOptions();
+            loadActivityLogs();
+            setInterval(loadActivityLogs, 10000);
+            
+            // Setup filter buttons
+            document.querySelectorAll('.filter-btn').forEach(btn => {
+                btn.addEventListener('click', function() {
+                    document.querySelectorAll('.filter-btn').forEach(b => b.classList.remove('active'));
+                    this.classList.add('active');
+                    currentFilter = this.dataset.filter;
+                    filterLogs();
+                });
+            });
+        });
+
+        async function loadUserData() {
+            try {
+                const response = await fetch('/api/user/profile', { credentials: 'same-origin' });
+                if (!response.ok) { if (response.status === 401) { window.location.href = '/login'; return; } throw new Error('HTTP error'); }
+                const data = await response.json();
+                if (data.success) updateUserInfo(data);
+                else showError('Failed to load user data');
+            } catch (error) { console.error(error); showError('Network error'); }
+        }
+
+        function updateUserInfo(data) {
+            const deviceCount = data.device_count || 0;
+            let deviceLimit = data.device_limit || 2;
+            const isUnlimited = deviceLimit >= 999999;
+            const daysLeft = data.days_remaining || 0;
+            
+            // Update stats row
+            document.getElementById('statDays').textContent = daysLeft;
+            document.getElementById('statCredits').textContent = data.credits || 0;
+            document.getElementById('statDevices').textContent = `${deviceCount}${isUnlimited ? '/∞' : '/' + deviceLimit}`;
+            document.getElementById('statStatus').textContent = data.is_banned ? 'Banned' : 'Active';
+            document.getElementById('statStatus').style.color = data.is_banned ? '#dc3545' : '#28a745';
+            
+            document.getElementById('displayName').textContent = data.username;
+            document.getElementById('userName').textContent = data.username;
+            document.getElementById('userEmail').textContent = data.email;
+            document.getElementById('username').textContent = data.username;
+            document.getElementById('email').textContent = data.email;
+            document.getElementById('admission').textContent = data.admission_number || 'N/A';
+            
+            const isBanned = data.is_banned || false;
+            const banEl = document.getElementById('banStatus');
+            banEl.textContent = isBanned ? 'Banned' : 'Active';
+            banEl.className = isBanned ? 'value banned' : 'value active';
+            
+            document.getElementById('registeredSince').textContent = data.created_at ? new Date(data.created_at).toLocaleDateString('en-US', { month: 'short', year: 'numeric' }) : '-';
+            document.getElementById('credits').textContent = (data.credits || 0) + ' credits';
+            document.getElementById('commissionRate').textContent = (data.commission_rate || 0) + '%';
+            document.getElementById('totalCommission').textContent = 'KES ' + (data.total_commission || 0);
+            
+            if (isUnlimited) {
+                document.getElementById('deviceCount').textContent = deviceCount + ' / Unlimited';
+                document.getElementById('deviceNumber').textContent = deviceCount;
+                document.getElementById('deviceProgress').style.width = '0%';
+                document.getElementById('devicesLeft').textContent = 'Unlimited';
+                document.getElementById('deviceLimitValue').textContent = 'Unlimited';
+            } else {
+                document.getElementById('deviceCount').textContent = deviceCount + ' / ' + deviceLimit;
+                document.getElementById('deviceNumber').textContent = deviceCount;
+                const percent = (deviceCount / deviceLimit) * 100;
+                document.getElementById('deviceProgress').style.width = Math.min(100, percent) + '%';
+                document.getElementById('devicesLeft').textContent = deviceLimit - deviceCount;
+                document.getElementById('deviceLimitValue').textContent = deviceLimit + ' devices';
+            }
+
+            document.getElementById('licenseTypeValue').textContent = data.license_type || 'None';
+            document.getElementById('licenseStatus').textContent = data.license_status || 'inactive';
+            document.getElementById('licenseStatus').className = data.license_status === 'active' ? 'license-value active' : 'license-value expired';
+            
+            if (data.created_at) document.getElementById('activatedDate').textContent = new Date(data.created_at).toLocaleDateString('en-US', { month: 'short', day: 'numeric', year: 'numeric' });
+            
+            if (data.license_expiry) {
+                const expiryDate = new Date(data.license_expiry);
+                const daysRemaining = Math.max(0, Math.ceil((expiryDate - new Date()) / (1000 * 60 * 60 * 24)));
+                document.getElementById('expiryDate').textContent = expiryDate.toLocaleDateString('en-US', { month: 'short', day: 'numeric', year: 'numeric' });
+                document.getElementById('daysRemaining').textContent = daysRemaining + ' days';
+                document.getElementById('licenseType').textContent = data.license_type || 'None';
+                document.getElementById('daysLeft').textContent = daysRemaining + ' days remaining';
+                
+                // Calculate license percent elapsed
+                const totalDays = data.license_duration || 365;
+                const elapsedPercent = ((totalDays - daysRemaining) / totalDays) * 100;
+                document.getElementById('licenseProgress').style.width = Math.min(100, elapsedPercent) + '%';
+                document.getElementById('licensePercent').textContent = Math.round(elapsedPercent) + '% elapsed';
+                
+                const badge = document.getElementById('licenseBadge');
+                if (daysRemaining <= 7) badge.style.background = 'linear-gradient(135deg, #dc3545 0%, #c82333 100%)';
+                else if (daysRemaining <= 30) badge.style.background = 'linear-gradient(135deg, #ffc107 0%, #e0a800 100%)';
+                else badge.style.background = 'linear-gradient(135deg, #667eea 0%, #764ba2 100%)';
+                
+                document.getElementById('bottomName').textContent = `USER: ${data.username}`;
+                document.getElementById('bottomDays').textContent = `DAYS: ${daysRemaining}`;
+                document.getElementById('bottomCredits').textContent = `CREDITS: ${data.credits || 0}`;
+                document.getElementById('bottomDevices').textContent = `DEVICES: ${deviceCount}${isUnlimited ? '/∞' : '/' + deviceLimit}`;
+            }
+        }
+
+        async function loadDevices() {
+            try {
+                const response = await fetch('/api/user/devices', { credentials: 'same-origin' });
+                if (!response.ok) throw new Error('HTTP error');
+                const data = await response.json();
+                if (data.success) displayDevices(data.devices);
+            } catch (error) { console.error(error); }
+        }
+
+        function displayDevices(devices) {
+            const container = document.getElementById('devicesList');
+            if (!devices || devices.length === 0) {
+                container.innerHTML = '<div style="text-align:center;padding:30px;"><p style="color:#a0aec0;">No devices registered</p></div>';
+                return;
+            }
+            let html = '';
+            devices.forEach(d => {
+                html += `<div class="device-item">
+                    <div class="device-info">
+                        <h4>${d.device_name || 'Unknown Device'} <span class="device-badge ${d.is_active ? 'badge-active' : 'badge-inactive'}">${d.is_active ? 'Active' : 'Inactive'}</span></h4>
+                        <p>HWID: ${d.hwid ? d.hwid.substring(0, 16) + '...' : 'N/A'}  |  Added ${new Date(d.created_at).toLocaleDateString('en-US', { month: 'short', day: 'numeric', year: 'numeric' })}</p>
+                    </div>
+                    <button class="btn-danger btn-sm" onclick="showSingleResetConfirm(${d.id}, '${d.device_name}')">Reset</button>
+                </div>`;
+            });
+            container.innerHTML = html;
+        }
+
+        async function loadResetOptions() {
+            try {
+                const response = await fetch('/api/user/reset-cost', { credentials: 'same-origin' });
+                if (!response.ok) throw new Error('HTTP error');
+                const data = await response.json();
+                if (data.success) displayResetOptions(data);
+            } catch (error) { console.error(error); }
+        }
+
+        function displayResetOptions(data) {
+            const container = document.getElementById('resetOptions');
+            container.innerHTML = `
+                <div class="reset-option">
+                    <div><h4>Reset single device</h4><p>Cost: <span class="cost-badge">${data.cost_per_device} credits</span></p></div>
+                    <button class="btn-secondary btn-sm" onclick="showSingleResetModal()" ${!data.can_reset_single ? 'disabled' : ''}>Reset single</button>
+                </div>
+                <div class="reset-option">
+                    <div><h4>Reset all devices</h4><p>Total cost: <span class="cost-badge">${data.total_cost_all} credits</span></p></div>
+                    <button class="btn-danger btn-sm" onclick="showAllResetConfirm()" ${!data.can_reset_all ? 'disabled' : ''}>Reset all</button>
+                </div>
+                ${data.devices && data.devices.length > 0 ? `<div class="form-group"><select id="deviceSelect" style="width:100%;padding:8px;background:#0f0f1a;border:1px solid #2d2d44;border-radius:8px;color:white;"><option value="">Select device...</option>${data.devices.map(d => `<option value="${d.id}">${d.name}</option>`).join('')}</select></div>` : ''}
+                <div style="padding:10px;background:#0f0f1a;border-radius:8px;text-align:center;"><p style="color:#a0aec0;">Your credits: ${data.user_credits}  |  Active devices: ${data.total_devices}</p></div>
+            `;
+        }
+
+        // Activity Logs
+        async function loadActivityLogs() {
+            try {
+                const response = await fetch('/api/user/activity-logs', { credentials: 'same-origin' });
+                if (!response.ok) throw new Error('HTTP error');
+                const data = await response.json();
+                if (data.success) {
+                    allLogs = data.logs || [];
+                    filterLogs();
+                }
+            } catch (error) { console.error('Error loading logs:', error); }
+        }
+
+        function filterLogs() {
+            let filtered = allLogs;
+            
+            if (currentFilter !== 'all') {
+                filtered = allLogs.filter(log => {
+                    const type = log.type || '';
+                    const activity = log.activity || '';
+                    
+                    switch(currentFilter) {
+                        case 'success': return type.includes('success') || activity.includes('Success') || activity.includes('complete');
+                        case 'error': return type.includes('error') || activity.includes('Error') || activity.includes('failed');
+                        case 'warning': return type.includes('warning') || activity.includes('Warning');
+                        case 'device': return type.includes('device') || activity.includes('Device') || activity.includes('HWID');
+                        case 'connection': return type.includes('connection') || activity.includes('Connection') || activity.includes('tunnel');
+                        case 'scan': return type.includes('scan') || activity.includes('Scan') || activity.includes('port');
+                        default: return true;
+                    }
+                });
+            }
+            
+            updateLogsTable(filtered);
+        }
+
+        function updateLogsTable(logs) {
+            const tbody = document.getElementById('logsBody');
+            if (!logs || logs.length === 0) {
+                tbody.innerHTML = '<tr><td colspan="3" style="text-align:center;padding:20px;"><p style="color:#a0aec0;">No activity logs found</p></td></tr>';
+                return;
+            }
+            
+            let html = '';
+            logs.slice(0, 50).forEach(log => {
+                let typeClass = 'info';
+                let displayType = 'Info';
+                let message = log.activity || '';
+                
+                if (log.type && log.type.includes('cmd_success')) { typeClass = 'success'; displayType = 'Success'; }
+                else if (log.type && log.type.includes('cmd_error')) { typeClass = 'error'; displayType = 'Error'; }
+                else if (log.type && log.type.includes('cmd_warning')) { typeClass = 'warning'; displayType = 'Warning'; }
+                else if (log.type && log.type.includes('cmd_device')) { typeClass = 'device'; displayType = 'Device'; }
+                else if (log.type && log.type.includes('cmd_scan')) { typeClass = 'scan'; displayType = 'Scan'; }
+                else if (log.type && log.type.includes('cmd_connection')) { typeClass = 'connection'; displayType = 'Connection'; }
+                
+                if (message.includes('Success') || message.includes('complete')) { typeClass = 'success'; displayType = 'Success'; }
+                else if (message.includes('Error') || message.includes('failed')) { typeClass = 'error'; displayType = 'Error'; }
+                else if (message.includes('Warning')) { typeClass = 'warning'; displayType = 'Warning'; }
+                else if (message.includes('HWID') || message.includes('Device')) { typeClass = 'device'; displayType = 'Device'; }
+                else if (message.includes('tunnel') || message.includes('Connection')) { typeClass = 'connection'; displayType = 'Connection'; }
+                else if (message.includes('Scan') || message.includes('port')) { typeClass = 'scan'; displayType = 'Scan'; }
+                
+                message = message.replace(/\[.*?\]\s*/, '');
+                message = message.replace(/^[✅❌ℹ️⚠️⏳📱🔌🔍⚙️💎━]+\s*/, '');
+                message = message.replace(/\s+/g, ' ').trim();
+                
+                if (!message || message === '━' || message.length < 2) return;
+                if (message.length > 100) message = message.substring(0, 100) + '...';
+                
+                const time = log.time ? log.time.split(' ')[1] || log.time : '';
+                
+                html += `<tr>
+                    <td style="white-space:nowrap;">${escapeHtml(time)}</td>
+                    <td><span class="log-type ${typeClass}">${displayType}</span></td>
+                    <td style="word-break:break-word;">${escapeHtml(message)}</td>
+                </tr>`;
+            });
+            
+            tbody.innerHTML = html || '<tr><td colspan="3" style="text-align:center;padding:20px;"><p style="color:#a0aec0;">No activity logs found</p></td></tr>';
+        }
+
+        function refreshLogs() {
+            document.getElementById('logsBody').innerHTML = '<tr><td colspan="3" style="text-align:center;padding:20px;"><div class="spinner"></div> Loading...</td></tr>';
+            loadActivityLogs();
+        }
+
+        function escapeHtml(text) { 
+            const div = document.createElement('div'); 
+            div.textContent = text; 
+            return div.innerHTML; 
+        }
+
+        // Reset Functions
+        function showResetCostModal() { loadResetOptions(); document.getElementById('resetModal').classList.add('active'); }
+        function closeResetModal() { document.getElementById('resetModal').classList.remove('active'); }
+        function closeConfirmModal() { document.getElementById('confirmModal').classList.remove('active'); }
+        
+        function showSingleResetModal() {
+            closeResetModal();
+            const select = document.getElementById('deviceSelect');
+            if (!select || !select.value) { showError('Please select a device'); return; }
+            showSingleResetConfirm(select.value, select.options[select.selectedIndex].text);
+        }
+        
+        function showSingleResetConfirm(id, name) {
+            document.getElementById('confirmModalContent').innerHTML = `<p>Reset device <strong>${name}</strong>?</p><p style="color:#dc3545;">⚠️ Device will be deactivated</p><p>Cost: 2 credits</p><div style="display:flex;gap:10px;margin-top:20px;"><button class="btn-secondary" onclick="closeConfirmModal()">Cancel</button><button class="btn-danger" onclick="resetSingleDevice(${id})">Confirm</button></div>`;
+            document.getElementById('confirmModal').classList.add('active');
+        }
+        
+        function showAllResetConfirm() {
+            closeResetModal();
+            document.getElementById('confirmModalContent').innerHTML = `<p>Reset ALL devices?</p><p style="color:#dc3545;">⚠️ All devices will be deactivated</p><div style="display:flex;gap:10px;margin-top:20px;"><button class="btn-secondary" onclick="closeConfirmModal()">Cancel</button><button class="btn-danger" onclick="resetAllDevices()">Confirm All</button></div>`;
+            document.getElementById('confirmModal').classList.add('active');
+        }
+        
+        async function resetSingleDevice(id) {
+            try {
+                const response = await fetch('/api/user/reset-devices', { method: 'POST', credentials: 'same-origin', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ device_id: id }) });
+                const data = await response.json();
+                if (data.success) { showSuccess('Device reset successfully'); closeConfirmModal(); loadUserData(); loadDevices(); loadResetOptions(); }
+                else showError(data.error);
+            } catch (error) { showError('Network error'); }
+        }
+        
+        async function resetAllDevices() {
+            try {
+                const response = await fetch('/api/user/reset-devices', { method: 'POST', credentials: 'same-origin', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({}) });
+                const data = await response.json();
+                if (data.success) { showSuccess('All devices reset'); closeConfirmModal(); loadUserData(); loadDevices(); loadResetOptions(); }
+                else showError(data.error);
+            } catch (error) { showError('Network error'); }
+        }
+
+        // Password Change
+        document.getElementById('passwordForm').addEventListener('submit', async function(e) {
+            e.preventDefault();
+            const newPass = document.getElementById('newPassword').value;
+            const confirmPass = document.getElementById('confirmPassword').value;
+            if (newPass !== confirmPass) { showError('Passwords do not match'); return; }
+            if (newPass.length < 6) { showError('Password must be at least 6 characters'); return; }
+            
+            const btn = document.getElementById('changePasswordBtn');
+            btn.disabled = true;
+            btn.innerHTML = '<div class="spinner"></div> Updating...';
+            
+            try {
+                const response = await fetch('/api/user/change-password', { method: 'POST', credentials: 'same-origin', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ current_password: document.getElementById('currentPassword').value, new_password: newPass }) });
+                const data = await response.json();
+                if (data.success) { showSuccess('Password updated successfully'); document.getElementById('passwordForm').reset(); }
+                else showError(data.error);
+            } catch (error) { showError('Network error'); }
+            finally { btn.disabled = false; btn.innerHTML = 'Update password'; }
+        });
+
+        function showSuccess(msg) { const el = document.getElementById('successAlert'); el.textContent = msg; el.style.display = 'block'; setTimeout(() => el.style.display = 'none', 3000); }
+        function showError(msg) { const el = document.getElementById('errorAlert'); el.textContent = msg; el.style.display = 'block'; setTimeout(() => el.style.display = 'none', 3000); }
+    </script>
+</body>
+</html>

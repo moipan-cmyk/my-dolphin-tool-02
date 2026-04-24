@@ -1,0 +1,384 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Pricing - Dolphin Bypass Tool</title>
+  <style>
+    * {
+      margin: 0;
+      padding: 0;
+      box-sizing: border-box;
+      font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+    }
+
+    body {
+      background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+      min-height: 100vh;
+      padding: 20px;
+    }
+
+    .navbar {
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+      padding: 1rem 2rem;
+      background: rgba(255, 255, 255, 0.1);
+      backdrop-filter: blur(10px);
+      border-radius: 15px;
+      margin-bottom: 30px;
+      color: white;
+    }
+
+    .logo {
+      font-size: 24px;
+      font-weight: bold;
+      display: flex;
+      align-items: center;
+      gap: 10px;
+    }
+
+    .nav-links a {
+      color: white;
+      text-decoration: none;
+      margin-left: 30px;
+      padding: 8px 15px;
+      border-radius: 8px;
+      transition: background 0.3s;
+    }
+
+    .nav-links a:hover {
+      background: rgba(255,255,255,0.2);
+    }
+
+    .container {
+      max-width: 1200px;
+      margin: 0 auto;
+    }
+
+    h1 {
+      color: white;
+      text-align: center;
+      margin-bottom: 10px;
+      font-size: 36px;
+      text-shadow: 2px 2px 4px rgba(0,0,0,0.3);
+    }
+
+    .subtitle {
+      color: rgba(255,255,255,0.9);
+      text-align: center;
+      margin-bottom: 50px;
+      font-size: 18px;
+    }
+
+    .pricing-grid {
+      display: grid;
+      grid-template-columns: repeat(auto-fit, minmax(300px, 1fr));
+      gap: 30px;
+      margin-bottom: 50px;
+    }
+
+    .pricing-card {
+      background: white;
+      border-radius: 20px;
+      padding: 40px 30px;
+      text-align: center;
+      box-shadow: 0 20px 40px rgba(0,0,0,0.2);
+      transition: transform 0.3s;
+      position: relative;
+      overflow: hidden;
+    }
+
+    .pricing-card:hover {
+      transform: translateY(-10px);
+    }
+
+    .pricing-card.popular {
+      transform: scale(1.05);
+      border: 3px solid #667eea;
+    }
+
+    .pricing-card.popular:hover {
+      transform: scale(1.05) translateY(-10px);
+    }
+
+    .popular-badge {
+      position: absolute;
+      top: 20px;
+      right: -35px;
+      background: #667eea;
+      color: white;
+      padding: 8px 40px;
+      transform: rotate(45deg);
+      font-size: 14px;
+      font-weight: bold;
+    }
+
+    .plan-icon {
+      font-size: 48px;
+      margin-bottom: 20px;
+    }
+
+    .plan-name {
+      font-size: 24px;
+      font-weight: bold;
+      color: #333;
+      margin-bottom: 10px;
+    }
+
+    .plan-price {
+      font-size: 48px;
+      font-weight: bold;
+      color: #667eea;
+      margin-bottom: 10px;
+    }
+
+    .plan-price span {
+      font-size: 16px;
+      color: #666;
+      font-weight: normal;
+    }
+
+    .plan-duration {
+      color: #666;
+      margin-bottom: 30px;
+      font-size: 14px;
+    }
+
+    .plan-features {
+      list-style: none;
+      margin-bottom: 30px;
+    }
+
+    .plan-features li {
+      padding: 10px 0;
+      color: #555;
+      border-bottom: 1px solid #eee;
+    }
+
+    .plan-features li:last-child {
+      border-bottom: none;
+    }
+
+    .plan-features i {
+      color: #28a745;
+      margin-right: 10px;
+    }
+
+    .btn {
+      display: inline-block;
+      padding: 15px 40px;
+      background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+      color: white;
+      text-decoration: none;
+      border-radius: 10px;
+      font-weight: 600;
+      transition: transform 0.3s, box-shadow 0.3s;
+    }
+
+    .btn:hover {
+      transform: translateY(-2px);
+      box-shadow: 0 10px 20px rgba(102, 126, 234, 0.3);
+    }
+
+    .btn-outline {
+      background: transparent;
+      border: 2px solid #667eea;
+      color: #667eea;
+    }
+
+    .btn-outline:hover {
+      background: #667eea;
+      color: white;
+    }
+
+    .faq-section {
+      background: white;
+      border-radius: 20px;
+      padding: 40px;
+      margin-top: 50px;
+    }
+
+    .faq-title {
+      text-align: center;
+      font-size: 28px;
+      color: #333;
+      margin-bottom: 30px;
+    }
+
+    .faq-grid {
+      display: grid;
+      grid-template-columns: repeat(auto-fit, minmax(400px, 1fr));
+      gap: 30px;
+    }
+
+    .faq-item {
+      border-bottom: 1px solid #eee;
+      padding-bottom: 20px;
+    }
+
+    .faq-question {
+      font-weight: bold;
+      color: #333;
+      margin-bottom: 10px;
+      font-size: 18px;
+    }
+
+    .faq-answer {
+      color: #666;
+      line-height: 1.6;
+    }
+
+    .guarantee {
+      text-align: center;
+      margin: 40px 0;
+      color: white;
+    }
+
+    .guarantee i {
+      font-size: 48px;
+      margin-bottom: 10px;
+    }
+
+    .footer {
+      text-align: center;
+      color: white;
+      margin-top: 50px;
+      padding: 20px;
+      background: rgba(0,0,0,0.2);
+      border-radius: 15px;
+    }
+
+    @media (max-width: 768px) {
+      .pricing-card.popular {
+        transform: scale(1);
+      }
+      .pricing-card.popular:hover {
+        transform: translateY(-10px);
+      }
+      .faq-grid {
+        grid-template-columns: 1fr;
+      }
+    }
+  </style>
+</head>
+<body>
+  <div class="navbar">
+    <div class="logo">
+      🐬 Dolphin Bypass Tool
+    </div>
+    <div class="nav-links">
+      <a href="/">Home</a>
+      <a href="/supported-models">Supported Models</a>
+      <a href="/login">Login</a>
+      <a href="/register">Register</a>
+    </div>
+  </div>
+
+  <div class="container">
+    <h1>💰 Simple, Transparent Pricing</h1>
+    <div class="subtitle">Choose the perfect plan for your needs</div>
+    
+    <div class="pricing-grid">
+      <!-- Fair Plan -->
+      <div class="pricing-card">
+        <div class="plan-icon">🔰</div>
+        <div class="plan-name">Fair</div>
+        <div class="plan-price">$ 15</div>
+        <div class="plan-duration">per 3 months</div>
+        <ul class="plan-features">
+          <li><i>✓</i> Basic FRP Bypass</li>
+          <li><i>✓</i> Factory Reset</li>
+          <li><i>✓</i> Read Device Info</li>
+          <li><i>✓</i> ADB Commands</li>
+          <li><i>✓</i> Fastboot Operations</li>
+          <li><i>✗</i> MDM Bypass</li>
+          <li><i>✗</i> Advanced Patching</li>
+          <li><i>✗</i> Premium Support</li>
+        </ul>
+        <a href="/register" class="btn btn-outline">Get Started</a>
+      </div>
+
+      <!-- Good Plan - very Popular -->
+      <div class="pricing-card popular">
+        <div class="popular-badge">POPULAR</div>
+        <div class="plan-icon">⭐</div>
+        <div class="plan-name">Good</div>
+        <div class="plan-price">$ 25</div>
+        <div class="plan-duration">per 6 months</div>
+        <ul class="plan-features">
+          <li><i>✓</i> All Fair Features</li>
+          <li><i>✓</i> MDM Bypass</li>
+          <li><i>✓</i> Remove FRP</li>
+          <li><i>✓</i> Unlock Bootloader</li>
+          <li><i>✓</i> Remove Ads</li>
+          <li><i>✓</i> Basic Patching</li>
+          <li><i>✗</i> Advanced Patching</li>
+          <li><i>✓</i> Email Support</li>
+        </ul>
+        <a href="/register" class="btn">Get Started</a>
+      </div>
+
+      <!-- Excellent Plan -->
+      <div class="pricing-card">
+        <div class="plan-icon">👑</div>
+        <div class="plan-name">Excellent</div>
+        <div class="plan-price">$ 40</div>
+        <div class="plan-duration">per 12 months</div>
+        <ul class="plan-features">
+          <li><i>✓</i> All Good Features</li>
+          <li><i>✓</i> Advanced Patching</li>
+          <li><i>✓</i> Super Patching</li>
+          <li><i>✓</i> Custom ROM Flashing</li>
+          <li><i>✓</i> Much Brands Supported</li>
+          <li><i>✓</i> Priority Support</li>
+          <li><i>✓</i> Friendly Updates</li>
+          <li><i>✓</i> 24/7 Priority Support</li>
+        </ul>
+        <a href="/register" class="btn btn-outline">Get Started</a>
+      </div>
+    </div>
+
+    <div class="guarantee">
+      <i>🛡️</i>
+      <h3>Check features before buying if meets your needs</h3>
+      <p>If you're not satisfied, we have nothing to do about it.</p>
+    </div>
+
+    <div class="faq-section">
+      <h2 class="faq-title">Frequently Asked Questions</h2>
+      <div class="faq-grid">
+        <div class="faq-item">
+          <div class="faq-question">What payment methods do you accept?</div>
+          <div class="faq-answer">We accept M-PESA,crypto, bank transfers, and major credit cards. BINANCE is the preferred method for Worldwide customers.</div>
+        </div>
+        <div class="faq-item">
+          <div class="faq-question">How do I get my license after payment?</div>
+          <div class="faq-answer">After payment, your license will be automatically/manually activated on your account. You can also contact support for manual activation.</div>
+        </div>
+        <div class="faq-item">
+          <div class="faq-question">can i be unban if banned ?</div>
+          <div class="faq-answer">No,but we will check the reason of you being banned </div>
+        </div>
+        <div class="faq-item">
+          <div class="faq-question">Do you offer reseller discounts?</div>
+          <div class="faq-answer">Yes, resellers get special discounts. Contact us at snapdragonspd@gmail.com for reseller pricing.</div>
+        </div>
+        <div class="faq-item">
+          <div class="faq-question">How many devices can I use?</div>
+          <div class="faq-answer">Fair plan: 10 devices, Good plan: 25 devices, Excellent plan: 60 devices. Additional devices can be added for a fee.</div>
+        </div>
+        <div class="faq-item">
+          <div class="faq-question">Is technical support included?</div>
+          <div class="faq-answer">Yes, all plans include email support. Good and Excellent plans include priority support via Telegram.</div>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <div class="footer">
+    <p>© 2024 Dolphin Bypass Tool - MADE IN KENYA BY KENYANS</p>
+    <p style="margin-top: 10px; font-size: 14px;">For reseller inquiries: <a href="mailto:snapdragonspd@gmail.com" style="color: white;">snapdragonspd@gmail.com</a></p>
+  </div>
+</body>
+</html>
