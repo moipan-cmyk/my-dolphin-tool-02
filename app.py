@@ -17,7 +17,7 @@ from functools import wraps
 import traceback
 
 # ==================== CONSTANTS ====================
-SESSION_DURATION_HOURS = 12
+SESSION_DURATION_HOURS = 1
 DEVICE_RESET_COST = 2
 
 BASE_DIR = os.path.dirname(os.path.abspath(__file__))
