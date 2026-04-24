@@ -93,7 +93,7 @@ def create_app(config_class=Config):
                     username='admin',
                     email=admin_email,
                     admission_number=1000,
-                    credits=1000,
+                    credits=10,
                     is_admin=True,
                     is_active=True,
                     device_limit=0,
@@ -1043,9 +1043,8 @@ def create_app(config_class=Config):
     @app.route('/reset-password/<token>', methods=['GET', 'POST'])
     def reset_password(token):
         if current_user.is_authenticated:
-            return redirect('/user-dashboard')
-        
-        user = User.query.filter_by(reset_token=token).first()
+            logout_user()
+            flask_session.clear()  # ✅ Log them out so they can reset password
         
         if not user or not user.verify_reset_token(token):
             flash('Invalid or expired reset token.', 'danger')
