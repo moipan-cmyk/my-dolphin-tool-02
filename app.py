@@ -1040,41 +1040,39 @@ def create_app(config_class=Config):
         
         return render_template('forgot_password.html')
     
-  @app.route('/reset-password/<token>', methods=['GET', 'POST'])
-  def reset_password(token):
-  if current_user.is_authenticated:
-        logout_user()
-        flask_session.clear()
-    
-    user = User.query.filter_by(reset_token=token).first()
-    
-    if not user or not user.verify_reset_token(token):
-        flash('Invalid or expired reset token.', 'danger')
-        return redirect(url_for('login'))
-    
-    if request.method == 'POST':
-        password = request.form.get('password', '')[:128]
-        confirm = request.form.get('confirm_password', '')[:128]
+    @app.route('/reset-password/<token>', methods=['GET', 'POST'])
+    def reset_password(token):
+        if current_user.is_authenticated:
+            logout_user()
+            flask_session.clear()  # ✅ Log them out so they can reset password
+
+            user = User.query.filter_by(reset_token=token).first()
         
-        if password != confirm:
-            flash('Passwords do not match.', 'danger')
-            return render_template('reset_password.html', token=token)
+        if not user or not user.verify_reset_token(token):
+            flash('Invalid or expired reset token.', 'danger')
+            return redirect(url_for('login'))
         
-        if len(password) < 6:
-            flash('Password must be at least 6 characters.', 'danger')
-            return render_template('reset_password.html', token=token)
+        if request.method == 'POST':
+            password = request.form.get('password', '')[:128]
+            confirm = request.form.get('confirm_password', '')[:128]
+            
+            if password != confirm:
+                flash('Passwords do not match.', 'danger')
+                return render_template('reset_password.html', token=token)
+            
+            if len(password) < 6:
+                flash('Password must be at least 6 characters.', 'danger')
+                return render_template('reset_password.html', token=token)
+            
+            user.set_password(password)
+            user.clear_reset_token()
+            db.session.commit()
+            
+            log_system_action(user.id, 'password_reset', 'Password reset via email')
+            flash('Password reset successfully! Please login.', 'success')
+            return redirect(url_for('login'))
         
-        user.set_password(password)
-        user.clear_reset_token()
-        db.session.commit()
-        
-        log_system_action(user.id, 'password_reset', 'Password reset via email')
-        flash('Password reset successfully! Please login.', 'success')
-        return redirect(url_for('login'))
-    
-    return render_template('reset_password.html', token=token)
-    
-    return render_template('reset_password.html', token=token)
+        return render_template('reset_password.html', token=token)
     
     @app.route('/health')
     def health_check():
