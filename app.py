@@ -243,7 +243,7 @@ def create_app(config_class=Config):
             print(f"Error logging device history: {e}")
             db.session.rollback()
     
-        def send_reset_email(email, reset_token):
+    def send_reset_email(email, reset_token):
         """Send password reset email to user"""
         try:
             config = app.config
