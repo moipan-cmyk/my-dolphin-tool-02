@@ -243,7 +243,7 @@ def create_app(config_class=Config):
             print(f"Error logging device history: {e}")
             db.session.rollback()
     
-    def send_reset_email(email, reset_token):
+        def send_reset_email(email, reset_token):
         """Send password reset email to user"""
         try:
             config = app.config
@@ -253,7 +253,11 @@ def create_app(config_class=Config):
             smtp_password = config.get('SMTP_PASSWORD')
             from_email = config.get('FROM_EMAIL', smtp_user)
             app_name = config.get('APP_NAME', 'Dolphin Bypass Tool')
-            base_url = config.get('BASE_URL', 'http://localhost:5000')
+            
+            # ✅ Get correct BASE_URL from environment
+            base_url = os.environ.get('BASE_URL') or config.get('BASE_URL') or 'https://my-dolphin-tool-02.onrender.com'
+            
+            print(f"📧 Reset email - Base URL: {base_url}")
             
             reset_link = f"{base_url}/reset-password/{reset_token}"
             
