@@ -17,7 +17,7 @@ from functools import wraps
 import traceback
 
 # ==================== CONSTANTS ====================
-SESSION_DURATION_HOURS = 12
+SESSION_DURATION_HOURS = 2
 DEVICE_RESET_COST = 2
 
 BASE_DIR = os.path.dirname(os.path.abspath(__file__))
@@ -2361,34 +2361,31 @@ def create_app(config_class=Config):
                 'uninstall_commands': function_data.get('uninstall_commands', []),
                 'reboot': function_data.get('reboot', False)
             }
-            
-            # DEBUG: Print what we're sending
+
+                        # DEBUG: Print what we're sending
             print(f"✅ [DEBUG] Command fetched successfully: {tab}/{mode}/{action}")
             print(f"   type: {response['type']}")
             if response['type'] == 'meta_action':
                 print(f"   action_command: '{response['action_command']}'")
             elif response['type'] == 'meta_command':
                 print(f"   command: '{response['command']}'")
-                
-                            # ✅ ENCRYPTION SUPPORT
-            encrypt_resp = data.get('encrypt_response', False) or \
-                          request.headers.get('X-Encrypt-Response', '').lower() == 'true'
-            if encrypt_resp:
-                import base64
-                session_key = flask_session.get('module_key', '')
-                if session_key:
-                    key = hashlib.sha256(session_key.encode()).digest()
-                    json_str = json.dumps(response, ensure_ascii=False)
-                    encrypted = bytes([ord(c) ^ key[i % len(key)] for i, c in enumerate(json_str)])
-                    return jsonify({'encrypted': True, 'data': base64.b64encode(encrypted).decode('utf-8')}), 200
             
-            return jsonify(response), 200
+            # 🔒 FORCED ENCRYPTION - ALL command responses MUST be encrypted
+            import base64
+            session_key = flask_session.get('module_key', '')
+            if session_key:
+                key = hashlib.sha256(session_key.encode()).digest()
+                json_str = json.dumps(response, ensure_ascii=False)
+                encrypted = bytes([ord(c) ^ key[i % len(key)] for i, c in enumerate(json_str)])
+                return jsonify({'encrypted': True, 'data': base64.b64encode(encrypted).decode('utf-8')}), 200
+            else:
+                return jsonify({'error': 'Encryption required. Please re-login.', 'code': 'NO_SESSION_KEY'}), 403
             
         except Exception as e:
             print(f"Error in get_command: {e}")
             traceback.print_exc()
             return jsonify({'error': f'Internal server error: {str(e)}'}), 500
-    
+
     # ==================== VERSION CHECK ENDPOINT ====================
     
     @app.route('/api/check-version', methods=['GET'])
