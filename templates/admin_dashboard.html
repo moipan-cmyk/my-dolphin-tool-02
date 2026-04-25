@@ -18,8 +18,7 @@
         .logout-btn { background: white; color: #667eea; font-weight: bold; }
         .container { max-width: 1400px; margin: 15px auto; padding: 0 15px; }
         .welcome { padding: 20px; border-radius: 10px; margin-bottom: 15px; }
-        body.dark .welcome { background: #1a1a2e; border: 1px solid #667eea33; }
-        body.light .welcome { background: white; border: 1px solid #ddd; }
+        body.dark .welcome { background: #1a1a2e; border: 1px solid #667eea33; } body.light .welcome { background: white; border: 1px solid #ddd; }
         .user-info { display: grid; grid-template-columns: repeat(auto-fit, minmax(180px, 1fr)); gap: 10px; padding: 10px; border-radius: 5px; margin: 10px 0; }
         body.dark .user-info { background: #0f0f1a; } body.light .user-info { background: #f8f9fa; }
         .stats-grid { display: grid; grid-template-columns: repeat(auto-fit, minmax(130px, 1fr)); gap: 12px; margin-bottom: 20px; }
@@ -60,7 +59,7 @@
         .modal-content { margin: 5% auto; padding: 25px; border-radius: 10px; width: 90%; max-width: 500px; }
         body.dark .modal-content { background: #1a1a2e; color: white; } body.light .modal-content { background: white; }
         .close { float: right; font-size: 24px; cursor: pointer; }
-        .search-container { display: flex; gap: 8px; margin-bottom: 12px; flex-wrap: wrap; }
+        .search-container { display: flex; gap: 8px; margin-bottom: 12px; }
         .search-box { flex: 1; padding: 8px; border-radius: 5px; font-size: 13px; }
         .filter-container { display: flex; gap: 6px; margin-bottom: 10px; flex-wrap: wrap; }
         .filter-btn { padding: 4px 12px; border-radius: 20px; cursor: pointer; font-size: 11px; border: 1px solid #667eea; color: #667eea; background: transparent; }
@@ -71,6 +70,8 @@
         .pagination { display: flex; justify-content: center; gap: 8px; margin-top: 12px; }
         .pagination button { padding: 4px 8px; border: none; border-radius: 5px; cursor: pointer; background: #667eea; color: white; font-size: 12px; }
         .pagination button:disabled { opacity: 0.5; }
+        .log-entry { padding: 8px; border-bottom: 1px solid #2d2d44; font-size: 12px; }
+        body.light .log-entry { border-bottom-color: #eee; }
         @media (max-width: 768px) { .stats-grid { grid-template-columns: repeat(2, 1fr); } .action-buttons { flex-direction: column; } }
     </style>
 </head>
@@ -100,117 +101,69 @@
             <button class="tab-btn active" onclick="switchTab('users-tab')">👥 Users</button>
             <button class="tab-btn" onclick="switchTab('credits-tab')">💎 Credits</button>
             <button class="tab-btn" onclick="switchTab('license-tab')">🎫 License</button>
+            <button class="tab-btn" onclick="switchTab('logs-tab')">📋 Logs</button>
         </div>
         <div id="users-tab" class="tab-content active"><div class="card"><h3>👥 User Management</h3>
-            <div class="filter-container">
-                <button class="filter-btn active" onclick="filterUsers('all')">All</button>
-                <button class="filter-btn" onclick="filterUsers('regular')">Regular</button>
-                <button class="filter-btn" onclick="filterUsers('resellers')">Resellers</button>
-                <button class="filter-btn" onclick="filterUsers('banned')">Banned</button>
-            </div>
+            <div class="filter-container"><button class="filter-btn active" onclick="filterUsers('all')">All</button><button class="filter-btn" onclick="filterUsers('regular')">Regular</button><button class="filter-btn" onclick="filterUsers('resellers')">Resellers</button><button class="filter-btn" onclick="filterUsers('banned')">Banned</button></div>
             <div class="search-container"><input type="text" id="user-search" class="search-box" placeholder="Search..."><button onclick="searchUsers()" class="btn btn-sm">🔍</button></div>
             <div id="users-list">Loading...</div><div class="pagination" id="user-pagination"></div>
         </div></div>
         <div id="credits-tab" class="tab-content"><div class="card"><h3>💎 Credit Management</h3>
             <div class="credit-box"><span>System Credits</span><span class="credit-amount" id="total-credits-amount">0 💎</span></div>
             <div id="credit-success" class="success-message"></div><div id="credit-error" class="error-message"></div>
-            <form id="addCreditForm" style="display:flex;gap:8px;flex-wrap:wrap;align-items:end;">
-                <div class="form-group" style="flex:1;min-width:150px;"><label>User Email</label><input type="text" id="credit-user" required></div>
-                <div class="form-group" style="width:100px;"><label>Amount</label><input type="number" id="credit-amount" value="50" required></div>
-                <button type="submit" class="btn btn-success">Add</button>
-            </form>
-            <hr style="margin:10px 0;opacity:0.3;">
-            <h4>🗑️ Remove Credits</h4>
-            <form id="removeCreditForm" style="display:flex;gap:8px;flex-wrap:wrap;align-items:end;">
-                <div class="form-group" style="flex:1;min-width:150px;"><label>User Email</label><input type="text" id="remove-credit-user" required></div>
-                <div class="form-group" style="width:100px;"><label>Amount</label><input type="number" id="remove-credit-amount" value="10" required></div>
-                <button type="submit" class="btn btn-danger">Remove</button>
-            </form>
+            <form id="addCreditForm" style="display:flex;gap:8px;flex-wrap:wrap;align-items:end;"><div class="form-group" style="flex:1;min-width:150px;"><label>User Email</label><input type="text" id="credit-user" required></div><div class="form-group" style="width:100px;"><label>Amount</label><input type="number" id="credit-amount" value="50" required></div><button type="submit" class="btn btn-success">Add</button></form>
+            <hr style="margin:10px 0;opacity:0.3;"><h4>🗑️ Remove Credits</h4>
+            <form id="removeCreditForm" style="display:flex;gap:8px;flex-wrap:wrap;align-items:end;"><div class="form-group" style="flex:1;min-width:150px;"><label>User Email</label><input type="text" id="remove-credit-user" required></div><div class="form-group" style="width:100px;"><label>Amount</label><input type="number" id="remove-credit-amount" value="10" required></div><button type="submit" class="btn btn-danger">Remove</button></form>
         </div></div>
         <div id="license-tab" class="tab-content"><div class="card"><h3>🎫 License Activation</h3>
             <div id="license-success" class="success-message"></div><div id="license-error" class="error-message"></div>
-            <form id="licenseForm" style="display:flex;gap:8px;flex-wrap:wrap;align-items:end;">
-                <div class="form-group" style="flex:1;min-width:150px;"><label>Email</label><input type="email" id="user-email" required></div>
-                <div class="form-group" style="width:150px;"><label>License</label><select id="license-type" required><option value="">Select</option><option value="Fair">Fair (90d)</option><option value="Good">Good (180d)</option><option value="Excellent">Excellent (365d)</option></select></div>
-                <button type="submit" class="btn">Activate</button>
-            </form>
-            <hr style="margin:10px 0;opacity:0.3;">
-            <h4>⚡ Custom License</h4>
-            <form id="customLicenseForm" style="display:flex;gap:8px;flex-wrap:wrap;align-items:end;">
-                <div class="form-group" style="flex:1;min-width:150px;"><label>Email</label><input type="email" id="custom-user-email" required></div>
-                <div class="form-group" style="width:120px;"><label>Type</label><select id="custom-license-type" required><option value="">Select</option><option value="Trial">Trial</option><option value="12hr">12hr</option><option value="24hr">24hr</option><option value="Custom">Custom</option></select></div>
-                <div class="form-group" style="width:80px;"><label>Value</label><input type="number" id="custom-duration-value" value="12"></div>
-                <div class="form-group" style="width:90px;"><label>Unit</label><select id="custom-duration-unit"><option value="hours">Hours</option><option value="days">Days</option></select></div>
-                <div class="form-group" style="width:70px;"><label>Devices</label><input type="number" id="custom-device-limit" value="1"></div>
-                <button type="submit" class="btn btn-purple">Activate</button>
-            </form>
-            <hr style="margin:10px 0;opacity:0.3;">
-            <h4>🗑️ Remove License</h4>
-            <form id="removeLicenseForm" style="display:flex;gap:8px;flex-wrap:wrap;align-items:end;">
-                <div class="form-group" style="flex:1;min-width:150px;"><label>User Email</label><input type="email" id="remove-license-email" required></div>
-                <button type="submit" class="btn btn-danger">Remove License</button>
-            </form>
+            <form id="licenseForm" style="display:flex;gap:8px;flex-wrap:wrap;align-items:end;"><div class="form-group" style="flex:1;min-width:150px;"><label>Email</label><input type="email" id="user-email" required></div><div class="form-group" style="width:150px;"><label>License</label><select id="license-type" required><option value="">Select</option><option value="Fair">Fair (90d)</option><option value="Good">Good (180d)</option><option value="Excellent">Excellent (365d)</option></select></div><button type="submit" class="btn">Activate</button></form>
+            <hr style="margin:10px 0;opacity:0.3;"><h4>⚡ Custom License</h4>
+            <form id="customLicenseForm" style="display:flex;gap:8px;flex-wrap:wrap;align-items:end;"><div class="form-group" style="flex:1;min-width:150px;"><label>Email</label><input type="email" id="custom-user-email" required></div><div class="form-group" style="width:120px;"><label>Type</label><select id="custom-license-type" required><option value="">Select</option><option value="Trial">Trial</option><option value="12hr">12hr</option><option value="24hr">24hr</option><option value="Custom">Custom</option></select></div><div class="form-group" style="width:80px;"><label>Value</label><input type="number" id="custom-duration-value" value="12"></div><div class="form-group" style="width:90px;"><label>Unit</label><select id="custom-duration-unit"><option value="hours">Hours</option><option value="days">Days</option></select></div><div class="form-group" style="width:70px;"><label>Devices</label><input type="number" id="custom-device-limit" value="1"></div><button type="submit" class="btn btn-purple">Activate</button></form>
+            <hr style="margin:10px 0;opacity:0.3;"><h4>🗑️ Remove License</h4>
+            <form id="removeLicenseForm" style="display:flex;gap:8px;flex-wrap:wrap;align-items:end;"><div class="form-group" style="flex:1;min-width:150px;"><label>User Email</label><input type="email" id="remove-license-email" required></div><button type="submit" class="btn btn-danger">Remove License</button></form>
+        </div></div>
+        <div id="logs-tab" class="tab-content"><div class="card"><h3>📋 System Logs</h3>
+            <div class="filter-container"><button class="filter-btn active" onclick="filterLogs('all')">All</button><button class="filter-btn" onclick="filterLogs('login')">🔐 Auth</button><button class="filter-btn" onclick="filterLogs('credit')">💎 Credit</button><button class="filter-btn" onclick="filterLogs('license')">🎫 License</button><button class="filter-btn" onclick="filterLogs('device')">📱 Device</button></div>
+            <div id="system-logs" style="max-height:500px;overflow-y:auto;">Loading...</div>
         </div></div>
     </div>
-
-    <!-- Change Password Modal -->
     <div id="changePasswordModal" class="modal"><div class="modal-content"><span class="close" onclick="closeChangePasswordModal()">&times;</span><h3>🔑 Change Password</h3><div id="cp-success" class="success-message"></div><div id="cp-error" class="error-message"></div><form id="changePasswordForm"><div class="form-group"><label>Current</label><input type="password" id="current-password" required></div><div class="form-group"><label>New</label><input type="password" id="new-password" required></div><div class="form-group"><label>Confirm</label><input type="password" id="confirm-new-password" required></div><button type="submit" class="btn btn-purple">Change</button></form></div></div>
-
-    <!-- Change User Password Modal -->
     <div id="changeUserPasswordModal" class="modal"><div class="modal-content"><span class="close" onclick="closeChangeUserPasswordModal()">&times;</span><h3>🔑 Change User Password</h3><p>User: <strong id="target-username">...</strong></p><div id="cup-success" class="success-message"></div><div id="cup-error" class="error-message"></div><form id="changeUserPasswordForm"><input type="hidden" id="target-email"><div class="form-group"><label>New Password</label><input type="password" id="new-user-password" required></div><div class="form-group"><label>Confirm</label><input type="password" id="confirm-user-password" required></div><button type="submit" class="btn btn-purple">Change</button></form></div></div>
-
     <script>
-        // Theme
         function toggleTheme(){const b=document.body,btn=document.getElementById('themeToggleBtn');if(b.classList.contains('dark')){b.classList.remove('dark');b.classList.add('light');btn.textContent='☀️';}else{b.classList.remove('light');b.classList.add('dark');btn.textContent='🌙';}}
         (function(){if(localStorage.getItem('theme')==='light'){document.body.classList.remove('dark');document.body.classList.add('light');document.getElementById('themeToggleBtn').textContent='☀️';}})();
-
-        let userFilter='all',userSearch='',userPage=1;const PP=10;
-
+        let userFilter='all',userSearch='',userPage=1,allLogs=[],logFilter='all';const PP=10;
         async function loadAdmin(){try{const r=await fetch('/api/user/profile');const d=await r.json();if(d.success){document.getElementById('admin-name').textContent=d.username;document.getElementById('admin-email').textContent=d.email;document.getElementById('admin-credits').textContent=d.credits||0;document.getElementById('header-credits').textContent=d.credits||0;}}catch(e){}}
-
-        function switchTab(id){document.querySelectorAll('.tab-content').forEach(t=>t.classList.remove('active'));document.querySelectorAll('.tab-btn').forEach(b=>b.classList.remove('active'));document.getElementById(id).classList.add('active');event.target.classList.add('active');if(id==='users-tab')loadUsers();if(id==='credits-tab')loadCredits();}
-
+        function switchTab(id){document.querySelectorAll('.tab-content').forEach(t=>t.classList.remove('active'));document.querySelectorAll('.tab-btn').forEach(b=>b.classList.remove('active'));document.getElementById(id).classList.add('active');event.target.classList.add('active');if(id==='users-tab')loadUsers();if(id==='credits-tab')loadCredits();if(id==='logs-tab')loadLogs();}
         function filterUsers(f){userFilter=f;userPage=1;document.querySelectorAll('#users-tab .filter-btn').forEach(b=>b.classList.remove('active'));event.target.classList.add('active');loadUsers();}
         function searchUsers(){userSearch=document.getElementById('user-search').value.toLowerCase();userPage=1;loadUsers();}
         function addCreditUser(u){document.getElementById('credit-user').value=u;switchTab('credits-tab');document.querySelectorAll('.tab-btn').forEach(b=>b.classList.remove('active'));document.querySelector('[onclick*="credits-tab"]').classList.add('active');}
-
         async function loadUsers(){try{const r=await fetch(`/api/admin/users?filter=${userFilter}&search=${userSearch}&page=${userPage}&limit=${PP}`);const d=await r.json();if(d.users){let h='<table><tr><th>ID</th><th>User</th><th>Email</th><th>License</th><th>Credits</th><th>Status</th><th>Actions</th></tr>';d.users.forEach(u=>{const sc=u.is_banned?'badge-banned':'badge-active';const st=u.is_banned?'BANNED':'Active';h+=`<tr><td>${u.id}</td><td>${u.username}${u.is_admin?' <span class="badge badge-admin">A</span>':''}${u.is_reseller?' <span class="badge badge-reseller">R</span>':''}</td><td>${u.email}</td><td>${u.license_type||'None'}</td><td>${u.credits||0}</td><td><span class="badge ${sc}">${st}</span></td><td class="action-buttons">${!u.is_admin?`<button class="btn btn-sm btn-success" onclick="addCreditUser('${u.email}')">💎+</button><button class="btn btn-sm btn-danger" onclick="removeCredits('${u.email}')">💎-</button><button class="btn btn-sm ${u.is_banned?'btn-success':'btn-danger'}" onclick="toggleBan(${u.id},${u.is_banned})">${u.is_banned?'🔓':'🔒'}</button><button class="btn btn-sm btn-warning" onclick="changeUserPassword('${u.email}','${u.username}')">🔑</button>${u.license_type&&u.license_type!=='None'?`<button class="btn btn-sm btn-secondary" onclick="removeLicense('${u.email}')">🗑️</button>`:''}`:'<span class="badge badge-admin">Protected</span>'}</td></tr>`;});h+='</table>';const tp=Math.ceil(d.total/PP);document.getElementById('users-list').innerHTML=h;document.getElementById('user-pagination').innerHTML=`<button ${userPage===1?'disabled':''} onclick="userPage--;loadUsers()">«</button><span>${userPage}/${tp}</span><button ${userPage>=tp?'disabled':''} onclick="userPage++;loadUsers()">»</button>`;}else{document.getElementById('users-list').innerHTML='<p>No users.</p>';}}catch(e){document.getElementById('users-list').innerHTML='<p style="color:red">Error.</p>';}}
-
         async function loadCredits(){try{const r=await fetch('/api/admin/credit-stats');const d=await r.json();if(d.success)document.getElementById('total-credits-amount').textContent=(d.total_credits||0)+' 💎';}catch(e){}}
-
-        // Actions
+        function filterLogs(f){logFilter=f;document.querySelectorAll('#logs-tab .filter-btn').forEach(b=>b.classList.remove('active'));event.target.classList.add('active');displayLogs();}
+        async function loadLogs(){try{const r=await fetch('/api/admin/system-logs');const d=await r.json();if(d.logs){allLogs=d.logs;displayLogs();}}catch(e){document.getElementById('system-logs').innerHTML='<p>Error loading logs.</p>';}}
+        function displayLogs(){let logs=[...allLogs];if(logFilter!=='all'){logs=logs.filter(l=>{const t=(l.type||'').toLowerCase();switch(logFilter){case'login':return t.includes('login')||t.includes('logout');case'credit':return t.includes('credit');case'license':return t.includes('license');case'device':return t.includes('device')||t.includes('hwid');default:return true;}});}
+            let h='';logs.slice(0,100).forEach(l=>{const d=new Date(l.created);let b='📝';const t=(l.type||'').toLowerCase();if(t.includes('login'))b='🔐';else if(t.includes('credit'))b='💎';else if(t.includes('license'))b='🎫';else if(t.includes('device'))b='📱';else if(t.includes('error'))b='❌';h+=`<div class="log-entry"><span style="color:#667eea;font-size:11px;">${d.toLocaleString()}</span> <span>${b}</span> <strong>${l.username||'System'}</strong>: ${(l.message||'').substring(0,120)}</div>`;});
+            document.getElementById('system-logs').innerHTML=h||'<p>No logs found.</p>';}
         async function toggleBan(id,st){if(!confirm(`${st?'Unban':'Ban'} user?`))return;await fetch(`/api/admin/ban-user/${id}`,{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({ban:!st})});loadUsers();}
-        
         async function removeCredits(email){const a=prompt('Amount to remove:','10');if(!a)return;const r=await fetch('/api/admin/remove-credits',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({user:email,amount:parseInt(a)})});const d=await r.json();alert(d.message||d.error);loadUsers();loadCredits();}
-        
         async function removeLicense(email){if(!confirm(`Remove license from ${email}?`))return;const r=await fetch('/api/admin/remove-license',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({email:email})});const d=await r.json();alert(d.message||d.error);loadUsers();}
-
         function changeUserPassword(email,username){document.getElementById('target-email').value=email;document.getElementById('target-username').textContent=username;document.getElementById('changeUserPasswordModal').style.display='block';}
         function closeChangeUserPasswordModal(){document.getElementById('changeUserPasswordModal').style.display='none';}
         function showChangePasswordModal(){document.getElementById('changePasswordModal').style.display='block';}
         function closeChangePasswordModal(){document.getElementById('changePasswordModal').style.display='none';}
         window.onclick=function(e){if(e.target==document.getElementById('changePasswordModal'))closeChangePasswordModal();if(e.target==document.getElementById('changeUserPasswordModal'))closeChangeUserPasswordModal();};
-
-        // Maintenance
         async function checkMaintenance(){try{const r=await fetch('/api/admin/maintenance-status');const d=await r.json();const s=document.getElementById('maintenanceStatus');s.textContent=d.maintenance?'ON 🟢':'OFF 🔴';}catch(e){}}
         async function toggleMaintenance(){const r=await fetch('/api/admin/maintenance-status');const d=await r.json();if(!confirm(`Turn maintenance ${!d.maintenance?'ON':'OFF'}?`))return;await fetch('/api/admin/toggle-maintenance',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({enabled:!d.maintenance})});checkMaintenance();}
-
-        // Forms
         document.getElementById('addCreditForm').addEventListener('submit',async function(e){e.preventDefault();const u=document.getElementById('credit-user').value;const a=parseInt(document.getElementById('credit-amount').value);const sd=document.getElementById('credit-success');const ed=document.getElementById('credit-error');sd.style.display='none';ed.style.display='none';try{const r=await fetch('/api/admin/add-credits',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({user:u,amount:a})});const d=await r.json();if(r.ok&&d.success){sd.textContent=`✅ Added ${a} credits`;sd.style.display='block';loadCredits();loadUsers();}else{ed.textContent=d.error;ed.style.display='block';}}catch(ex){ed.textContent='Network error';ed.style.display='block';}});
-        
         document.getElementById('removeCreditForm').addEventListener('submit',async function(e){e.preventDefault();const u=document.getElementById('remove-credit-user').value;const a=parseInt(document.getElementById('remove-credit-amount').value);const sd=document.getElementById('credit-success');const ed=document.getElementById('credit-error');sd.style.display='none';ed.style.display='none';try{const r=await fetch('/api/admin/remove-credits',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({user:u,amount:a})});const d=await r.json();if(r.ok&&d.success){sd.textContent=`✅ Removed ${a} credits`;sd.style.display='block';loadCredits();loadUsers();}else{ed.textContent=d.error;ed.style.display='block';}}catch(ex){ed.textContent='Network error';ed.style.display='block';}});
-        
         document.getElementById('licenseForm').addEventListener('submit',async function(e){e.preventDefault();const em=document.getElementById('user-email').value;const lt=document.getElementById('license-type').value;const sd=document.getElementById('license-success');const ed=document.getElementById('license-error');sd.style.display='none';ed.style.display='none';try{const r=await fetch('/api/admin/assign-license',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({email:em,license_type:lt})});const d=await r.json();if(r.ok&&d.success){sd.textContent=d.message;sd.style.display='block';loadUsers();}else{ed.textContent=d.error;ed.style.display='block';}}catch(ex){ed.textContent='Network error';ed.style.display='block';}});
-        
         document.getElementById('customLicenseForm').addEventListener('submit',async function(e){e.preventDefault();const em=document.getElementById('custom-user-email').value;const lt=document.getElementById('custom-license-type').value;const dv=parseInt(document.getElementById('custom-duration-value').value);const du=document.getElementById('custom-duration-unit').value;const dl=parseInt(document.getElementById('custom-device-limit').value);const sd=document.getElementById('license-success');const ed=document.getElementById('license-error');sd.style.display='none';ed.style.display='none';try{const r=await fetch('/api/admin/assign-custom-license',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({email:em,license_type:lt,duration_value:dv,duration_unit:du,device_limit:dl})});const d=await r.json();if(r.ok&&d.success){sd.textContent=d.message;sd.style.display='block';loadUsers();}else{ed.textContent=d.error;ed.style.display='block';}}catch(ex){ed.textContent='Network error';ed.style.display='block';}});
-        
         document.getElementById('removeLicenseForm').addEventListener('submit',async function(e){e.preventDefault();const em=document.getElementById('remove-license-email').value;const sd=document.getElementById('license-success');const ed=document.getElementById('license-error');sd.style.display='none';ed.style.display='none';try{const r=await fetch('/api/admin/remove-license',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({email:em})});const d=await r.json();if(r.ok&&d.success){sd.textContent=d.message;sd.style.display='block';loadUsers();}else{ed.textContent=d.error;ed.style.display='block';}}catch(ex){ed.textContent='Network error';ed.style.display='block';}});
-
         document.getElementById('changePasswordForm').addEventListener('submit',async function(e){e.preventDefault();const cp=document.getElementById('current-password').value;const np=document.getElementById('new-password').value;const cn=document.getElementById('confirm-new-password').value;const sd=document.getElementById('cp-success');const ed=document.getElementById('cp-error');sd.style.display='none';ed.style.display='none';if(np!==cn){ed.textContent='Passwords mismatch!';ed.style.display='block';return;}try{const r=await fetch('/api/user/change-password',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({current_password:cp,new_password:np})});const d=await r.json();if(r.ok&&d.success){sd.textContent='✅ Changed!';sd.style.display='block';setTimeout(closeChangePasswordModal,1500);}else{ed.textContent=d.error;ed.style.display='block';}}catch(ex){ed.textContent='Network error';ed.style.display='block';}});
-        
         document.getElementById('changeUserPasswordForm').addEventListener('submit',async function(e){e.preventDefault();const em=document.getElementById('target-email').value;const np=document.getElementById('new-user-password').value;const cn=document.getElementById('confirm-user-password').value;const sd=document.getElementById('cup-success');const ed=document.getElementById('cup-error');sd.style.display='none';ed.style.display='none';if(np!==cn){ed.textContent='Passwords mismatch!';ed.style.display='block';return;}try{const r=await fetch('/api/admin/change-user-password',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({email:em,new_password:np})});const d=await r.json();if(r.ok&&d.success){sd.textContent='✅ Changed!';sd.style.display='block';setTimeout(closeChangeUserPasswordModal,1500);}else{ed.textContent=d.error;ed.style.display='block';}}catch(ex){ed.textContent='Network error';ed.style.display='block';}});
-
-        loadAdmin();checkMaintenance();loadUsers();loadCredits();
+        loadAdmin();checkMaintenance();loadUsers();loadCredits();loadLogs();
     </script>
 </body>
 </html>
