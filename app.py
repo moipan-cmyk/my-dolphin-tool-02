@@ -258,8 +258,9 @@ def create_app(config_class=Config):
             base_url = os.environ.get('BASE_URL') or config.get('BASE_URL') or 'https://my-dolphin-tool-02.onrender.com'
             
             print(f"📧 Reset email - Base URL: {base_url}")
+
             
-            reset_link = f"{base_url}/reset-password/{reset_token}"
+            reset_link = f"{base_url}/auth/reset-password/{reset_token}"
             
             html_content = f"""
             <!DOCTYPE html>
@@ -311,6 +312,40 @@ def create_app(config_class=Config):
         except Exception as e:
             print(f"❌ Failed to send reset email: {e}")
             return False
+
+       ######backup#####
+    @app.route('/auth/reset-password/<token>', methods=['GET', 'POST'])
+    def auth_reset_password(token):
+        if current_user.is_authenticated:
+            logout_user()
+            flask_session.clear()
+        
+        user = User.query.filter_by(reset_token=token).first()
+        
+        if not user or not user.verify_reset_token(token):
+            flash('Invalid or expired reset token.', 'danger')
+            return redirect(url_for('login'))
+        
+        if request.method == 'POST':
+            password = request.form.get('password', '')[:128]
+            confirm = request.form.get('confirm_password', '')[:128]
+            
+            if password != confirm:
+                flash('Passwords do not match.', 'danger')
+                return render_template('reset_password.html', token=token)
+            
+            if len(password) < 6:
+                flash('Password must be at least 6 characters.', 'danger')
+                return render_template('reset_password.html', token=token)
+            
+            user.set_password(password)
+            user.clear_reset_token()
+            db.session.commit()
+            
+            flash('Password reset successfully! Please login.', 'success')
+            return redirect(url_for('login'))
+        
+        return render_template('reset_password.html', token=token)
     
     # ==================== API ENDPOINTS FOR DESKTOP CLIENT ====================
     
