@@ -474,6 +474,9 @@ def create_app(config_class=Config):
             session_key = session_obj.session_token
             flask_session['module_key'] = session_key
             user.current_session_key = session_key
+            db_session.commit()  # ✅ Save session key to database
+            
+            print(f"🔑 Session key saved: {session_key[:20]}...")
             
             device_count = Device.query.filter_by(user_id=user.id, is_active=True).count()
             
@@ -1108,11 +1111,12 @@ def create_app(config_class=Config):
             return redirect(url_for('login'))
         
         return render_template('forgot_password.html')
-    
+                  
     @app.route('/reset-password/<token>', methods=['GET', 'POST'])
     def reset_password(token):
         if current_user.is_authenticated:
-            return redirect('/user-dashboard')
+            logout_user()
+            flask_session.clear()
         
         user = User.query.filter_by(reset_token=token).first()
         
@@ -1141,6 +1145,8 @@ def create_app(config_class=Config):
             return redirect(url_for('login'))
         
         return render_template('reset_password.html', token=token)
+    
+
     
     @app.route('/health')
     def health_check():
