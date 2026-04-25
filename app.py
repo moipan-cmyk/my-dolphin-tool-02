@@ -17,7 +17,8 @@ from functools import wraps
 import traceback
 
 # ==================== CONSTANTS ====================
-SESSION_DURATION_HOURS = 2
+SESSION_DURATION_HOURS = 12       # Hardware binding: 12 hours
+SESSION_INACTIVITY_MINUTES = 30   # Inactivity timeout: 30 minutes
 DEVICE_RESET_COST = 2
 
 BASE_DIR = os.path.dirname(os.path.abspath(__file__))
@@ -511,7 +512,8 @@ def create_app(config_class=Config):
             import traceback
             traceback.print_exc()
             return jsonify({'success': False, 'error': str(e)}), 500
-    
+            
+
     @app.route('/api/user/validate-session', methods=['POST'])
     def validate_session_endpoint():
         try:
@@ -530,12 +532,26 @@ def create_app(config_class=Config):
             if not session_obj:
                 return jsonify({'success': False, 'valid': False, 'error': 'Invalid or expired session'}), 401
             
+            # ========== CHECK INACTIVITY (30 minutes) ==========
+            if session_obj.last_activity:
+                inactive_seconds = (datetime.utcnow() - session_obj.last_activity).total_seconds()
+                if inactive_seconds > (SESSION_INACTIVITY_MINUTES * 60):
+                    session_obj.is_active = False
+                    db.session.commit()
+                    return jsonify({
+                        'success': False, 
+                        'valid': False, 
+                        'error': 'Session expired due to inactivity (30 min)',
+                        'code': 'INACTIVITY_TIMEOUT'
+                    }), 401
+            
             if hwid:
                 hashed_hwid = hash_hwid(hwid)
                 device = db.session.get(Device, session_obj.device_id)
                 if not device or device.hwid_hash != hashed_hwid:
                     return jsonify({'success': False, 'valid': False, 'error': 'Session does not match device'}), 403
             
+            # Update last activity timestamp
             session_obj.last_activity = datetime.utcnow()
             db.session.commit()
             
@@ -2156,10 +2172,10 @@ def create_app(config_class=Config):
     def license():
         """License agreement page"""
         return render_template('license.html')
+        
 
-        #commands 
-            #commands ################################# 
-    # ==================== COMMAND FETCH ENDPOINT ====================
+    # ==================== COMMAND FETCH ENDPOINT ===================
+    
     @app.route('/api/get-command', methods=['POST'])
     @api_login_required
     def get_command():
@@ -2370,9 +2386,32 @@ def create_app(config_class=Config):
             elif response['type'] == 'meta_command':
                 print(f"   command: '{response['command']}'")
             
-            # 🔒 FORCED ENCRYPTION - ALL command responses MUST be encrypted
+                       
+            # 🔒 FORCED ENCRYPTION - Try multiple sources for the key
             import base64
-            session_key = flask_session.get('module_key', '')
+            
+            # Try ALL possible sources for session key
+            session_key = ''
+            
+            # 1. Authorization header (client sends Bearer token)
+            auth = request.headers.get('Authorization', '')
+            if auth.startswith('Bearer '):
+                session_key = auth.split(' ')[1]
+            
+            # 2. Request body session_token
+            if not session_key:
+                session_key = data.get('session_token', '')
+            
+            # 3. User's database record (permanent)
+            if not session_key:
+                session_key = user.current_session_key or ''
+            
+            # 4. Flask session (last resort)
+            if not session_key:
+                session_key = flask_session.get('module_key', '')
+            
+            print(f"🔑 Session key found: {bool(session_key)} (len: {len(session_key) if session_key else 0})")
+            
             if session_key:
                 key = hashlib.sha256(session_key.encode()).digest()
                 json_str = json.dumps(response, ensure_ascii=False)
@@ -2429,7 +2468,7 @@ def create_app(config_class=Config):
             return jsonify({'success': False, 'error': str(e)}), 500
 
             #apk path
-                # ==================== SERVE APK FILE ====================
+        # ==================== SERVE APK FILE ====================
     @app.route('/AT-TOOL-GUARD.apk')
     def download_apk():
         from flask import send_file
