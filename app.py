@@ -490,7 +490,11 @@ def create_app(config_class=Config):
                 if days_remaining < 0:
                     days_remaining = 0
             
-            return jsonify({
+        ######## Update last login##############
+            user.last_login = datetime.utcnow()
+            db_session.commit()
+            
+            response_data = {
                 'success': True,
                 'user_id': user.id,
                 'username': user.username,
@@ -510,8 +514,20 @@ def create_app(config_class=Config):
                 'session_key': session_key,
                 'device_registered': device_registered,
                 'device_id': device_id,
-                'device_name': device_name
-            }), 200
+                'device_name': device_name,
+                'last_login': user.last_login.isoformat() if user.last_login else None
+            }
+            
+            # 🔒 Encrypt login response
+            import base64
+            if session_key:
+                key = hashlib.sha256(session_key.encode()).digest()
+                json_str = json.dumps(response_data, ensure_ascii=False)
+                json_bytes = json_str.encode('utf-8')
+                encrypted = bytes([b ^ key[i % len(key)] for i, b in enumerate(json_bytes)])
+                return jsonify({'encrypted': True, 'data': base64.b64encode(encrypted).decode('utf-8')}), 200
+            
+            return jsonify(response_data), 200
             
         except Exception as e:
             db_session.rollback()
@@ -1379,6 +1395,48 @@ def create_app(config_class=Config):
             'old_balance': old_credits,
             'new_balance': user.credits
         })
+
+               #remove credits
+    @app.route('/api/admin/remove-credits', methods=['POST'])
+    @login_required
+    def admin_remove_credits():
+        if not current_user.is_admin:
+            return jsonify({'error': 'Unauthorized'}), 403
+        
+        data = request.get_json()
+        user_input = data.get('user')
+        amount = data.get('amount', 0)
+        
+        if not user_input or amount <= 0:
+            return jsonify({'error': 'Invalid input'}), 400
+        
+        user = User.query.filter_by(email=user_input).first()
+        if not user and user_input.isdigit():
+            user = User.query.filter_by(admission_number=int(user_input)).first()
+        
+        if not user:
+            return jsonify({'error': 'User not found'}), 404
+        
+        if (user.credits or 0) < amount:
+            return jsonify({'error': 'Insufficient credits'}), 400
+        
+        user.credits = (user.credits or 0) - amount
+        
+        transaction = CreditTransaction(
+            user_id=user.id,
+            amount=-amount,
+            transaction_type='admin_deduct',
+            description='Admin removed credits',
+            created_by=current_user.id
+        )
+        db.session.add(transaction)
+        db.session.commit()
+        
+        return jsonify({
+            'success': True,
+            'message': f'Removed {amount} credits from {user.username}',
+            'new_balance': user.credits
+        })
     
     @app.route('/api/admin/assign-license', methods=['POST'])
     @login_required
@@ -1457,6 +1515,37 @@ def create_app(config_class=Config):
         log_system_action(current_user.id, 'license', f'Assigned custom {license_type} license to {user.username}')
         
         return jsonify({'success': True, 'message': f'Custom license activated for {email}'})
+
+        #remove license
+
+    @app.route('/api/admin/remove-license', methods=['POST'])
+    @login_required
+    def admin_remove_license():
+        if not current_user.is_admin:
+            return jsonify({'error': 'Unauthorized'}), 403
+        
+        data = request.get_json()
+        email = data.get('email')
+        
+        if not email:
+            return jsonify({'error': 'Email required'}), 400
+        
+        user = User.query.filter_by(email=email).first()
+        if not user:
+            return jsonify({'error': 'User not found'}), 404
+        
+        user.license_type = 'None'
+        user.license_expiry_date = None
+        user.license_status = 'inactive'
+        user.license_valid = False
+        user.device_limit = 0
+        
+        db.session.commit()
+        
+        log_system_action(current_user.id, 'license', f'Removed license from {user.username}')
+        
+        return jsonify({'success': True, 'message': f'License removed from {user.username}'})
+        
     
     @app.route('/api/admin/ban-user/<int:user_id>', methods=['POST'])
     @login_required
