@@ -489,8 +489,8 @@ def create_app(config_class=Config):
                 days_remaining = (user.license_expiry_date - datetime.utcnow()).days
                 if days_remaining < 0:
                     days_remaining = 0
-            
-        ######## Update last login##############
+
+         ######## Update last login##############
             user.last_login = datetime.utcnow()
             db_session.commit()
             
@@ -518,16 +518,14 @@ def create_app(config_class=Config):
                 'last_login': user.last_login.isoformat() if user.last_login else None
             }
             
-            # 🔒 Encrypt login response
+            # 🔒 Encrypt login response with PASSWORD-derived key
             import base64
-            if session_key:
-                key = hashlib.sha256(session_key.encode()).digest()
-                json_str = json.dumps(response_data, ensure_ascii=False)
-                json_bytes = json_str.encode('utf-8')
-                encrypted = bytes([b ^ key[i % len(key)] for i, b in enumerate(json_bytes)])
-                return jsonify({'encrypted': True, 'data': base64.b64encode(encrypted).decode('utf-8')}), 200
-            
-            return jsonify(response_data), 200
+            # Use password hash as key (client also knows the password)
+            temp_key = hashlib.sha256(password.encode()).digest()
+            json_str = json.dumps(response_data, ensure_ascii=False)
+            json_bytes = json_str.encode('utf-8')
+            encrypted = bytes([b ^ temp_key[i % len(temp_key)] for i, b in enumerate(json_bytes)])
+            return jsonify({'encrypted': True, 'data': base64.b64encode(encrypted).decode('utf-8')}), 200
             
         except Exception as e:
             db_session.rollback()
