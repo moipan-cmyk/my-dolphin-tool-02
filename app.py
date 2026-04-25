@@ -956,6 +956,7 @@ def create_app(config_class=Config):
         except Exception as e:
             print(f"Error in user_stats: {e}")
             return jsonify({'success': False, 'error': str(e)}), 500
+            
     # ==================== WEB ROUTES ====================
     
     @app.route('/')
@@ -1733,35 +1734,6 @@ def create_app(config_class=Config):
             traceback.print_exc()
             return jsonify({'success': False, 'error': str(e)}), 500
     
-    @app.route('/api/reseller/pending-requests')
-    @api_login_required
-    def reseller_pending_requests():
-        """Get pending approval requests"""
-        try:
-            user = current_user
-            if not user.is_reseller and not user.is_admin:
-                return jsonify({'success': False, 'error': 'Unauthorized'}), 403
-            
-            pending = User.query.filter_by(activated_by=user.id, license_status='pending').order_by(User.created_at.desc()).all()
-            
-            pending_data = [{
-                'id': p.id,
-                'client_name': p.username,
-                'client_email': p.email,
-                'license_type': p.license_type,
-                'amount': 0,
-                'created_at': p.created_at.isoformat() if p.created_at else None
-            } for p in pending]
-            
-            return jsonify({
-                'success': True,
-                'requests': pending_data,
-                'total': len(pending_data)
-            })
-        except Exception as e:
-            print(f"Error in reseller_pending_requests: {e}")
-            traceback.print_exc()
-            return jsonify({'success': False, 'error': str(e)}), 500
     
     @app.route('/api/reseller/earnings')
     @api_login_required
@@ -1835,85 +1807,102 @@ def create_app(config_class=Config):
             print(f"Error in reseller_history_api: {e}")
             traceback.print_exc()
             return jsonify({'success': False, 'error': str(e)}), 500
-    
+
+                # ==================== DIRECT ACTIVATION (RESELLERS) ====================
     @app.route('/api/reseller/activate', methods=['POST'])
     @api_login_required
     def reseller_activate_license():
-        """Activate license for a new client (reseller) - creates pending request"""
+        """Activate license directly - no admin approval needed"""
         try:
-            data = request.get_json()
+            user = current_user
+            if not user.is_reseller and not user.is_admin:
+                return jsonify({'success': False, 'error': 'Unauthorized'}), 403
             
+            # Check activation limit
+            if user.is_reseller:
+                used = user.activations_used or 0
+                limit = user.activation_limit or 10
+                if used >= limit:
+                    return jsonify({
+                        'success': False, 
+                        'error': f'Activation limit reached ({used}/{limit})'
+                    }), 403
+            
+            data = request.get_json()
             full_name = data.get('full_name', '').strip()
             email = data.get('email', '').strip().lower()
             country = data.get('country', '')
-            phone = data.get('phone', '')
-            license_type = data.get('license_type')
-            payment_method = data.get('payment_method')
-            payment_reference = data.get('payment_reference', '')
+            license_type = data.get('license_type', '12hr')
             
-            # Validation
-            if not full_name or not email or not license_type:
-                return jsonify({'success': False, 'error': 'Missing required fields'}), 400
+            if not full_name or not email:
+                return jsonify({'success': False, 'error': 'Missing fields'}), 400
             
-            # Check if user already exists
-            existing_user = User.query.filter_by(email=email).first()
-            if existing_user:
-                return jsonify({'success': False, 'error': 'User with this email already exists'}), 400
+            if User.query.filter_by(email=email).first():
+                return jsonify({'success': False, 'error': 'Email exists'}), 400
             
-            # Generate username from full name
+            # Generate username
             username = full_name.lower().replace(' ', '.')
-            base_username = username
+            base = username
             counter = 1
             while User.query.filter_by(username=username).first():
-                username = f"{base_username}{counter}"
-                counter += 1
+                username = f"{base}{counter}"; counter += 1
             
-            # Get admission number
             admission_number = get_next_admission_number()
             
-            # Create new user with pending status
-            new_user = User(
-                username=username,
-                email=email,
-                country=country,
-                admission_number=admission_number,
-                credits=0,
-                device_limit=1,
-                license_type=license_type,
-                license_status='pending',
-                license_valid=False,
-                activated_by=current_user.id,
-                phone=phone
-            )
+      # ✅ Reseller durations and device limits (fixed by admin)
+            durations = {
+                '12hr': 1,
+                '3_months': 90,
+                '6_months': 180,
+                '1_year': 365
+            }
+            device_limits = {
+                '12hr': 1,       # 12 hours = 1 device
+                '3_months': 10,  # 3 months = 10 devices
+                '6_months': 20,  # 6 months = 20 devices
+                '1_year': 45     # 12 months = 45 devices
+            }
+            days = durations.get(license_type, 90)
+            device_limit = device_limits.get(license_type, 1)
             
-            # Generate random password
             import random
             import string
             temp_password = ''.join(random.choices(string.ascii_letters + string.digits, k=10))
-            new_user.set_password(temp_password)
             
+            new_user = User(
+                username=username, email=email, country=country,
+                admission_number=admission_number, credits=0,
+                device_limit=device_limit,
+                license_type=license_type,
+                license_expiry_date=datetime.utcnow() + timedelta(days=days),
+                license_status='active', license_valid=True,
+                activated_by=current_user.id
+            )
+            new_user.set_password(temp_password)
             db.session.add(new_user)
+            
+            # Increment activation count
+            if current_user.is_reseller:
+                current_user.activations_used = (current_user.activations_used or 0) + 1
+            
             db.session.commit()
             
-            log_system_action(current_user.id, 'reseller_activate', f'Created pending activation for {email}')
+            log_system_action(current_user.id, 'reseller_activate', 
+                            f'Activated {license_type} ({days}d) for {email}')
             
             return jsonify({
                 'success': True,
-                'message': f'Activation request submitted for {email}. Waiting for admin approval.',
+                'message': f'License activated for {email}',
                 'temp_password': temp_password,
                 'client': {
-                    'username': username,
-                    'email': email,
-                    'admission_number': admission_number,
-                    'license_type': license_type
+                    'username': username, 'email': email,
+                    'license_type': license_type, 'days': days
                 }
             })
         except Exception as e:
             db.session.rollback()
-            print(f"Error in reseller_activate_license: {e}")
-            traceback.print_exc()
             return jsonify({'success': False, 'error': str(e)}), 500
-
+            
                 # ==================== ADMIN RESELLER MANAGEMENT ENDPOINTS ====================
     
     @app.route('/api/admin/remove-reseller/<int:user_id>', methods=['DELETE', 'POST'])
@@ -1936,29 +1925,6 @@ def create_app(config_class=Config):
         log_system_action(current_user.id, 'remove_reseller', f'Removed reseller status from {user.username}')
         
         return jsonify({'success': True, 'message': f'Reseller status removed from {user.username}'})
-    
-    @app.route('/api/admin/make-reseller/<int:user_id>', methods=['POST'])
-    @login_required
-    def admin_make_reseller_api(user_id):
-        """Make a user a reseller"""
-        if not current_user.is_admin:
-            return jsonify({'error': 'Unauthorized'}), 403
-        
-        data = request.get_json()
-        commission_rate = data.get('commission_rate', 15)
-        
-        user = User.query.get(user_id)
-        if not user:
-            return jsonify({'error': 'User not found'}), 404
-        
-        user.is_reseller = True
-        user.commission_rate = commission_rate
-        
-        db.session.commit()
-        
-        log_system_action(current_user.id, 'make_reseller', f'Made {user.username} a reseller with {commission_rate}% commission')
-        
-        return jsonify({'success': True, 'message': f'{user.username} is now a reseller'})
     
     @app.route('/api/admin/update-reseller-commission/<int:user_id>', methods=['POST'])
     @login_required
@@ -2015,119 +1981,9 @@ def create_app(config_class=Config):
             'total': len(resellers_data)
         })
     
-    @app.route('/api/admin/approve-reseller-request/<int:user_id>', methods=['POST'])
-    @login_required
-    def admin_approve_reseller_request(user_id):
-        """Approve a reseller request"""
-        if not current_user.is_admin:
-            return jsonify({'error': 'Unauthorized'}), 403
-        
-        user = User.query.get(user_id)
-        if not user:
-            return jsonify({'error': 'User not found'}), 404
-        
-        data = request.get_json()
-        commission_rate = data.get('commission_rate', 15)
-        
-        user.is_reseller = True
-        user.commission_rate = commission_rate
-        
-        db.session.commit()
-        
-        log_system_action(current_user.id, 'approve_reseller', f'Approved reseller request for {user.username}')
-        
-        return jsonify({'success': True, 'message': f'Reseller request approved for {user.username}'})
     
-    @app.route('/api/admin/approve-pending-license/<int:user_id>', methods=['POST'])
-    @login_required
-    def admin_approve_pending_license(user_id):
-        """Approve a pending license activation from reseller"""
-        if not current_user.is_admin:
-            return jsonify({'error': 'Unauthorized'}), 403
-        
-        data = request.get_json()
-        license_type = data.get('license_type')
-        duration_days = data.get('duration_days', 30)
-        
-        user = User.query.get(user_id)
-        if not user:
-            return jsonify({'error': 'User not found'}), 404
-        
-        # Calculate expiry date based on license type
-        durations = {
-            '24_hours': 1,
-            '2_days': 2,
-            '1_week': 7,
-            '1_month': 30,
-            '3_months': 90,
-            '6_months': 180,
-            '1_year': 365
-        }
-        
-        days = durations.get(license_type, duration_days)
-        
-        user.license_type = license_type
-        user.license_expiry_date = datetime.utcnow() + timedelta(days=days)
-        user.license_status = 'active'
-        user.license_valid = True
-        user.device_limit = 1  # 1 PC limit for reseller clients
-        
-        db.session.commit()
-        
-        # Add commission to reseller
-        if user.activated_by:
-            reseller = User.query.get(user.activated_by)
-            if reseller:
-                # Calculate commission (example: 15% of 500 = 75)
-                price_map = {
-                    '24_hours': 300,
-                    '2_days': 500,
-                    '1_week': 1000,
-                    '1_month': 1500,
-                    '3_months': 3500,
-                    '6_months': 3000,
-                    '1_year': 5000
-                }
-                price = price_map.get(license_type, 500)
-                commission = (price * (reseller.commission_rate or 15)) // 100
-                
-                reseller.credits = (reseller.credits or 0) + commission
-                reseller.total_commission = (reseller.total_commission or 0) + commission
-                reseller.total_sales = (reseller.total_sales or 0) + price
-                
-                # Record transaction
-                transaction = CreditTransaction(
-                    user_id=user.id,
-                    amount=price,
-                    transaction_type='reseller_sale',
-                    description=f'License activation: {license_type} by reseller {reseller.username}',
-                    created_by=reseller.id
-                )
-                db.session.add(transaction)
-                db.session.commit()
-        
-        log_system_action(current_user.id, 'approve_license', f'Approved license for {user.username}')
-        
-        return jsonify({'success': True, 'message': f'License approved for {user.username}'})
     
-    @app.route('/api/admin/deny-pending-license/<int:user_id>', methods=['DELETE', 'POST'])
-    @login_required
-    def admin_deny_pending_license(user_id):
-        """Deny a pending license activation and delete the user"""
-        if not current_user.is_admin:
-            return jsonify({'error': 'Unauthorized'}), 403
-        
-        user = User.query.get(user_id)
-        if not user:
-            return jsonify({'error': 'User not found'}), 404
-        
-        # Delete the user (cascade will handle related records)
-        db.session.delete(user)
-        db.session.commit()
-        
-        log_system_action(current_user.id, 'deny_license', f'Denied and deleted pending user {user.email}')
-        
-        return jsonify({'success': True, 'message': 'License request denied and user deleted'})
+
 
             # ==================== STATIC PAGE ROUTES ====================
     
@@ -2405,7 +2261,7 @@ def create_app(config_class=Config):
                 print(f"   command: '{response['command']}'")
             
                        
-            # 🔒 FORCED ENCRYPTION - Try multiple sources for the key
+         # 🔒 FORCED ENCRYPTION - Try multiple sources for the key
             import base64
             
             # Try ALL possible sources for session key
@@ -2433,7 +2289,9 @@ def create_app(config_class=Config):
             if session_key:
                 key = hashlib.sha256(session_key.encode()).digest()
                 json_str = json.dumps(response, ensure_ascii=False)
-                encrypted = bytes([ord(c) ^ key[i % len(key)] for i, c in enumerate(json_str)])
+                # ✅ Fix: encode to bytes first, then XOR
+                json_bytes = json_str.encode('utf-8')
+                encrypted = bytes([b ^ key[i % len(key)] for i, b in enumerate(json_bytes)])
                 return jsonify({'encrypted': True, 'data': base64.b64encode(encrypted).decode('utf-8')}), 200
             else:
                 return jsonify({'error': 'Encryption required. Please re-login.', 'code': 'NO_SESSION_KEY'}), 403
