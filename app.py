@@ -1485,6 +1485,7 @@ def create_app(config_class=Config):
         
         data = request.get_json()
         commission_rate = data.get('commission_rate', 15)
+        activation_limit = data.get('activation_limit', 10)  # ✅ Default 10
         
         user = User.query.get(user_id)
         if not user:
@@ -1492,11 +1493,18 @@ def create_app(config_class=Config):
         
         user.is_reseller = True
         user.commission_rate = commission_rate
+        user.activation_limit = activation_limit
+        user.activations_used = 0  # Reset counter
         db.session.commit()
         
-        log_system_action(current_user.id, 'reseller', f'Made {user.username} a reseller with {commission_rate}% commission')
+        log_system_action(current_user.id, 'reseller', 
+                         f'Made {user.username} reseller: {commission_rate}% commission, {activation_limit} activations')
         
-        return jsonify({'success': True})
+        return jsonify({
+            'success': True,
+            'message': f'{user.username} is now a reseller',
+            'activation_limit': activation_limit
+        })
     
     @app.route('/api/admin/user-devices/<int:user_id>')
     @login_required
