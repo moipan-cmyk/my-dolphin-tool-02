@@ -394,7 +394,7 @@ def create_app(config_class=Config):
         
         return render_template('reset_password.html', token=token)
 
-        #DESKTOP VALIDATION SPOT #################################################
+                #DESKTOP VALIDATION SPOT #################################################
     
     @app.route('/api/validate-license', methods=['POST'])
     def validate_license():
@@ -422,18 +422,22 @@ def create_app(config_class=Config):
             identifier = email or username or admission or str(admission_number) or client_ip
             
             # CHECK LOGIN RATE LIMIT (10 attempts per hour)
-            allowed, wait_seconds = check_login_limit(identifier, client_ip, max_attempts=10, window_hours=1)
+            allowed, wait_seconds, suspended_until = check_login_limit(identifier, client_ip, max_attempts=10, window_hours=1)
             
             if not allowed:
                 wait_minutes = int(wait_seconds // 60)
                 wait_seconds_remain = int(wait_seconds % 60)
+                
                 return jsonify({
                     'success': False,
-                    'error': f'Too many login attempts. Please wait {wait_minutes} minutes and {wait_seconds_remain} seconds before trying again.',
-                    'code': 'LOGIN_LIMIT_EXCEEDED',
-                    'wait_seconds': wait_seconds,
-                    'wait_minutes': wait_minutes
-                }), 429
+                    'error': 'Account suspended for 1 hour due to too many failed login attempts.',
+                    'code': 'ACCOUNT_SUSPENDED',
+                    'message': f'Your account has been temporarily suspended. Please wait {wait_minutes} minutes and {wait_seconds_remain} seconds before trying again.',
+                    'suspended_until': suspended_until.isoformat() if suspended_until else None,
+                    'remaining_seconds': wait_seconds,
+                    'remaining_minutes': wait_minutes,
+                    'retry_after': wait_seconds
+                }), 403
             
             user = None
             if email:
@@ -448,15 +452,22 @@ def create_app(config_class=Config):
                     user = User.query.filter_by(admission_number=int(admission_number)).first()
             
             if not user:
-                log_login_attempt(identifier, False, client_ip)
+                log_login_attempt(identifier, False, client_ip, user_id=None)
                 return jsonify({'success': False, 'error': 'Invalid credentials'}), 401
             
             if not user.check_password(password):
-                log_login_attempt(identifier, False, client_ip)
+                log_login_attempt(identifier, False, client_ip, user_id=user.id)
                 return jsonify({'success': False, 'error': 'Invalid credentials'}), 401
             
             # SUCCESSFUL LOGIN - clear rate limit records
-            log_login_attempt(identifier, True, client_ip)
+            log_login_attempt(identifier, True, client_ip, user_id=user.id)
+            
+            # Clear suspension on successful login
+            if user.suspended_until:
+                user.suspended_until = None
+                user.failed_login_count = 0
+                db.session.commit()
+                print(f"✅ Suspension cleared for user {user.username}")
             
             # Delete old failed attempts on successful login
             LoginAttempt.query.filter(
@@ -630,7 +641,8 @@ def create_app(config_class=Config):
                 'device_registered': device_registered,
                 'device_id': device_id,
                 'device_name': device_name,
-                'last_login': user.last_login.isoformat() if user.last_login else None
+                'last_login': user.last_login.isoformat() if user.last_login else None,
+                'suspended_until': user.suspended_until.isoformat() if user.suspended_until else None
             }
             
             import base64
