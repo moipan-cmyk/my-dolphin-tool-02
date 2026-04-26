@@ -2477,244 +2477,243 @@ def create_app(config_class=Config):
     def license():
         """License agreement page"""
         return render_template('license.html')
-        
 
-   # ==================== COMMAND FETCH ENDPOINT ===================
+            # ==================== COMMAND FETCH ENDPOINT ====================
     
-@app.route('/api/get-command', methods=['POST'])
-@limiter.limit("100 per day") 
-@api_login_required
-def get_command():
-    """
-    Fetch command definition for desktop client
-    Expects: {"tab": "mediatek", "mode": "mdm", "action": "read_info", "device_info": {}}
-    """
-    try:
-        data = request.get_json()
-        tab = data.get('tab', '').lower()        # mediatek, unisoc, xiaomi, hmd, hxd
-        mode = data.get('mode', '').lower()      # mdm, adb, fastboot, etc.
-        action = data.get('action', '').lower()  # read_info, factory_reset, etc.
-        device_info = data.get('device_info', {})
-        
-        # DEBUG: Print what we're looking for
-        print(f"🔍 [DEBUG] Looking for: tab={tab}, mode={mode}, action={action}")
-        
-        user = current_user
-        
-        # 1. VALIDATION
-        if user.is_banned:
-            return jsonify({'error': 'Account banned', 'code': 'BANNED'}), 403
-        
-        if not user.is_license_valid():
-            return jsonify({'error': 'License expired/not activated', 'code': 'LICENSE_EXPIRED'}), 403
-        
-        # 2. MAP TAB to folder name
-        tab_folders = {
-            'mediatek': 'mediatek_module',
-            'unisoc': 'unisoc_module',
-            'xiaomi': 'xiaomi_module',
-            'samsung': 'samsung_module',
-            'oplus': 'oplus_module',
-            'hxd': 'hxd_module',
-        }
-        
-        folder = tab_folders.get(tab)
-        if not folder:
-            return jsonify({'error': f'Invalid tab: {tab}'}), 404
-        
-        # 3. MAP MODE to JSON file
-        filename = f"{mode}_commands.json"
-        
-        # 4. LOAD COMMANDS FROM SERVER
-        commands_dir = os.path.join(BASE_DIR, 'commands')
-        filepath = os.path.join(commands_dir, folder, filename)
-        
-        # Check if file exists with fallback paths
-        if not os.path.exists(filepath):
-            alt_paths = [
-                os.path.join(os.getcwd(), 'commands'),
-                os.path.join(os.path.dirname(os.path.dirname(BASE_DIR)), 'commands'),
-            ]
-            for alt in alt_paths:
-                alt_filepath = os.path.join(alt, folder, filename)
-                if os.path.exists(alt_filepath):
-                    filepath = alt_filepath
-                    break
+    @app.route('/api/get-command', methods=['POST'])
+    @limiter.limit("100 per day") 
+    @api_login_required
+    def get_command():
+        """
+        Fetch command definition for desktop client
+        Expects: {"tab": "mediatek", "mode": "mdm", "action": "read_info", "device_info": {}}
+        """
+        try:
+            data = request.get_json()
+            tab = data.get('tab', '').lower()        # mediatek, unisoc, xiaomi, hmd, hxd
+            mode = data.get('mode', '').lower()      # mdm, adb, fastboot, etc.
+            action = data.get('action', '').lower()  # read_info, factory_reset, etc.
+            device_info = data.get('device_info', {})
             
+            # DEBUG: Print what we're looking for
+            print(f"🔍 [DEBUG] Looking for: tab={tab}, mode={mode}, action={action}")
+            
+            user = current_user
+            
+            # 1. VALIDATION
+            if user.is_banned:
+                return jsonify({'error': 'Account banned', 'code': 'BANNED'}), 403
+            
+            if not user.is_license_valid():
+                return jsonify({'error': 'License expired/not activated', 'code': 'LICENSE_EXPIRED'}), 403
+            
+            # 2. MAP TAB to folder name
+            tab_folders = {
+                'mediatek': 'mediatek_module',
+                'unisoc': 'unisoc_module',
+                'xiaomi': 'xiaomi_module',
+                'samsung': 'samsung_module',
+                'oplus': 'oplus_module',
+                'hxd': 'hxd_module',
+            }
+            
+            folder = tab_folders.get(tab)
+            if not folder:
+                return jsonify({'error': f'Invalid tab: {tab}'}), 404
+            
+            # 3. MAP MODE to JSON file
+            filename = f"{mode}_commands.json"
+            
+            # 4. LOAD COMMANDS FROM SERVER
+            commands_dir = os.path.join(BASE_DIR, 'commands')
+            filepath = os.path.join(commands_dir, folder, filename)
+            
+            # Check if file exists with fallback paths
             if not os.path.exists(filepath):
-                return jsonify({
-                    'error': f'Commands not found for {tab}/{mode}',
-                    'debug': {
-                        'filepath': filepath,
-                        'requested_tab': tab,
-                        'requested_mode': mode,
-                        'requested_action': action
-                    }
-                }), 404
-        
-        with open(filepath, 'r') as f:
-            commands_data = json.load(f)
-        
-        # 5. GET SPECIFIC ACTION
-        function_data = commands_data.get('functions', {}).get(action)
-        
-        if not function_data:
-            # Try case-insensitive search
-            for key, value in commands_data.get('functions', {}).items():
-                if key.lower() == action:
-                    function_data = value
-                    break
+                alt_paths = [
+                    os.path.join(os.getcwd(), 'commands'),
+                    os.path.join(os.path.dirname(os.path.dirname(BASE_DIR)), 'commands'),
+                ]
+                for alt in alt_paths:
+                    alt_filepath = os.path.join(alt, folder, filename)
+                    if os.path.exists(alt_filepath):
+                        filepath = alt_filepath
+                        break
+                
+                if not os.path.exists(filepath):
+                    return jsonify({
+                        'error': f'Commands not found for {tab}/{mode}',
+                        'debug': {
+                            'filepath': filepath,
+                            'requested_tab': tab,
+                            'requested_mode': mode,
+                            'requested_action': action
+                        }
+                    }), 404
+            
+            with open(filepath, 'r') as f:
+                commands_data = json.load(f)
+            
+            # 5. GET SPECIFIC ACTION
+            function_data = commands_data.get('functions', {}).get(action)
             
             if not function_data:
-                available_actions = list(commands_data.get('functions', {}).keys())
-                return jsonify({
-                    'error': f'Action "{action}" not found. Available: {available_actions}'
-                }), 404
-        
-        # 6. CHECK PERMISSIONS
-        if function_data.get('requires_admin', False) and not user.is_admin:
-            return jsonify({'error': 'Admin access required'}), 403
-        
-        # ========== CUSTOM CREDIT LOGIC FOR XIAOMI TAB ==========
-        # Get base cost from JSON
-        cost = function_data.get('cost', 0)
-        original_cost = cost  # Store for logging
-        
-        # Apply Xiaomi special pricing
-        if tab == 'xiaomi':
-            if action == 'read_info':
-                cost = 0  # Free
-                print(f"💰 [XIAOMI] read_info is FREE (original cost: {original_cost})")
-            else:
-                cost = 5  # 5 credits for any other Xiaomi operation
-                print(f"💰 [XIAOMI] Setting cost to 5 credits for {action} (original cost: {original_cost})")
-        
-        # 7. CHECK CREDITS
-        if cost > 0 and (user.credits or 0) < cost:
-            return jsonify({
-                'error': f'Insufficient credits. Need {cost} credits', 
-                'code': 'INSUFFICIENT_CREDITS',
-                'credits_available': user.credits or 0,
-                'credits_needed': cost
-            }), 403
-        
-        # 8. DEDUCT CREDITS if cost > 0
-        if cost > 0:
-            user.credits = (user.credits or 0) - cost
-            transaction = CreditTransaction(
-                user_id=user.id,
-                amount=-cost,
-                transaction_type='command_usage',
-                description=f'Executed {tab}.{mode}.{action} (Cost: {cost} credits)'
-            )
-            db.session.add(transaction)
-            db.session.commit()
-            print(f"💰 Deducted {cost} credits from user {user.username} (Remaining: {user.credits})")
-        
-        # 9. LOG REQUEST
-        log_system_action(user.id, 'command_request', 
-                         f"Requested {tab}.{mode}.{action} on {device_info.get('model', 'unknown')} (Cost: {cost} credits)")
-        
-        # 10. BUILD RESPONSE
-        response = {
-            'success': True,
-            'tab': tab,
-            'mode': mode,
-            'action': action,
-            'type': function_data.get('type', 'adb_commands'),
-            'requires_device': function_data.get('requires_device', False),
-            'device_type': function_data.get('device_type', 'adb'),
-            'progress_steps': function_data.get('progress_steps', []),
-            'commands': function_data.get('commands', []),
-            'filter_keywords': function_data.get('filter_keywords', {}),
-            'unique_filters': function_data.get('unique_filters', {}),
-            'success_message': function_data.get('success_message', '✅ Operation completed'),
-            'error_message': function_data.get('error_message', '❌ Operation failed'),
-            'timeout': function_data.get('timeout', 60),
-            'chunk_size': function_data.get('chunk_size', 4194304),
-            'backup_enabled': function_data.get('backup_enabled', False),
-            'cost': cost,
-            'original_cost': original_cost,  # Send original cost from JSON for reference
-            'credits_remaining': user.credits or 0,
-            'config': function_data.get('config', {}),
+                # Try case-insensitive search
+                for key, value in commands_data.get('functions', {}).items():
+                    if key.lower() == action:
+                        function_data = value
+                        break
+                
+                if not function_data:
+                    available_actions = list(commands_data.get('functions', {}).keys())
+                    return jsonify({
+                        'error': f'Action "{action}" not found. Available: {available_actions}'
+                    }), 404
             
-            # For meta_action (factory_reset, frp)
-            'action_command': function_data.get('action_command', ''),
-            # For meta_command (read_info)
-            'command': function_data.get('command', ''),
-            # For meta_boot (handshake, detection, etc.)
-            'handshake': function_data.get('handshake', {}),
-            'preloader_detection': function_data.get('preloader_detection', {}),
-            'boot_methods': function_data.get('boot_methods', []),
-            'meta_detection': function_data.get('meta_detection', {}),
-            'final_progress': function_data.get('final_progress', 100),
-            # For nvram operations
-            'partitions': function_data.get('partitions', []),
-            'operation': function_data.get('operation', ''),
-            'progress_per_partition': function_data.get('progress_per_partition', 80),
-            'output_format': function_data.get('output_format', ''),
-            'input_format': function_data.get('input_format', ''),
-            # For imei operations
-            'parse_response': function_data.get('parse_response', {}),
-            'default_info': function_data.get('default_info', []),
-            'requires_connection': function_data.get('requires_connection', False),
-            'requires_auth': function_data.get('requires_auth', False),
-            'requires_imei': function_data.get('requires_imei', False),
-            # For stop operation
-            'disconnect_command': function_data.get('disconnect_command', ''),
-            'disconnect_delay': function_data.get('disconnect_delay', 0.5),
-            'reset_connection': function_data.get('reset_connection', False),
-            # APK Download Information
-            'requires_apk': function_data.get('requires_apk', False),
-            'apk_name': function_data.get('apk_name', ''),
-            'apk_download_url': function_data.get('apk_download_url', ''),
-            'apk_package': function_data.get('apk_package', ''),
-            'phases': function_data.get('phases', []),
-            'block_apps': function_data.get('block_apps', []),
-            'block_commands_per_app': function_data.get('block_commands_per_app', []),
-            'global_settings': function_data.get('global_settings', []),
-            'set_device_owner': function_data.get('set_device_owner', {}),
-            'grant_permissions': function_data.get('grant_permissions', []),
-            'launch_methods': function_data.get('launch_methods', []),
-            'uninstall_apps': function_data.get('uninstall_apps', []),
-            'uninstall_commands': function_data.get('uninstall_commands', []),
-            'reboot': function_data.get('reboot', False)
-        }
+            # 6. CHECK PERMISSIONS
+            if function_data.get('requires_admin', False) and not user.is_admin:
+                return jsonify({'error': 'Admin access required'}), 403
+            
+            # ========== CUSTOM CREDIT LOGIC FOR XIAOMI TAB ==========
+            # Get base cost from JSON
+            cost = function_data.get('cost', 0)
+            original_cost = cost  # Store for logging
+            
+            # Apply Xiaomi special pricing
+            if tab == 'xiaomi':
+                if action == 'read_info':
+                    cost = 0  # Free
+                    print(f"💰 [XIAOMI] read_info is FREE (original cost: {original_cost})")
+                else:
+                    cost = 5  # 5 credits for any other Xiaomi operation
+                    print(f"💰 [XIAOMI] Setting cost to 5 credits for {action} (original cost: {original_cost})")
+            
+            # 7. CHECK CREDITS
+            if cost > 0 and (user.credits or 0) < cost:
+                return jsonify({
+                    'error': f'Insufficient credits. Need {cost} credits', 
+                    'code': 'INSUFFICIENT_CREDITS',
+                    'credits_available': user.credits or 0,
+                    'credits_needed': cost
+                }), 403
+            
+            # 8. DEDUCT CREDITS if cost > 0
+            if cost > 0:
+                user.credits = (user.credits or 0) - cost
+                transaction = CreditTransaction(
+                    user_id=user.id,
+                    amount=-cost,
+                    transaction_type='command_usage',
+                    description=f'Executed {tab}.{mode}.{action} (Cost: {cost} credits)'
+                )
+                db.session.add(transaction)
+                db.session.commit()
+                print(f"💰 Deducted {cost} credits from user {user.username} (Remaining: {user.credits})")
+            
+            # 9. LOG REQUEST
+            log_system_action(user.id, 'command_request', 
+                             f"Requested {tab}.{mode}.{action} on {device_info.get('model', 'unknown')} (Cost: {cost} credits)")
+            
+            # 10. BUILD RESPONSE
+            response = {
+                'success': True,
+                'tab': tab,
+                'mode': mode,
+                'action': action,
+                'type': function_data.get('type', 'adb_commands'),
+                'requires_device': function_data.get('requires_device', False),
+                'device_type': function_data.get('device_type', 'adb'),
+                'progress_steps': function_data.get('progress_steps', []),
+                'commands': function_data.get('commands', []),
+                'filter_keywords': function_data.get('filter_keywords', {}),
+                'unique_filters': function_data.get('unique_filters', {}),
+                'success_message': function_data.get('success_message', '✅ Operation completed'),
+                'error_message': function_data.get('error_message', '❌ Operation failed'),
+                'timeout': function_data.get('timeout', 60),
+                'chunk_size': function_data.get('chunk_size', 4194304),
+                'backup_enabled': function_data.get('backup_enabled', False),
+                'cost': cost,
+                'original_cost': original_cost,  # Send original cost from JSON for reference
+                'credits_remaining': user.credits or 0,
+                'config': function_data.get('config', {}),
+                
+                # For meta_action (factory_reset, frp)
+                'action_command': function_data.get('action_command', ''),
+                # For meta_command (read_info)
+                'command': function_data.get('command', ''),
+                # For meta_boot (handshake, detection, etc.)
+                'handshake': function_data.get('handshake', {}),
+                'preloader_detection': function_data.get('preloader_detection', {}),
+                'boot_methods': function_data.get('boot_methods', []),
+                'meta_detection': function_data.get('meta_detection', {}),
+                'final_progress': function_data.get('final_progress', 100),
+                # For nvram operations
+                'partitions': function_data.get('partitions', []),
+                'operation': function_data.get('operation', ''),
+                'progress_per_partition': function_data.get('progress_per_partition', 80),
+                'output_format': function_data.get('output_format', ''),
+                'input_format': function_data.get('input_format', ''),
+                # For imei operations
+                'parse_response': function_data.get('parse_response', {}),
+                'default_info': function_data.get('default_info', []),
+                'requires_connection': function_data.get('requires_connection', False),
+                'requires_auth': function_data.get('requires_auth', False),
+                'requires_imei': function_data.get('requires_imei', False),
+                # For stop operation
+                'disconnect_command': function_data.get('disconnect_command', ''),
+                'disconnect_delay': function_data.get('disconnect_delay', 0.5),
+                'reset_connection': function_data.get('reset_connection', False),
+                # APK Download Information
+                'requires_apk': function_data.get('requires_apk', False),
+                'apk_name': function_data.get('apk_name', ''),
+                'apk_download_url': function_data.get('apk_download_url', ''),
+                'apk_package': function_data.get('apk_package', ''),
+                'phases': function_data.get('phases', []),
+                'block_apps': function_data.get('block_apps', []),
+                'block_commands_per_app': function_data.get('block_commands_per_app', []),
+                'global_settings': function_data.get('global_settings', []),
+                'set_device_owner': function_data.get('set_device_owner', {}),
+                'grant_permissions': function_data.get('grant_permissions', []),
+                'launch_methods': function_data.get('launch_methods', []),
+                'uninstall_apps': function_data.get('uninstall_apps', []),
+                'uninstall_commands': function_data.get('uninstall_commands', []),
+                'reboot': function_data.get('reboot', False)
+            }
 
-        print(f"✅ Command fetched: {tab}/{mode}/{action} (Cost: {cost} credits)")
-        
-        # 🔒 ENCRYPT RESPONSE
-        import base64
-        
-        session_key = ''
-        
-        # Try all sources for session key
-        auth = request.headers.get('Authorization', '')
-        if auth.startswith('Bearer '):
-            session_key = auth.split(' ')[1]
-        
-        if not session_key:
-            session_key = data.get('session_token', '')
-        
-        if not session_key:
-            session_key = user.current_session_key or ''
-        
-        if not session_key:
-            session_key = flask_session.get('module_key', '')
-        
-        if session_key:
-            key = hashlib.sha256(session_key.encode()).digest()
-            json_str = json.dumps(response, ensure_ascii=False)
-            json_bytes = json_str.encode('utf-8')
-            encrypted = bytes([b ^ key[i % len(key)] for i, b in enumerate(json_bytes)])
-            return jsonify({'encrypted': True, 'data': base64.b64encode(encrypted).decode('utf-8')}), 200
-        else:
-            return jsonify({'error': 'Encryption required. Please re-login.', 'code': 'NO_SESSION_KEY'}), 403
-        
-    except Exception as e:
-        print(f"Error in get_command: {e}")
-        traceback.print_exc()
-        return jsonify({'error': f'Internal server error: {str(e)}'}), 500
+            print(f"✅ Command fetched: {tab}/{mode}/{action} (Cost: {cost} credits)")
+            
+            # 🔒 ENCRYPT RESPONSE
+            import base64
+            
+            session_key = ''
+            
+            # Try all sources for session key
+            auth = request.headers.get('Authorization', '')
+            if auth.startswith('Bearer '):
+                session_key = auth.split(' ')[1]
+            
+            if not session_key:
+                session_key = data.get('session_token', '')
+            
+            if not session_key:
+                session_key = user.current_session_key or ''
+            
+            if not session_key:
+                session_key = flask_session.get('module_key', '')
+            
+            if session_key:
+                key = hashlib.sha256(session_key.encode()).digest()
+                json_str = json.dumps(response, ensure_ascii=False)
+                json_bytes = json_str.encode('utf-8')
+                encrypted = bytes([b ^ key[i % len(key)] for i, b in enumerate(json_bytes)])
+                return jsonify({'encrypted': True, 'data': base64.b64encode(encrypted).decode('utf-8')}), 200
+            else:
+                return jsonify({'error': 'Encryption required. Please re-login.', 'code': 'NO_SESSION_KEY'}), 403
+            
+        except Exception as e:
+            print(f"Error in get_command: {e}")
+            traceback.print_exc()
+            return jsonify({'error': f'Internal server error: {str(e)}'}), 500
 
     # ==================== VERSION CHECK ENDPOINT ====================
     
