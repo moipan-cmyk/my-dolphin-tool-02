@@ -2130,7 +2130,7 @@ def create_app(config_class=Config):
             'users_reset': updated
         })
 
-    @app.route('/api/admin/reset-login-attempts', methods=['POST'])
+        @app.route('/api/admin/reset-login-attempts', methods=['POST'])
     @login_required
     def admin_reset_login_attempts():
         """Admin: Reset login attempts for a specific user or IP"""
@@ -2145,9 +2145,14 @@ def create_app(config_class=Config):
             return jsonify({'error': 'Please provide identifier or user_id'}), 400
         
         query = LoginAttempt.query.filter(LoginAttempt.attempt_type == 'login')
+        user = None
         
         if identifier:
             query = query.filter(LoginAttempt.identifier == identifier)
+            # Try to find user by email or username
+            user = User.query.filter_by(email=identifier).first()
+            if not user:
+                user = User.query.filter_by(username=identifier).first()
         elif user_id:
             user = User.query.get(user_id)
             if user:
@@ -2156,15 +2161,24 @@ def create_app(config_class=Config):
                 return jsonify({'error': 'User not found'}), 404
         
         deleted_count = query.delete()
+        
+        # Clear suspension if user exists
+        if user:
+            user.suspended_until = None
+            user.failed_login_count = 0
+            db.session.commit()
+            print(f"✅ Suspension cleared for user {user.username}")
+        
         db.session.commit()
         
         log_system_action(current_user.id, 'reset_login_attempts', 
-                         f"Reset login attempts, deleted: {deleted_count}")
+                         f"Reset login attempts for {identifier or user.email if user else 'unknown'}, deleted: {deleted_count}")
         
         return jsonify({
             'success': True,
-            'message': f'Login attempts reset ({deleted_count} deleted)',
-            'deleted_attempts': deleted_count
+            'message': f'Login attempts reset ({deleted_count} deleted). User suspension cleared.',
+            'deleted_attempts': deleted_count,
+            'suspension_cleared': bool(user)
         })
 
 
