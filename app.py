@@ -17,6 +17,9 @@ from functools import wraps
 import traceback
 from flask_limiter import Limiter
 from flask_limiter.util import get_remote_address
+# Add these to your imports at the top
+from database import db, User, Device, UserSession, DeviceHistory, CreditTransaction, SystemLog, CommandUsage, LoginAttempt
+from database import check_command_limit, increment_command_count, check_login_limit, log_login_attempt
 
 # ==================== CONSTANTS ====================
 SESSION_DURATION_HOURS = 12       # Hardware binding: 12 hours
@@ -1789,32 +1792,6 @@ def create_app(config_class=Config):
         
         return jsonify({'success': True, 'logs': logs_data})
     
-    @app.route('/api/admin/change-user-password', methods=['POST'])
-    @login_required
-    def admin_change_user_password():
-        if not current_user.is_admin:
-            return jsonify({'error': 'Unauthorized'}), 403
-        
-        data = request.get_json()
-        email = data.get('email')
-        new_password = data.get('new_password')
-        
-        if not email or not new_password:
-            return jsonify({'error': 'Email and new password required'}), 400
-        
-        if len(new_password) < 6:
-            return jsonify({'error': 'Password must be at least 6 characters'}), 400
-        
-        user = User.query.filter_by(email=email).first()
-        if not user:
-            return jsonify({'error': 'User not found'}), 404
-        
-        user.set_password(new_password)
-        db.session.commit()
-        
-        log_system_action(current_user.id, 'admin_password_change', f'Changed password for user {user.username}')
-        
-        return jsonify({'success': True, 'message': f'Password changed for {user.username}'})
    
     @app.route('/api/admin/change-user-password', methods=['POST'])
     @login_required
