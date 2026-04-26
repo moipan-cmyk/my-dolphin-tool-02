@@ -60,9 +60,13 @@ class User(UserMixin, db.Model):
     current_session_key = db.Column(db.String(128), nullable=True)
     last_session_key = db.Column(db.String(128), nullable=True)
 
-    # ========== HWID TRACKING (NEW) ==========
-    last_used_hwid_hash = db.Column(db.String(256), nullable=True)  # Track last HWID used
-    hwid_change_count = db.Column(db.Integer, default=0)  # Count of HWID changes
+    # ========== HWID TRACKING ==========
+    last_used_hwid_hash = db.Column(db.String(256), nullable=True)
+    hwid_change_count = db.Column(db.Integer, default=0)
+
+    # ========== LOGIN SUSPENSION ==========
+    suspended_until = db.Column(db.DateTime, nullable=True)
+    failed_login_count = db.Column(db.Integer, default=0)
 
     # Relationships
     activator = db.relationship('User', remote_side=[id], backref='activated_clients', foreign_keys=[activated_by])
@@ -605,15 +609,19 @@ def increment_command_count(user_id):
 def check_login_limit(identifier, ip_address, max_attempts=10, window_hours=1):
     """Check if login attempts exceeded (10 attempts per hour)
     
-    Args:
-        identifier: Email, username, or IP address to track
-        ip_address: Client IP address
-        max_attempts: Maximum allowed attempts (default: 10)
-        window_hours: Time window in hours (default: 1)
-    
     Returns:
-        tuple: (allowed: bool, wait_seconds: int)
+        tuple: (allowed: bool, wait_seconds: int, suspended_until: datetime)
     """
+    # Try to find the user by email or username
+    user = User.query.filter_by(email=identifier).first()
+    if not user:
+        user = User.query.filter_by(username=identifier).first()
+    
+    # Check if user is already suspended
+    if user and user.suspended_until and user.suspended_until > datetime.utcnow():
+        remaining_seconds = (user.suspended_until - datetime.utcnow()).total_seconds()
+        return False, int(remaining_seconds), user.suspended_until
+    
     cutoff_time = datetime.utcnow() - timedelta(hours=window_hours)
     
     # Count failed attempts in the last hour for this identifier
@@ -625,20 +633,17 @@ def check_login_limit(identifier, ip_address, max_attempts=10, window_hours=1):
     ).count()
     
     if failed_attempts >= max_attempts:
-        # Find the oldest attempt in the current window to calculate wait time
-        oldest_attempt = LoginAttempt.query.filter(
-            LoginAttempt.identifier == identifier,
-            LoginAttempt.attempt_type == 'login',
-            LoginAttempt.success == False,
-            LoginAttempt.attempt_time >= cutoff_time
-        ).order_by(LoginAttempt.attempt_time.asc()).first()
-        
-        if oldest_attempt:
-            wait_until = oldest_attempt.attempt_time + timedelta(hours=window_hours)
-            remaining_seconds = max(0, (wait_until - datetime.utcnow()).total_seconds())
-            return False, int(remaining_seconds)
+        # Suspend the user account
+        if user:
+            suspended_until = datetime.utcnow() + timedelta(hours=window_hours)
+            user.suspended_until = suspended_until
+            user.failed_login_count = failed_attempts
+            db.session.commit()
+            
+            remaining_seconds = (suspended_until - datetime.utcnow()).total_seconds()
+            return False, int(remaining_seconds), suspended_until
     
-    return True, 0
+    return True, 0, None
 
 
 def log_login_attempt(identifier, success, ip_address, user_agent=None, user_id=None, attempt_type='login'):
@@ -661,6 +666,14 @@ def log_login_attempt(identifier, success, ip_address, user_agent=None, user_id=
         user_id=user_id
     )
     db.session.add(attempt)
+    
+    # Clear suspension on successful login
+    if success and user_id:
+        user = User.query.get(user_id)
+        if user and user.suspended_until:
+            user.suspended_until = None
+            user.failed_login_count = 0
+    
     db.session.commit()
 
 
@@ -727,6 +740,8 @@ def run_migrations():
             ('last_session_key', "ALTER TABLE users ADD COLUMN IF NOT EXISTS last_session_key VARCHAR(128)"),
             ('last_used_hwid_hash', "ALTER TABLE users ADD COLUMN IF NOT EXISTS last_used_hwid_hash VARCHAR(256)"),
             ('hwid_change_count', "ALTER TABLE users ADD COLUMN IF NOT EXISTS hwid_change_count INTEGER DEFAULT 0"),
+            ('suspended_until', "ALTER TABLE users ADD COLUMN IF NOT EXISTS suspended_until TIMESTAMP"),
+            ('failed_login_count', "ALTER TABLE users ADD COLUMN IF NOT EXISTS failed_login_count INTEGER DEFAULT 0"),
         ]
         
         for col_name, alter_statement in columns_to_add:
