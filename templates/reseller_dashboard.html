@@ -4,1453 +4,259 @@
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
 <title>Dolphin Reseller Hub</title>
-<link rel="preconnect" href="https://fonts.googleapis.com">
-<link href="https://fonts.googleapis.com/css2?family=DM+Sans:ital,opsz,wght@0,9..40,300;0,9..40,400;0,9..40,500;0,9..40,600;0,9..40,700;1,9..40,400&family=DM+Mono:wght@400;500&display=swap" rel="stylesheet">
 <style>
   :root {
-    --teal-50: #e1f5ee;
-    --teal-100: #9fe1cb;
-    --teal-200: #5dcaa5;
-    --teal-400: #1d9e75;
-    --teal-600: #0f6e56;
-    --teal-800: #085041;
-    --teal-900: #04342c;
-    --slate-50: #f8fafc;
-    --slate-100: #f1f5f9;
-    --slate-200: #e2e8f0;
-    --slate-300: #cbd5e1;
-    --slate-400: #94a3b8;
-    --slate-500: #64748b;
-    --slate-600: #475569;
-    --slate-700: #334155;
-    --slate-800: #1e293b;
-    --slate-900: #0f172a;
-    --amber-50: #faeeda;
-    --amber-400: #ba7517;
-    --amber-600: #854f0b;
-    --red-50: #fcebeb;
-    --red-400: #e24b4a;
-    --red-600: #a32d2d;
-    --blue-50: #e6f1fb;
-    --blue-400: #378add;
-    --blue-600: #185fa5;
-    --font: 'DM Sans', sans-serif;
-    --mono: 'DM Mono', monospace;
-    --r-sm: 8px;
-    --r-md: 12px;
-    --r-lg: 18px;
-    --r-xl: 24px;
-    --sidebar-w: 240px;
+    --teal-50: #e1f5ee; --teal-100: #9fe1cb; --teal-200: #5dcaa5; --teal-400: #1d9e75; --teal-600: #0f6e56; --teal-800: #085041; --teal-900: #04342c;
+    --slate-50: #f8fafc; --slate-100: #f1f5f9; --slate-200: #e2e8f0; --slate-300: #cbd5e1; --slate-400: #94a3b8; --slate-500: #64748b;
+    --slate-600: #475569; --slate-700: #334155; --slate-800: #1e293b; --slate-900: #0f172a;
+    --amber-50: #faeeda; --amber-400: #ba7517; --amber-600: #854f0b;
+    --red-50: #fcebeb; --red-400: #e24b4a; --red-600: #a32d2d;
+    --font: 'Segoe UI', system-ui, sans-serif; --mono: 'Consolas', monospace;
+    --r-sm: 8px; --r-md: 12px; --r-lg: 18px; --r-xl: 24px; --sidebar-w: 240px;
   }
-
   * { margin: 0; padding: 0; box-sizing: border-box; }
-
-  body {
-    font-family: var(--font);
-    background: #f0f4f2;
-    color: var(--slate-800);
-    min-height: 100vh;
-    display: flex;
-    font-size: 14px;
-  }
-
-  /* ── SIDEBAR ── */
-  .sidebar {
-    width: var(--sidebar-w);
-    background: var(--teal-900);
-    min-height: 100vh;
-    display: flex;
-    flex-direction: column;
-    position: fixed;
-    left: 0; top: 0; bottom: 0;
-    z-index: 100;
-    transition: transform 0.3s;
-  }
-
-  .sidebar-brand {
-    padding: 28px 24px 20px;
-    border-bottom: 1px solid rgba(255,255,255,0.08);
-  }
-
-  .brand-logo {
-    display: flex;
-    align-items: center;
-    gap: 10px;
-    margin-bottom: 6px;
-  }
-
-  .brand-icon {
-    width: 36px; height: 36px;
-    background: var(--teal-400);
-    border-radius: var(--r-sm);
-    display: flex; align-items: center; justify-content: center;
-    font-size: 18px;
-  }
-
-  .brand-name {
-    font-size: 16px;
-    font-weight: 700;
-    color: white;
-    letter-spacing: -0.3px;
-  }
-
-  .brand-tier {
-    font-size: 10px;
-    font-weight: 600;
-    letter-spacing: 1px;
-    text-transform: uppercase;
-    color: var(--teal-200);
-  }
-
-  .sidebar-nav {
-    padding: 16px 12px;
-    flex: 1;
-  }
-
-  .nav-section-label {
-    font-size: 10px;
-    font-weight: 600;
-    letter-spacing: 1px;
-    text-transform: uppercase;
-    color: rgba(255,255,255,0.3);
-    padding: 8px 12px 4px;
-    margin-top: 12px;
-  }
-
-  .nav-item {
-    display: flex;
-    align-items: center;
-    gap: 10px;
-    padding: 10px 12px;
-    border-radius: var(--r-sm);
-    cursor: pointer;
-    color: rgba(255,255,255,0.65);
-    font-weight: 500;
-    font-size: 13.5px;
-    border: none;
-    background: none;
-    width: 100%;
-    text-align: left;
-    transition: all 0.15s;
-    text-decoration: none;
-  }
-
+  body { font-family: var(--font); background: #f0f4f2; color: var(--slate-800); min-height: 100vh; display: flex; font-size: 14px; }
+  .sidebar { width: var(--sidebar-w); background: var(--teal-900); min-height: 100vh; display: flex; flex-direction: column; position: fixed; left: 0; top: 0; bottom: 0; z-index: 100; }
+  .sidebar-brand { padding: 28px 24px 20px; border-bottom: 1px solid rgba(255,255,255,0.08); }
+  .brand-logo { display: flex; align-items: center; gap: 10px; margin-bottom: 6px; }
+  .brand-icon { width: 36px; height: 36px; background: var(--teal-400); border-radius: var(--r-sm); display: flex; align-items: center; justify-content: center; font-size: 18px; }
+  .brand-name { font-size: 16px; font-weight: 700; color: white; }
+  .brand-tier { font-size: 10px; font-weight: 600; letter-spacing: 1px; text-transform: uppercase; color: var(--teal-200); }
+  .sidebar-nav { padding: 16px 12px; flex: 1; }
+  .nav-section-label { font-size: 10px; font-weight: 600; letter-spacing: 1px; text-transform: uppercase; color: rgba(255,255,255,0.3); padding: 8px 12px 4px; margin-top: 12px; }
+  .nav-item { display: flex; align-items: center; gap: 10px; padding: 10px 12px; border-radius: var(--r-sm); cursor: pointer; color: rgba(255,255,255,0.65); font-weight: 500; font-size: 13.5px; border: none; background: none; width: 100%; text-align: left; transition: all 0.15s; }
   .nav-item:hover { background: rgba(255,255,255,0.07); color: white; }
-
-  .nav-item.active {
-    background: rgba(29,158,117,0.25);
-    color: var(--teal-100);
-    border: 1px solid rgba(29,158,117,0.35);
-  }
-
-  .nav-item .icon {
-    width: 18px; height: 18px;
-    display: flex; align-items: center; justify-content: center;
-    font-size: 16px;
-    flex-shrink: 0;
-  }
-
-  .nav-badge {
-    margin-left: auto;
-    background: var(--teal-400);
-    color: white;
-    font-size: 10px;
-    font-weight: 700;
-    padding: 1px 7px;
-    border-radius: 99px;
-  }
-
-  .sidebar-footer {
-    padding: 16px 12px;
-    border-top: 1px solid rgba(255,255,255,0.08);
-  }
-
-  .user-info {
-    display: flex;
-    align-items: center;
-    gap: 10px;
-    padding: 10px 12px;
-    border-radius: var(--r-sm);
-    background: rgba(255,255,255,0.06);
-  }
-
-  .avatar {
-    width: 34px; height: 34px;
-    border-radius: 50%;
-    background: var(--teal-400);
-    display: flex; align-items: center; justify-content: center;
-    font-size: 13px;
-    font-weight: 700;
-    color: white;
-    flex-shrink: 0;
-  }
-
+  .nav-item.active { background: rgba(29,158,117,0.25); color: var(--teal-100); border: 1px solid rgba(29,158,117,0.35); }
+  .nav-item .icon { width: 18px; font-size: 16px; }
+  .nav-badge { margin-left: auto; background: var(--teal-400); color: white; font-size: 10px; font-weight: 700; padding: 1px 7px; border-radius: 99px; }
+  .sidebar-footer { padding: 16px 12px; border-top: 1px solid rgba(255,255,255,0.08); }
+  .user-info { display: flex; align-items: center; gap: 10px; padding: 10px 12px; border-radius: var(--r-sm); background: rgba(255,255,255,0.06); }
+  .avatar { width: 34px; height: 34px; border-radius: 50%; background: var(--teal-400); display: flex; align-items: center; justify-content: center; font-size: 13px; font-weight: 700; color: white; }
   .user-meta { flex: 1; min-width: 0; }
-  .user-name { font-size: 13px; font-weight: 600; color: white; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+  .user-name { font-size: 13px; font-weight: 600; color: white; }
   .user-role { font-size: 11px; color: var(--teal-200); }
-
-  .logout-link {
-    display: flex; align-items: center; justify-content: center;
-    width: 28px; height: 28px;
-    border-radius: var(--r-sm);
-    color: rgba(255,255,255,0.4);
-    text-decoration: none;
-    font-size: 16px;
-    transition: all 0.15s;
-    cursor: pointer;
-  }
-
+  .logout-link { display: flex; align-items: center; justify-content: center; width: 28px; height: 28px; border-radius: var(--r-sm); color: rgba(255,255,255,0.4); text-decoration: none; font-size: 16px; cursor: pointer; }
   .logout-link:hover { color: var(--red-400); background: rgba(226,75,74,0.12); }
-
-  /* ── MAIN LAYOUT ── */
-  .main {
-    margin-left: var(--sidebar-w);
-    flex: 1;
-    min-width: 0;
-  }
-
-  .topbar {
-    background: white;
-    border-bottom: 1px solid var(--slate-200);
-    padding: 14px 32px;
-    display: flex;
-    align-items: center;
-    justify-content: space-between;
-    gap: 16px;
-    position: sticky;
-    top: 0;
-    z-index: 50;
-  }
-
-  .page-title {
-    font-size: 17px;
-    font-weight: 600;
-    color: var(--slate-900);
-    letter-spacing: -0.3px;
-  }
-
-  .page-subtitle {
-    font-size: 12px;
-    color: var(--slate-500);
-    margin-top: 1px;
-  }
-
-  .topbar-right {
-    display: flex;
-    align-items: center;
-    gap: 12px;
-  }
-
-  .status-pill {
-    display: flex;
-    align-items: center;
-    gap: 6px;
-    padding: 5px 12px;
-    background: var(--teal-50);
-    border: 1px solid var(--teal-100);
-    border-radius: 99px;
-    font-size: 12px;
-    font-weight: 600;
-    color: var(--teal-600);
-  }
-
-  .status-dot {
-    width: 6px; height: 6px;
-    border-radius: 50%;
-    background: var(--teal-400);
-    animation: pulse 2s infinite;
-  }
-
-  @keyframes pulse {
-    0%, 100% { opacity: 1; }
-    50% { opacity: 0.4; }
-  }
-
-  /* ── CONTENT ── */
-  .content {
-    padding: 28px 32px;
-  }
-
-  /* ── METRIC CARDS ── */
-  .metrics-row {
-    display: grid;
-    grid-template-columns: repeat(auto-fit, minmax(160px, 1fr));
-    gap: 16px;
-    margin-bottom: 28px;
-  }
-
-  .metric-card {
-    background: white;
-    border: 1px solid var(--slate-200);
-    border-radius: var(--r-lg);
-    padding: 20px;
-    transition: box-shadow 0.2s;
-  }
-
-  .metric-card:hover { box-shadow: 0 4px 16px rgba(0,0,0,0.06); }
-
-  .metric-label {
-    font-size: 11.5px;
-    font-weight: 600;
-    text-transform: uppercase;
-    letter-spacing: 0.5px;
-    color: var(--slate-400);
-    margin-bottom: 10px;
-  }
-
-  .metric-value {
-    font-size: 26px;
-    font-weight: 700;
-    color: var(--slate-900);
-    letter-spacing: -0.5px;
-    line-height: 1;
-    margin-bottom: 8px;
-  }
-
+  .main { margin-left: var(--sidebar-w); flex: 1; min-width: 0; }
+  .topbar { background: white; border-bottom: 1px solid var(--slate-200); padding: 14px 32px; display: flex; align-items: center; justify-content: space-between; gap: 16px; position: sticky; top: 0; z-index: 50; }
+  .page-title { font-size: 17px; font-weight: 600; color: var(--slate-900); }
+  .page-subtitle { font-size: 12px; color: var(--slate-500); }
+  .topbar-right { display: flex; align-items: center; gap: 12px; }
+  .status-pill { display: flex; align-items: center; gap: 6px; padding: 5px 12px; background: var(--teal-50); border: 1px solid var(--teal-100); border-radius: 99px; font-size: 12px; font-weight: 600; color: var(--teal-600); }
+  .status-dot { width: 6px; height: 6px; border-radius: 50%; background: var(--teal-400); animation: pulse 2s infinite; }
+  @keyframes pulse { 0%,100%{opacity:1} 50%{opacity:0.4} }
+  .content { padding: 28px 32px; }
+  .metrics-row { display: grid; grid-template-columns: repeat(auto-fit, minmax(160px, 1fr)); gap: 16px; margin-bottom: 28px; }
+  .metric-card { background: white; border: 1px solid var(--slate-200); border-radius: var(--r-lg); padding: 20px; }
+  .metric-label { font-size: 11.5px; font-weight: 600; text-transform: uppercase; letter-spacing: 0.5px; color: var(--slate-400); margin-bottom: 10px; }
+  .metric-value { font-size: 26px; font-weight: 700; color: var(--slate-900); }
   .metric-value.teal { color: var(--teal-600); }
-  .metric-value.amber { color: var(--amber-600); }
   .metric-value.red { color: var(--red-600); }
-
-  .metric-change {
-    font-size: 12px;
-    color: var(--slate-400);
-    display: flex;
-    align-items: center;
-    gap: 4px;
-  }
-
-  .metric-change.up { color: var(--teal-600); }
-  .metric-change.down { color: var(--red-600); }
-
-  /* ── INFO STRIP ── */
-  .info-strip {
-    background: white;
-    border: 1px solid var(--slate-200);
-    border-radius: var(--r-lg);
-    padding: 18px 24px;
-    margin-bottom: 28px;
-    display: flex;
-    flex-wrap: wrap;
-    gap: 0;
-  }
-
-  .info-cell {
-    flex: 1;
-    min-width: 140px;
-    padding: 4px 24px 4px 0;
-    border-right: 1px solid var(--slate-200);
-    margin-right: 24px;
-  }
-
+  .info-strip { background: white; border: 1px solid var(--slate-200); border-radius: var(--r-lg); padding: 18px 24px; margin-bottom: 28px; display: flex; flex-wrap: wrap; }
+  .info-cell { flex: 1; min-width: 140px; padding: 4px 24px 4px 0; border-right: 1px solid var(--slate-200); margin-right: 24px; }
   .info-cell:last-child { border-right: none; margin-right: 0; }
-
-  .info-label {
-    font-size: 11px;
-    font-weight: 600;
-    text-transform: uppercase;
-    letter-spacing: 0.5px;
-    color: var(--slate-400);
-    margin-bottom: 4px;
-  }
-
-  .info-val {
-    font-size: 14px;
-    font-weight: 600;
-    color: var(--slate-800);
-    font-family: var(--mono);
-  }
-
-  .copy-chip {
-    display: inline-flex;
-    align-items: center;
-    gap: 3px;
-    background: var(--slate-100);
-    border: 1px solid var(--slate-200);
-    border-radius: 99px;
-    padding: 2px 8px;
-    font-size: 10px;
-    font-weight: 500;
-    color: var(--slate-500);
-    cursor: pointer;
-    margin-top: 5px;
-    transition: all 0.15s;
-  }
-
-  .copy-chip:hover { background: var(--teal-50); color: var(--teal-600); border-color: var(--teal-100); }
-
-  /* ── PANELS ── */
-  .panel {
-    background: white;
-    border: 1px solid var(--slate-200);
-    border-radius: var(--r-xl);
-    padding: 24px;
-  }
-
-  .panel-header {
-    display: flex;
-    align-items: center;
-    justify-content: space-between;
-    margin-bottom: 22px;
-    gap: 16px;
-    flex-wrap: wrap;
-  }
-
-  .panel-title {
-    font-size: 15px;
-    font-weight: 600;
-    color: var(--slate-900);
-    letter-spacing: -0.2px;
-  }
-
-  .panel-subtitle { font-size: 12px; color: var(--slate-400); margin-top: 2px; }
-
-  /* ── TABS ── */
-  .tab-content { display: none; }
-  .tab-content.active { display: block; }
-
-  /* ── FORM ── */
-  .form-grid {
-    display: grid;
-    grid-template-columns: 1fr 1fr;
-    gap: 16px;
-  }
-
+  .info-label { font-size: 11px; font-weight: 600; text-transform: uppercase; letter-spacing: 0.5px; color: var(--slate-400); }
+  .info-val { font-size: 14px; font-weight: 600; color: var(--slate-800); font-family: var(--mono); }
+  .panel { background: white; border: 1px solid var(--slate-200); border-radius: var(--r-xl); padding: 24px; margin-bottom: 20px; }
+  .panel-title { font-size: 15px; font-weight: 600; color: var(--slate-900); margin-bottom: 20px; }
+  .form-grid { display: grid; grid-template-columns: 1fr 1fr; gap: 16px; }
   .form-group { display: flex; flex-direction: column; gap: 6px; }
   .form-group.full { grid-column: 1 / -1; }
-
-  label {
-    font-size: 12.5px;
-    font-weight: 600;
-    color: var(--slate-600);
-    letter-spacing: 0.1px;
-  }
-
-  input, select {
-    padding: 10px 14px;
-    border-radius: var(--r-md);
-    border: 1.5px solid var(--slate-200);
-    font-family: var(--font);
-    font-size: 14px;
-    color: var(--slate-800);
-    background: white;
-    transition: border 0.15s, box-shadow 0.15s;
-    width: 100%;
-  }
-
-  input:focus, select:focus {
-    outline: none;
-    border-color: var(--teal-200);
-    box-shadow: 0 0 0 3px rgba(29,158,117,0.12);
-  }
-
-  input::placeholder { color: var(--slate-400); }
-
-  .commission-preview {
-    background: var(--teal-50);
-    border: 1px solid var(--teal-100);
-    border-radius: var(--r-md);
-    padding: 14px 18px;
-    display: flex;
-    align-items: center;
-    justify-content: space-between;
-    margin-top: 4px;
-  }
-
-  .commission-label { font-size: 12px; color: var(--teal-600); font-weight: 500; }
-  .commission-amount { font-size: 20px; font-weight: 700; color: var(--teal-600); font-family: var(--mono); }
-
-  /* ── BUTTONS ── */
-  .btn {
-    display: inline-flex;
-    align-items: center;
-    gap: 7px;
-    padding: 10px 20px;
-    border-radius: 99px;
-    font-family: var(--font);
-    font-size: 13.5px;
-    font-weight: 600;
-    cursor: pointer;
-    border: none;
-    transition: all 0.15s;
-    text-decoration: none;
-  }
-
-  .btn-primary {
-    background: var(--teal-400);
-    color: white;
-  }
+  label { font-size: 12.5px; font-weight: 600; color: var(--slate-600); }
+  input, select { padding: 10px 14px; border-radius: var(--r-md); border: 1.5px solid var(--slate-200); font-family: var(--font); font-size: 14px; color: var(--slate-800); background: white; width: 100%; }
+  input:focus, select:focus { outline: none; border-color: var(--teal-200); box-shadow: 0 0 0 3px rgba(29,158,117,0.12); }
+  .btn { display: inline-flex; align-items: center; gap: 7px; padding: 10px 20px; border-radius: 99px; font-family: var(--font); font-size: 13.5px; font-weight: 600; cursor: pointer; border: none; text-decoration: none; }
+  .btn-primary { background: var(--teal-400); color: white; }
   .btn-primary:hover { background: var(--teal-600); }
-
-  .btn-secondary {
-    background: var(--slate-100);
-    color: var(--slate-700);
-    border: 1px solid var(--slate-200);
-  }
-  .btn-secondary:hover { background: var(--slate-200); }
-
-  .btn-danger { background: var(--red-50); color: var(--red-600); border: 1px solid #f7c1c1; }
-  .btn-danger:hover { background: #f7c1c1; }
-
+  .btn-secondary { background: var(--slate-100); color: var(--slate-700); border: 1px solid var(--slate-200); }
   .btn-sm { padding: 6px 14px; font-size: 12px; }
-
-  /* ── TABLE ── */
-  .table-wrap { overflow-x: auto; border-radius: var(--r-md); border: 1px solid var(--slate-200); }
-
-  table { width: 100%; border-collapse: collapse; min-width: 580px; }
-
-  thead tr { background: var(--slate-50); }
-
-  th {
-    padding: 10px 14px;
-    text-align: left;
-    font-size: 11px;
-    font-weight: 700;
-    letter-spacing: 0.5px;
-    text-transform: uppercase;
-    color: var(--slate-400);
-    border-bottom: 1px solid var(--slate-200);
-  }
-
-  td {
-    padding: 12px 14px;
-    font-size: 13.5px;
-    border-bottom: 1px solid var(--slate-100);
-    color: var(--slate-700);
-  }
-
-  tr:last-child td { border-bottom: none; }
-  tbody tr:hover { background: var(--slate-50); }
-
-  /* ── BADGES ── */
-  .badge {
-    display: inline-flex;
-    align-items: center;
-    gap: 5px;
-    padding: 3px 10px;
-    border-radius: 99px;
-    font-size: 11.5px;
-    font-weight: 600;
-  }
-
-  .badge::before { content: ''; width: 5px; height: 5px; border-radius: 50%; }
-
-  .badge-active { background: var(--teal-50); color: var(--teal-800); border: 1px solid var(--teal-100); }
-  .badge-active::before { background: var(--teal-400); }
-
-  .badge-expired { background: var(--red-50); color: var(--red-600); border: 1px solid #f7c1c1; }
-  .badge-expired::before { background: var(--red-400); }
-
-  .badge-pending { background: var(--amber-50); color: var(--amber-600); border: 1px solid #fac775; }
-  .badge-pending::before { background: var(--amber-400); }
-
-  .badge-banned { background: #f1f5f9; color: var(--slate-500); border: 1px solid var(--slate-300); }
-  .badge-banned::before { background: var(--slate-400); }
-
-  /* ── NOTICE BANNERS ── */
-  .notice {
-    border-radius: var(--r-md);
-    padding: 12px 16px;
-    margin-bottom: 20px;
-    font-size: 13.5px;
-    font-weight: 500;
-    display: none;
-  }
-
-  .notice-success { background: var(--teal-50); color: var(--teal-800); border-left: 3px solid var(--teal-400); }
-  .notice-error { background: var(--red-50); color: var(--red-600); border-left: 3px solid var(--red-400); }
-
-  /* ── SEARCH + FILTER ROW ── */
-  .controls-row {
-    display: flex;
-    flex-wrap: wrap;
-    gap: 10px;
-    margin-bottom: 20px;
-    align-items: center;
-  }
-
-  .search-input {
-    flex: 1;
-    min-width: 180px;
-    max-width: 340px;
-    position: relative;
-  }
-
+  table { width: 100%; border-collapse: collapse; }
+  th { padding: 10px 14px; text-align: left; font-size: 11px; font-weight: 700; text-transform: uppercase; color: var(--slate-400); background: var(--slate-50); border-bottom: 1px solid var(--slate-200); }
+  td { padding: 12px 14px; font-size: 13.5px; border-bottom: 1px solid var(--slate-100); color: var(--slate-700); }
+  .badge { display: inline-flex; align-items: center; gap: 5px; padding: 3px 10px; border-radius: 99px; font-size: 11.5px; font-weight: 600; }
+  .badge-active { background: var(--teal-50); color: var(--teal-800); }
+  .badge-expired { background: var(--red-50); color: var(--red-600); }
+  .notice { border-radius: var(--r-md); padding: 12px 16px; margin-bottom: 20px; font-size: 13.5px; display: none; }
+  .notice-success { background: var(--teal-50); color: var(--teal-800); border-left: 3px solid var(--teal-400); display: block; }
+  .notice-error { background: var(--red-50); color: var(--red-600); border-left: 3px solid var(--red-400); display: block; }
+  .tab-content { display: none; }
+  .tab-content.active { display: block; }
+  .controls-row { display: flex; flex-wrap: wrap; gap: 10px; margin-bottom: 20px; align-items: center; }
+  .search-input { flex: 1; min-width: 180px; max-width: 340px; }
   .search-input input { padding-left: 36px; }
-
-  .search-icon {
-    position: absolute;
-    left: 12px;
-    top: 50%;
-    transform: translateY(-50%);
-    color: var(--slate-400);
-    font-size: 15px;
-    pointer-events: none;
-  }
-
-  .filter-chips { display: flex; gap: 6px; flex-wrap: wrap; }
-
-  .chip {
-    padding: 6px 14px;
-    border-radius: 99px;
-    border: 1.5px solid var(--slate-200);
-    background: white;
-    font-size: 12.5px;
-    font-weight: 600;
-    color: var(--slate-500);
-    cursor: pointer;
-    transition: all 0.15s;
-  }
-
-  .chip:hover { border-color: var(--teal-200); color: var(--teal-600); }
-  .chip.active { background: var(--teal-400); color: white; border-color: var(--teal-400); }
-
-  /* ── PAGINATION ── */
-  .pagination {
-    display: flex;
-    align-items: center;
-    justify-content: space-between;
-    padding-top: 16px;
-    margin-top: 4px;
-  }
-
-  .page-info { font-size: 12px; color: var(--slate-400); }
-
-  .page-btns { display: flex; gap: 6px; }
-
-  .page-btn {
-    width: 32px; height: 32px;
-    border-radius: var(--r-sm);
-    border: 1.5px solid var(--slate-200);
-    background: white;
-    display: flex; align-items: center; justify-content: center;
-    font-size: 13px;
-    font-weight: 600;
-    color: var(--slate-600);
-    cursor: pointer;
-    transition: all 0.15s;
-  }
-
-  .page-btn:hover:not(:disabled) { border-color: var(--teal-200); color: var(--teal-600); }
-  .page-btn:disabled { opacity: 0.35; cursor: default; }
-
-  /* ── MODAL ── */
-  .modal-overlay {
-    display: none;
-    position: fixed;
-    inset: 0;
-    background: rgba(15,23,42,0.55);
-    backdrop-filter: blur(4px);
-    z-index: 999;
-    align-items: center;
-    justify-content: center;
-  }
-
-  .modal-overlay.open { display: flex; }
-
-  .modal-box {
-    background: white;
-    border-radius: var(--r-xl);
-    padding: 28px;
-    width: 90%;
-    max-width: 480px;
-    position: relative;
-    animation: modalIn 0.2s ease;
-  }
-
-  @keyframes modalIn {
-    from { opacity: 0; transform: scale(0.96) translateY(8px); }
-    to { opacity: 1; transform: scale(1) translateY(0); }
-  }
-
-  .modal-close {
-    position: absolute;
-    right: 20px; top: 18px;
-    width: 28px; height: 28px;
-    border-radius: 50%;
-    border: none;
-    background: var(--slate-100);
-    font-size: 16px;
-    cursor: pointer;
-    display: flex; align-items: center; justify-content: center;
-    color: var(--slate-500);
-    transition: all 0.15s;
-  }
-  .modal-close:hover { background: var(--slate-200); }
-
-  .modal-title { font-size: 17px; font-weight: 700; color: var(--slate-900); margin-bottom: 20px; }
-
-  .detail-row {
-    display: flex;
-    justify-content: space-between;
-    align-items: center;
-    padding: 10px 0;
-    border-bottom: 1px solid var(--slate-100);
-  }
-  .detail-row:last-child { border-bottom: none; }
-  .detail-key { font-size: 12px; color: var(--slate-400); font-weight: 500; }
-  .detail-val { font-size: 13.5px; font-weight: 600; color: var(--slate-800); font-family: var(--mono); }
-
-  /* ── SPINNER ── */
-  .spinner {
-    display: inline-block;
-    width: 16px; height: 16px;
-    border: 2px solid rgba(255,255,255,0.35);
-    border-top-color: white;
-    border-radius: 50%;
-    animation: spin 0.7s linear infinite;
-  }
-  @keyframes spin { to { transform: rotate(360deg); } }
-
-  /* ── EMPTY STATE ── */
-  .empty-state {
-    text-align: center;
-    padding: 56px 24px;
-    color: var(--slate-400);
-  }
-
-  .empty-icon { font-size: 40px; margin-bottom: 12px; opacity: 0.5; }
-  .empty-title { font-size: 15px; font-weight: 600; color: var(--slate-500); margin-bottom: 4px; }
-  .empty-desc { font-size: 13px; }
-
-  /* ── EARNINGS GRID ── */
-  .earnings-highlights {
-    display: grid;
-    grid-template-columns: repeat(auto-fit, minmax(160px, 1fr));
-    gap: 14px;
-    margin-bottom: 24px;
-  }
-
-  .earn-card {
-    background: var(--slate-50);
-    border: 1px solid var(--slate-200);
-    border-radius: var(--r-md);
-    padding: 16px;
-  }
-
-  .earn-label { font-size: 11px; font-weight: 600; text-transform: uppercase; letter-spacing: 0.5px; color: var(--slate-400); margin-bottom: 6px; }
-  .earn-val { font-size: 22px; font-weight: 700; color: var(--slate-900); font-family: var(--mono); }
-
-  /* ── HINT BOX ── */
-  .hint-box {
-    background: var(--slate-50);
-    border: 1px solid var(--slate-200);
-    border-radius: var(--r-md);
-    padding: 12px 16px;
-    display: flex;
-    gap: 10px;
-    align-items: flex-start;
-    margin-top: 20px;
-    font-size: 12.5px;
-    color: var(--slate-500);
-    line-height: 1.6;
-  }
-
-  .hint-icon { font-size: 15px; flex-shrink: 0; margin-top: 1px; }
-
-  /* ── MOBILE MENU ── */
-  .mobile-toggle {
-    display: none;
-    background: none;
-    border: none;
-    font-size: 22px;
-    cursor: pointer;
-    color: var(--slate-800);
-    margin-right: 8px;
-  }
-
-  .overlay-close {
-    display: none;
-    position: fixed;
-    inset: 0;
-    z-index: 99;
-    background: rgba(0,0,0,0.3);
-  }
-
-  @media (max-width: 768px) {
-    .sidebar { transform: translateX(-100%); }
-    .sidebar.open { transform: translateX(0); }
-    .main { margin-left: 0; }
-    .mobile-toggle { display: flex; }
-    .overlay-close.open { display: block; }
-    .content { padding: 20px 16px; }
-    .topbar { padding: 12px 16px; }
-    .form-grid { grid-template-columns: 1fr; }
-    .metrics-row { grid-template-columns: 1fr 1fr; }
-    .info-cell { border-right: none; padding-right: 0; margin-right: 0; min-width: 120px; }
-  }
+  .hint-box { background: var(--slate-50); border: 1px solid var(--slate-200); border-radius: var(--r-md); padding: 12px 16px; margin-top: 20px; font-size: 12.5px; color: var(--slate-500); display: flex; gap: 10px; }
+  .limit-info { background: var(--amber-50); border: 1px solid #fac775; border-radius: var(--r-md); padding: 12px 16px; margin-bottom: 16px; font-size: 13px; font-weight: 600; color: var(--amber-600); }
+  @media (max-width: 768px) { .main { margin-left: 0; } .content { padding: 20px 16px; } .form-grid { grid-template-columns: 1fr; } }
 </style>
 </head>
 <body>
-
-<!-- Sidebar -->
-<aside class="sidebar" id="sidebar">
+<aside class="sidebar">
   <div class="sidebar-brand">
-    <div class="brand-logo">
-      <div class="brand-icon">🐬</div>
-      <div>
-        <div class="brand-name">Dolphin Hub</div>
-        <div class="brand-tier">Reseller Portal</div>
-      </div>
-    </div>
+    <div class="brand-logo"><div class="brand-icon">🐬</div><div><div class="brand-name">Dolphin Hub</div><div class="brand-tier">Reseller Portal</div></div></div>
   </div>
-
   <nav class="sidebar-nav">
     <div class="nav-section-label">Main</div>
-
-    <button class="nav-item active" onclick="switchTab('activate-tab', this)">
-      <span class="icon">⚡</span> Activate Client
-    </button>
-    <button class="nav-item" onclick="switchTab('clients-tab', this)">
-      <span class="icon">👥</span> My Clients
-    </button>
-    <button class="nav-item" onclick="switchTab('pending-tab', this)">
-      <span class="icon">⏳</span> Pending
-      <span class="nav-badge" id="pendingBadge">0</span>
-    </button>
-
-    <div class="nav-section-label">Finance</div>
-
-    <button class="nav-item" onclick="switchTab('earnings-tab', this)">
-      <span class="icon">💰</span> Earnings
-    </button>
-    <button class="nav-item" onclick="switchTab('history-tab', this)">
-      <span class="icon">📋</span> History
-    </button>
+    <button class="nav-item active" onclick="switchTab('activate-tab', this)"><span class="icon">⚡</span> Activate Client</button>
+    <button class="nav-item" onclick="switchTab('clients-tab', this)"><span class="icon">👥</span> My Clients</button>
   </nav>
-
   <div class="sidebar-footer">
     <div class="user-info">
       <div class="avatar" id="userAvatar">R</div>
-      <div class="user-meta">
-        <div class="user-name" id="sidebarName">Reseller</div>
-        <div class="user-role">Professional Tier</div>
-      </div>
-      <a href="/logout" class="logout-link" title="Logout">↩</a>
+      <div class="user-meta"><div class="user-name" id="sidebarName">Reseller</div><div class="user-role" id="resellerLimit">—</div></div>
+      <a href="/logout" class="logout-link">↩</a>
     </div>
   </div>
 </aside>
-
-<div class="overlay-close" id="overlayClose" onclick="closeSidebar()"></div>
-
-<!-- Main -->
 <main class="main">
   <div class="topbar">
-    <div style="display:flex; align-items:center; gap:4px;">
-      <button class="mobile-toggle" onclick="openSidebar()">☰</button>
-      <div>
-        <div class="page-title" id="pageTitle">Activate Client</div>
-        <div class="page-subtitle" id="pageSubtitle">Submit a new 1-PC hardware-locked license request</div>
-      </div>
-    </div>
-    <div class="topbar-right">
-      <div class="status-pill">
-        <div class="status-dot"></div>
-        <span>Active</span>
-      </div>
-      <span style="font-size:13px; color:var(--slate-400); font-weight:500;" id="topbarId">—</span>
-    </div>
+    <div><div class="page-title" id="pageTitle">Activate Client</div><div class="page-subtitle">Direct activation · No admin approval needed</div></div>
+    <div class="topbar-right"><div class="status-pill"><div class="status-dot"></div><span>Active</span></div></div>
   </div>
-
   <div class="content">
-    <!-- Reseller Info Strip -->
-    <div class="info-strip" id="infoStrip">
-      <div class="info-cell">
-        <div class="info-label">Reseller ID</div>
-        <div class="info-val" id="resellerId">—</div>
-      </div>
-      <div class="info-cell">
-        <div class="info-label">Admission No.</div>
-        <div class="info-val" id="admissionNumber">—</div>
-        <button class="copy-chip" onclick="copyText(document.getElementById('admissionNumber').innerText)">⎘ Copy</button>
-      </div>
-      <div class="info-cell">
-        <div class="info-label">Email</div>
-        <div class="info-val" id="resellerEmail">—</div>
-      </div>
-      <div class="info-cell">
-        <div class="info-label">Commission</div>
-        <div class="info-val" id="commissionRate">15%</div>
-      </div>
-      <div class="info-cell">
-        <div class="info-label">Credits</div>
-        <div class="info-val" id="creditsBalance">0</div>
-      </div>
-      <div class="info-cell">
-        <div class="info-label">Country</div>
-        <div class="info-val" id="resellerCountry">—</div>
-      </div>
+    <div class="info-strip">
+      <div class="info-cell"><div class="info-label">Reseller</div><div class="info-val" id="resellerName">—</div></div>
+      <div class="info-cell"><div class="info-label">Email</div><div class="info-val" id="resellerEmail">—</div></div>
+      <div class="info-cell"><div class="info-label">Commission</div><div class="info-val" id="commissionRate">15%</div></div>
+      <div class="info-cell"><div class="info-label">Credits</div><div class="info-val" id="creditsBalance">0</div></div>
+      <div class="info-cell"><div class="info-label">Activations</div><div class="info-val" id="activationCount">0/10</div></div>
     </div>
 
-    <!-- Metrics Row -->
     <div class="metrics-row">
-      <div class="metric-card">
-        <div class="metric-label">Total Clients</div>
-        <div class="metric-value" id="totalClientsStat">0</div>
-        <div class="metric-change">All time</div>
-      </div>
-      <div class="metric-card">
-        <div class="metric-label">Active Licenses</div>
-        <div class="metric-value teal" id="activeLicensesStat">0</div>
-        <div class="metric-change up">↑ Live now</div>
-      </div>
-      <div class="metric-card">
-        <div class="metric-label">Expired</div>
-        <div class="metric-value red" id="expiredStat">0</div>
-        <div class="metric-change down">Need renewal</div>
-      </div>
-      <div class="metric-card">
-        <div class="metric-label">Pending</div>
-        <div class="metric-value amber" id="pendingApprovalStat">0</div>
-        <div class="metric-change">Awaiting admin</div>
-      </div>
-      <div class="metric-card">
-        <div class="metric-label">Total Earnings</div>
-        <div class="metric-value teal" id="totalEarningsStat">KES 0</div>
-        <div class="metric-change up">All time</div>
-      </div>
-      <div class="metric-card">
-        <div class="metric-label">This Month</div>
-        <div class="metric-value" id="monthEarningsStat">KES 0</div>
-        <div class="metric-change">Current period</div>
-      </div>
+      <div class="metric-card"><div class="metric-label">Total Clients</div><div class="metric-value" id="totalClients">0</div></div>
+      <div class="metric-card"><div class="metric-label">Active Licenses</div><div class="metric-value teal" id="activeLicenses">0</div></div>
+      <div class="metric-card"><div class="metric-label">Expired</div><div class="metric-value red" id="expiredClients">0</div></div>
+      <div class="metric-card"><div class="metric-label">This Month</div><div class="metric-value" id="monthClients">0</div></div>
     </div>
 
-    <!-- TAB: ACTIVATE -->
+    <!-- ACTIVATE TAB -->
     <div id="activate-tab" class="tab-content active">
       <div class="panel">
-        <div class="panel-header">
-          <div>
-            <div class="panel-title">New License Activation</div>
-            <div class="panel-subtitle">1 PC hardware-locked · Requires admin approval</div>
-          </div>
-        </div>
-
-        <div id="activateSuccess" class="notice notice-success"></div>
-        <div id="activateError" class="notice notice-error"></div>
-
+        <div class="panel-title">⚡ Direct License Activation</div>
+        <div class="limit-info" id="limitInfo">Activations used: <span id="usedActivations">0</span> / <span id="maxActivations">10</span></div>
+        <div id="activateSuccess" class="notice notice-success" style="display:none;"></div>
+        <div id="activateError" class="notice notice-error" style="display:none;"></div>
         <form id="activationForm">
           <div class="form-grid">
-            <div class="form-group">
-              <label>Full Name *</label>
-              <input type="text" id="clientName" placeholder="John Doe" required>
-            </div>
-            <div class="form-group">
-              <label>Email Address *</label>
-              <input type="email" id="clientEmail" placeholder="client@example.com" required>
-            </div>
-            <div class="form-group">
-              <label>Phone Number</label>
-              <input type="text" id="clientPhone" placeholder="+254 700 000 000">
-            </div>
-            <div class="form-group">
-              <label>Country *</label>
-              <select id="clientCountry">
-                <option value="Kenya">🇰🇪 Kenya</option>
-                <option value="Nigeria">🇳🇬 Nigeria</option>
-                <option value="South Africa">🇿🇦 South Africa</option>
-                <option value="Global">🌍 Global</option>
-              </select>
-            </div>
-            <div class="form-group">
-              <label>License Plan *</label>
-              <select id="activationPlan" required>
-                <option value="">— Select duration —</option>
-                <option value="24_hours">24 Hours — KES 150</option>
-                <option value="2_days">2 Days — KES 250</option>
-                <option value="1_week">1 Week — KES 500</option>
-                <option value="1_month">1 Month — KES 1,500</option>
-                <option value="3_months">3 Months — KES 3,500</option>
-                <option value="6_months">6 Months — KES 6,000</option>
-                <option value="1_year">1 Year — KES 10,000</option>
-              </select>
-            </div>
-            <div class="form-group">
-              <label>Payment Method</label>
-              <select id="paymentMethod">
-                <option>M-PESA</option>
-                <option>Bank Transfer</option>
-                <option>Cash</option>
-              </select>
-            </div>
-            <div class="form-group full">
-              <label>M-PESA / Payment Reference</label>
-              <input type="text" id="paymentRef" placeholder="Enter transaction code">
-            </div>
+            <div class="form-group"><label>Full Name *</label><input type="text" id="clientName" required></div>
+            <div class="form-group"><label>Email *</label><input type="email" id="clientEmail" required></div>
+            <div class="form-group"><label>Country</label><select id="clientCountry"><option>Kenya</option><option>Nigeria</option><option>South Africa</option><option>Global</option></select></div>
+            <div class="form-group"><label>License Plan *</label><select id="activationPlan" required onchange="updateDeviceInfo()">
+              <option value="">— Select —</option>
+              <option value="12hr">12 Hours · 1 Device</option>
+              <option value="3_months">3 Months · 10 Devices</option>
+              <option value="6_months">6 Months · 20 Devices</option>
+              <option value="1_year">1 Year · 45 Devices</option>
+            </select></div>
           </div>
-
-          <div class="commission-preview">
-            <div>
-              <div class="commission-label">Your estimated commission</div>
-              <div style="font-size:11px; color:var(--teal-600); margin-top:2px;">Based on 15% rate · Credited after admin approval</div>
-            </div>
-            <div class="commission-amount" id="commissionPreview">KES 0</div>
-          </div>
-
-          <div style="margin-top:20px;">
-            <button type="submit" class="btn btn-primary">Submit Activation Request</button>
-          </div>
+          <div style="margin-top:20px;"><button type="submit" class="btn btn-primary">Activate License Now</button></div>
         </form>
-
-        <div class="hint-box">
-          <span class="hint-icon">🔒</span>
-          <span>This license is hardware-locked to 1 PC. The activation request is reviewed by an admin before the license is issued. A temporary password will be emailed to the client upon approval.</span>
-        </div>
+        <div class="hint-box"><span>🔒</span><span>License is hardware-locked. Device limits are fixed per plan. Activation is immediate — no admin approval required.</span></div>
       </div>
     </div>
 
-    <!-- TAB: CLIENTS -->
+    <!-- CLIENTS TAB -->
     <div id="clients-tab" class="tab-content">
       <div class="panel">
-        <div class="panel-header">
-          <div>
-            <div class="panel-title">Client Directory</div>
-            <div class="panel-subtitle">All clients registered under your account</div>
-          </div>
-        </div>
-
+        <div class="panel-title">👥 My Clients</div>
         <div class="controls-row">
-          <div class="search-input" style="position:relative;">
-            <span class="search-icon">🔍</span>
-            <input type="text" id="clientSearchInput" placeholder="Search by name or admission…">
-          </div>
-          <div class="filter-chips">
-            <button class="chip active" onclick="filterClients('all', this)">All</button>
-            <button class="chip" onclick="filterClients('active', this)">Active</button>
-            <button class="chip" onclick="filterClients('expired', this)">Expired</button>
-          </div>
+          <div class="search-input"><input type="text" id="clientSearchInput" placeholder="Search..."></div>
+          <button class="btn btn-primary btn-sm" onclick="searchClients()">🔍</button>
           <button class="btn btn-secondary btn-sm" onclick="clearSearch()">Clear</button>
-          <button class="btn btn-primary btn-sm" onclick="searchClients()">Search</button>
         </div>
-
-        <div id="clientsListContainer">
-          <div class="empty-state">
-            <div class="empty-icon">👥</div>
-            <div class="empty-title">Loading clients…</div>
-          </div>
-        </div>
-
-        <div class="pagination">
-          <div class="page-info" id="pageInfo">0 records</div>
-          <div class="page-btns">
-            <button class="page-btn" id="prevPageBtn" disabled>←</button>
-            <button class="page-btn" id="nextPageBtn" disabled>→</button>
-          </div>
-        </div>
-      </div>
-    </div>
-
-    <!-- TAB: PENDING -->
-    <div id="pending-tab" class="tab-content">
-      <div class="panel">
-        <div class="panel-header">
-          <div>
-            <div class="panel-title">Pending Approval</div>
-            <div class="panel-subtitle">Requests awaiting admin review</div>
-          </div>
-        </div>
-        <div id="pendingListContainer">
-          <div class="empty-state">
-            <div class="empty-icon">⏳</div>
-            <div class="empty-title">Loading requests…</div>
-          </div>
-        </div>
-      </div>
-    </div>
-
-    <!-- TAB: EARNINGS -->
-    <div id="earnings-tab" class="tab-content">
-      <div class="panel">
-        <div class="panel-header">
-          <div>
-            <div class="panel-title">Commission & Earnings</div>
-            <div class="panel-subtitle">Your commission history and payout summary</div>
-          </div>
-        </div>
-        <div class="earnings-highlights">
-          <div class="earn-card"><div class="earn-label">Total Earned</div><div class="earn-val" id="totalEarningsNum">KES 0</div></div>
-          <div class="earn-card"><div class="earn-label">This Month</div><div class="earn-val" id="monthEarningsNum">KES 0</div></div>
-          <div class="earn-card"><div class="earn-label">Pending Payout</div><div class="earn-val" id="pendingCommission">KES 0</div></div>
-        </div>
-        <div id="earningsTableArea">
-          <div class="empty-state">
-            <div class="empty-icon">💰</div>
-            <div class="empty-title">Loading transactions…</div>
-          </div>
-        </div>
-      </div>
-    </div>
-
-    <!-- TAB: HISTORY -->
-    <div id="history-tab" class="tab-content">
-      <div class="panel">
-        <div class="panel-header">
-          <div>
-            <div class="panel-title">Activation History</div>
-            <div class="panel-subtitle">All completed activations</div>
-          </div>
-        </div>
-        <div id="historyLog">
-          <div class="empty-state">
-            <div class="empty-icon">📋</div>
-            <div class="empty-title">Loading history…</div>
-          </div>
-        </div>
+        <div id="clientsList"><p>Loading...</p></div>
       </div>
     </div>
   </div>
 </main>
-
-<!-- Modal -->
-<div class="modal-overlay" id="clientModal">
-  <div class="modal-box">
-    <button class="modal-close" onclick="closeModal()">✕</button>
-    <div class="modal-title" id="modalTitle">Client Details</div>
-    <div id="modalBody"></div>
-  </div>
-</div>
-
 <script>
-  const PRICES = { '24_hours': 150, '2_days': 250, '1_week': 500, '1_month': 1500, '3_months': 3500, '6_months': 6000, '1_year': 10000 };
-  let currentFilter = 'all', searchTerm = '', currentPage = 1;
-  const rowsPerPage = 10;
-  let clientsData = [], pendingData = [], earningsData = [], historyData = [];
-  let totalRecords = 0, totalPages = 1;
-
-  const pageTitles = {
-    'activate-tab': ['Activate Client', 'Submit a new 1-PC hardware-locked license request'],
-    'clients-tab': ['My Clients', 'All clients registered under your account'],
-    'pending-tab': ['Pending Approval', 'Requests awaiting admin review'],
-    'earnings-tab': ['Earnings', 'Your commission and payout summary'],
-    'history-tab': ['Activation History', 'Completed activations log']
-  };
-
+  function showNotice(id, msg) { const el = document.getElementById(id); el.innerText = msg; el.style.display = 'block'; setTimeout(() => el.style.display = 'none', 5000); }
+  function esc(s) { return String(s||'').replace(/[&<>]/g, c => ({'&':'&amp;','<':'&lt;','>':'&gt;'}[c])); }
+  
   function switchTab(tabId, btn) {
     document.querySelectorAll('.tab-content').forEach(t => t.classList.remove('active'));
     document.getElementById(tabId).classList.add('active');
     document.querySelectorAll('.nav-item').forEach(b => b.classList.remove('active'));
     if (btn) btn.classList.add('active');
-    const [title, sub] = pageTitles[tabId] || ['Dashboard', ''];
-    document.getElementById('pageTitle').innerText = title;
-    document.getElementById('pageSubtitle').innerText = sub;
-    if (tabId === 'clients-tab') fetchClients();
-    if (tabId === 'pending-tab') fetchPendingApprovals();
-    if (tabId === 'earnings-tab') fetchEarnings();
-    if (tabId === 'history-tab') fetchHistory();
-    closeSidebar();
+    document.getElementById('pageTitle').innerText = tabId === 'activate-tab' ? 'Activate Client' : 'My Clients';
+    document.getElementById('pageSubtitle').innerText = tabId === 'activate-tab' ? 'Direct activation · No approval needed' : 'All clients registered under your account';
+    if (tabId === 'clients-tab') loadClients();
   }
 
-  function openSidebar() {
-    document.getElementById('sidebar').classList.add('open');
-    document.getElementById('overlayClose').classList.add('open');
-  }
-  function closeSidebar() {
-    document.getElementById('sidebar').classList.remove('open');
-    document.getElementById('overlayClose').classList.remove('open');
-  }
-
-  async function fetchDashboardData() {
+  async function loadDashboard() {
     try {
-      const r = await fetch('/api/reseller/dashboard', { credentials: 'same-origin', headers: {'X-Requested-With':'XMLHttpRequest'} });
-      if (!r.ok) return;
+      const r = await fetch('/api/reseller/dashboard', { credentials: 'same-origin' });
       const d = await r.json();
       if (!d.success) return;
-      const name = d.username || 'Reseller';
-      document.getElementById('sidebarName').innerText = name;
-      document.getElementById('userAvatar').innerText = name.charAt(0).toUpperCase();
-      document.getElementById('resellerId').innerText = d.reseller_id || '—';
-      document.getElementById('topbarId').innerText = 'ID: ' + (d.reseller_id || '—');
-      document.getElementById('admissionNumber').innerText = d.admission_number || '—';
+      document.getElementById('sidebarName').innerText = d.username || 'Reseller';
+      document.getElementById('userAvatar').innerText = (d.username||'R').charAt(0).toUpperCase();
+      document.getElementById('resellerName').innerText = d.username || '—';
       document.getElementById('resellerEmail').innerText = d.email || '—';
-      document.getElementById('resellerCountry').innerText = d.country || '—';
       document.getElementById('commissionRate').innerText = (d.commission_rate || 15) + '%';
       document.getElementById('creditsBalance').innerText = d.credits || 0;
-      document.getElementById('totalClientsStat').innerText = d.total_clients || 0;
-      document.getElementById('activeLicensesStat').innerText = d.active_clients || 0;
-      document.getElementById('expiredStat').innerText = d.expired_clients || 0;
-      document.getElementById('totalEarningsStat').innerText = 'KES ' + (d.total_earnings || 0).toLocaleString();
-      document.getElementById('monthEarningsStat').innerText = 'KES ' + (d.this_month_earnings || 0).toLocaleString();
-    } catch(e) { console.error(e); }
-  }
-
-  async function fetchClients() {
-    document.getElementById('clientsListContainer').innerHTML = '<div class="empty-state"><div class="empty-icon">👥</div><div class="empty-title">Loading…</div></div>';
-    try {
-      let url = `/api/reseller/clients?page=${currentPage}&limit=${rowsPerPage}&filter=${currentFilter}`;
-      if (searchTerm) url += `&search=${encodeURIComponent(searchTerm)}`;
-      const r = await fetch(url, { credentials: 'same-origin', headers: {'X-Requested-With':'XMLHttpRequest'} });
-      if (!r.ok) throw new Error('fail');
-      const d = await r.json();
-      if (d.success) {
-        clientsData = d.clients || [];
-        totalRecords = d.total || 0;
-        totalPages = Math.max(1, Math.ceil(totalRecords / rowsPerPage));
-        renderClientsTable(clientsData);
-        updatePagination();
-      }
-    } catch(e) {
-      document.getElementById('clientsListContainer').innerHTML = '<div class="empty-state"><div class="empty-icon">⚠️</div><div class="empty-title">Error loading clients</div><div class="empty-desc">Please try again</div></div>';
-    }
-  }
-
-  async function fetchPendingApprovals() {
-    try {
-      const r = await fetch('/api/reseller/pending-requests', { credentials: 'same-origin', headers: {'X-Requested-With':'XMLHttpRequest'} });
-      if (!r.ok) throw new Error('fail');
-      const d = await r.json();
-      if (d.success) {
-        pendingData = d.requests || [];
-        renderPendingTable();
-        document.getElementById('pendingApprovalStat').innerText = pendingData.length;
-        document.getElementById('pendingBadge').innerText = pendingData.length;
-      }
-    } catch(e) {
-      document.getElementById('pendingListContainer').innerHTML = '<div class="empty-state"><div class="empty-icon">⚠️</div><div class="empty-title">Error loading requests</div></div>';
-    }
-  }
-
-  async function fetchEarnings() {
-    try {
-      const r = await fetch('/api/reseller/earnings', { credentials: 'same-origin', headers: {'X-Requested-With':'XMLHttpRequest'} });
-      if (!r.ok) throw new Error('fail');
-      const d = await r.json();
-      if (d.success) {
-        earningsData = d.transactions || [];
-        document.getElementById('totalEarningsNum').innerText = 'KES ' + (d.total_earnings || 0).toLocaleString();
-        document.getElementById('monthEarningsNum').innerText = 'KES ' + (d.this_month || 0).toLocaleString();
-        document.getElementById('pendingCommission').innerText = 'KES ' + (d.pending || 0).toLocaleString();
-        renderEarningsTable();
+      document.getElementById('totalClients').innerText = d.total_clients || 0;
+      document.getElementById('activeLicenses').innerText = d.active_clients || 0;
+      document.getElementById('expiredClients').innerText = d.expired_clients || 0;
+      document.getElementById('monthClients').innerText = d.this_month_clients || 0;
+      // Fetch detailed stats for activation limits
+      const r2 = await fetch('/api/user/profile', { credentials: 'same-origin' });
+      const d2 = await r2.json();
+      if (d2.success) {
+        const used = d2.activations_used || 0;
+        const limit = d2.activation_limit || 10;
+        document.getElementById('activationCount').innerText = `${used}/${limit}`;
+        document.getElementById('usedActivations').innerText = used;
+        document.getElementById('maxActivations').innerText = limit;
+        document.getElementById('resellerLimit').innerText = `${used}/${limit} activations`;
       }
     } catch(e) { console.error(e); }
   }
 
-  async function fetchHistory() {
+  async function loadClients() {
     try {
-      const r = await fetch('/api/reseller/history', { credentials: 'same-origin', headers: {'X-Requested-With':'XMLHttpRequest'} });
-      if (!r.ok) throw new Error('fail');
+      const r = await fetch('/api/reseller/clients?limit=100', { credentials: 'same-origin' });
       const d = await r.json();
-      if (d.success) {
-        historyData = d.history || [];
-        renderHistoryTable();
+      if (d.success && d.clients) {
+        let h = '<table><tr><th>Admission</th><th>Client</th><th>Email</th><th>License</th><th>Expiry</th><th>Devices</th><th>Status</th></tr>';
+        d.clients.forEach(c => {
+          const badge = c.is_banned ? 'badge-expired">Banned' : c.is_active ? 'badge-active">Active' : 'badge-expired">Expired';
+          h += `<tr><td>${esc(c.admission_number)}</td><td style="font-weight:600;">${esc(c.username)}</td><td>${esc(c.email)}</td><td>${esc(c.license_type)}</td><td>${c.license_expiry ? new Date(c.license_expiry).toLocaleDateString() : '—'}</td><td>${c.device_limit||1}</td><td><span class="badge ${badge}</span></td></tr>`;
+        });
+        h += '</table>';
+        document.getElementById('clientsList').innerHTML = h || '<p>No clients yet.</p>';
       }
-    } catch(e) {
-      document.getElementById('historyLog').innerHTML = '<div class="empty-state"><div class="empty-icon">⚠️</div><div class="empty-title">Error loading history</div></div>';
-    }
+    } catch(e) { document.getElementById('clientsList').innerHTML = '<p>Error loading clients.</p>'; }
   }
 
-  function renderClientsTable(clients) {
-    const c = document.getElementById('clientsListContainer');
-    if (!clients.length) {
-      c.innerHTML = '<div class="empty-state"><div class="empty-icon">👥</div><div class="empty-title">No clients found</div><div class="empty-desc">Try adjusting your search or filter</div></div>';
-      return;
-    }
-    let html = '<div class="table-wrap"><table><thead><tr><th>Admission</th><th>Client</th><th>Email</th><th>License</th><th>Expiry</th><th>Status</th><th></th></tr></thead><tbody>';
-    clients.forEach(c => {
-      const badge = c.is_banned ? 'badge-banned">Banned' : c.is_active ? 'badge-active">Active' : 'badge-expired">Expired';
-      html += `<tr>
-        <td style="font-family:var(--mono); font-size:12.5px;">${esc(c.admission_number)}</td>
-        <td style="font-weight:600;">${esc(c.username)}</td>
-        <td style="color:var(--slate-500);">${esc(c.email)}</td>
-        <td>${esc(c.license_type)}</td>
-        <td style="font-family:var(--mono); font-size:12.5px;">${c.license_expiry ? new Date(c.license_expiry).toLocaleDateString('en-GB') : '—'}</td>
-        <td><span class="badge ${badge}</span></td>
-        <td><button class="btn btn-secondary btn-sm" onclick="viewClient(${c.id})">View</button></td>
-      </tr>`;
-    });
-    html += '</tbody></table></div>';
-    document.getElementById('clientsListContainer').innerHTML = html;
-  }
-
-  function renderPendingTable() {
-    const c = document.getElementById('pendingListContainer');
-    if (!pendingData.length) {
-      c.innerHTML = '<div class="empty-state"><div class="empty-icon">✅</div><div class="empty-title">No pending requests</div><div class="empty-desc">All requests have been processed</div></div>';
-      return;
-    }
-    let html = '<div class="table-wrap"><table><thead><tr><th>Date</th><th>Client</th><th>Email</th><th>License</th><th>Amount</th><th>Status</th></tr></thead><tbody>';
-    pendingData.forEach(p => {
-      html += `<tr>
-        <td style="font-family:var(--mono); font-size:12.5px;">${new Date(p.created_at).toLocaleDateString('en-GB')}</td>
-        <td style="font-weight:600;">${esc(p.client_name)}</td>
-        <td style="color:var(--slate-500);">${esc(p.client_email)}</td>
-        <td>${esc(p.license_type)}</td>
-        <td style="font-family:var(--mono);">KES ${(p.amount || 0).toLocaleString()}</td>
-        <td><span class="badge badge-pending">Pending</span></td>
-      </tr>`;
-    });
-    html += '</tbody></table></div>';
-    c.innerHTML = html;
-  }
-
-  function renderEarningsTable() {
-    const c = document.getElementById('earningsTableArea');
-    if (!earningsData.length) {
-      c.innerHTML = '<div class="empty-state"><div class="empty-icon">💰</div><div class="empty-title">No transactions yet</div><div class="empty-desc">Commissions will appear here after approval</div></div>';
-      return;
-    }
-    let html = '<div class="table-wrap"><table><thead><tr><th>Date</th><th>Client</th><th>License</th><th>Amount</th><th>Commission</th><th>Status</th></tr></thead><tbody>';
-    earningsData.forEach(e => {
-      html += `<tr>
-        <td style="font-family:var(--mono); font-size:12.5px;">${new Date(e.date).toLocaleDateString('en-GB')}</td>
-        <td style="font-weight:600;">${esc(e.client_name)}</td>
-        <td>${esc(e.license_type)}</td>
-        <td style="font-family:var(--mono);">KES ${(e.amount || 0).toLocaleString()}</td>
-        <td style="font-family:var(--mono); color:var(--teal-600); font-weight:600;">KES ${(e.commission || 0).toLocaleString()}</td>
-        <td><span class="badge badge-active">Paid</span></td>
-      </tr>`;
-    });
-    html += '</tbody></table></div>';
-    c.innerHTML = html;
-  }
-
-  function renderHistoryTable() {
-    const c = document.getElementById('historyLog');
-    if (!historyData.length) {
-      c.innerHTML = '<div class="empty-state"><div class="empty-icon">📋</div><div class="empty-title">No history yet</div></div>';
-      return;
-    }
-    let html = '<div class="table-wrap"><table><thead><tr><th>Date</th><th>Client</th><th>License</th><th>Amount</th><th>Commission</th></tr></thead><tbody>';
-    historyData.forEach(h => {
-      html += `<tr>
-        <td style="font-family:var(--mono); font-size:12.5px;">${new Date(h.date).toLocaleDateString('en-GB')}</td>
-        <td style="font-weight:600;">${esc(h.client_name)}</td>
-        <td>${esc(h.license_type)}</td>
-        <td style="font-family:var(--mono);">KES ${(h.amount || 0).toLocaleString()}</td>
-        <td style="font-family:var(--mono); color:var(--teal-600); font-weight:600;">KES ${(h.commission || 0).toLocaleString()}</td>
-      </tr>`;
-    });
-    html += '</tbody></table></div>';
-    c.innerHTML = html;
-  }
-
-  function updateCommissionPreview() {
-    const plan = document.getElementById('activationPlan').value;
-    const price = PRICES[plan] || 0;
-    const comm = Math.floor(price * 0.15);
-    document.getElementById('commissionPreview').innerText = 'KES ' + comm.toLocaleString();
-  }
-
-  function updatePagination() {
-    const prev = document.getElementById('prevPageBtn');
-    const next = document.getElementById('nextPageBtn');
-    const info = document.getElementById('pageInfo');
-    prev.disabled = currentPage === 1;
-    next.disabled = currentPage >= totalPages;
-    prev.onclick = () => { if (currentPage > 1) { currentPage--; fetchClients(); } };
-    next.onclick = () => { if (currentPage < totalPages) { currentPage++; fetchClients(); } };
-    const start = (currentPage - 1) * rowsPerPage + 1;
-    const end = Math.min(currentPage * rowsPerPage, totalRecords);
-    info.innerText = totalRecords ? `${start}–${end} of ${totalRecords} records` : '0 records';
-  }
-
-  function viewClient(id) {
-    const c = clientsData.find(x => x.id === id);
-    if (!c) return;
-    document.getElementById('modalTitle').innerText = c.username;
-    const status = c.is_banned ? '<span class="badge badge-banned">Banned</span>' : c.is_active ? '<span class="badge badge-active">Active</span>' : '<span class="badge badge-expired">Expired</span>';
-    document.getElementById('modalBody').innerHTML = `
-      <div class="detail-row"><span class="detail-key">Admission</span><span class="detail-val">${esc(c.admission_number)}</span></div>
-      <div class="detail-row"><span class="detail-key">Email</span><span class="detail-val">${esc(c.email)}</span></div>
-      <div class="detail-row"><span class="detail-key">License</span><span class="detail-val">${esc(c.license_type)}</span></div>
-      <div class="detail-row"><span class="detail-key">Expiry</span><span class="detail-val">${c.license_expiry ? new Date(c.license_expiry).toLocaleDateString('en-GB') : 'N/A'}</span></div>
-      <div class="detail-row"><span class="detail-key">PC Limit</span><span class="detail-val">1 Device</span></div>
-      <div class="detail-row"><span class="detail-key">Status</span>${status}</div>
-    `;
-    document.getElementById('clientModal').classList.add('open');
-  }
-
-  function closeModal() { document.getElementById('clientModal').classList.remove('open'); }
-
-  function filterClients(type, btn) {
-    currentFilter = type; currentPage = 1;
-    document.querySelectorAll('.filter-chips .chip').forEach(c => c.classList.remove('active'));
-    if (btn) btn.classList.add('active');
-    fetchClients();
-  }
-
-  function searchClients() { searchTerm = document.getElementById('clientSearchInput').value.trim(); currentPage = 1; fetchClients(); }
-  function clearSearch() { document.getElementById('clientSearchInput').value = ''; searchTerm = ''; currentPage = 1; fetchClients(); }
-
-  function copyText(text) {
-    if (!text || text === '—') return;
-    navigator.clipboard.writeText(text).then(() => {
-      const el = event.target;
-      const orig = el.innerText;
-      el.innerText = '✓ Copied';
-      el.style.color = 'var(--teal-600)';
-      setTimeout(() => { el.innerText = orig; el.style.color = ''; }, 1800);
-    });
-  }
-
-  function showNotice(id, msg, isErr) {
-    const el = document.getElementById(id);
-    el.className = 'notice ' + (isErr ? 'notice-error' : 'notice-success');
-    el.innerText = msg;
-    el.style.display = 'block';
-    setTimeout(() => el.style.display = 'none', 5000);
-  }
-
-  function esc(s) {
-    if (!s) return '';
-    return String(s).replace(/[&<>]/g, c => ({'&':'&amp;','<':'&lt;','>':'&gt;'}[c]));
-  }
-
-  document.getElementById('activationPlan').addEventListener('change', updateCommissionPreview);
+  function searchClients() { /* implement search */ loadClients(); }
+  function clearSearch() { document.getElementById('clientSearchInput').value = ''; loadClients(); }
 
   document.getElementById('activationForm').addEventListener('submit', async (e) => {
     e.preventDefault();
     const name = document.getElementById('clientName').value.trim();
     const email = document.getElementById('clientEmail').value.trim();
     const plan = document.getElementById('activationPlan').value;
-    if (!name || !email || !plan) { showNotice('activateError', 'Please fill all required fields.', true); return; }
-
-    const btn = e.target.querySelector('button[type="submit"]');
-    btn.disabled = true;
-    btn.innerHTML = '<span class="spinner"></span> Submitting…';
-
+    if (!name || !email || !plan) { showNotice('activateError', '❌ Fill all required fields'); return; }
+    const btn = e.target.querySelector('button');
+    btn.disabled = true; btn.innerHTML = 'Activating…';
     try {
       const r = await fetch('/api/reseller/activate', {
         method: 'POST', credentials: 'same-origin',
-        headers: {'Content-Type':'application/json','X-Requested-With':'XMLHttpRequest'},
-        body: JSON.stringify({
-          full_name: name, email,
-          phone: document.getElementById('clientPhone').value,
-          country: document.getElementById('clientCountry').value,
-          license_type: plan,
-          payment_method: document.getElementById('paymentMethod').value,
-          payment_reference: document.getElementById('paymentRef').value
-        })
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ full_name: name, email, country: document.getElementById('clientCountry').value, license_type: plan })
       });
       const d = await r.json();
       if (d.success) {
-        showNotice('activateSuccess', `✅ Request submitted! Awaiting admin approval. Temp password: ${d.temp_password || 'sent via email'}`, false);
+        showNotice('activateSuccess', `✅ Activated! Password: ${d.temp_password || 'sent via email'}`);
         e.target.reset();
-        updateCommissionPreview();
-        fetchPendingApprovals();
-        fetchDashboardData();
+        loadDashboard();
       } else {
-        showNotice('activateError', d.error || 'Activation failed. Please try again.', true);
+        showNotice('activateError', `❌ ${d.error || 'Failed'}`);
       }
-    } catch {
-      showNotice('activateError', 'Network error. Please check your connection.', true);
-    } finally {
-      btn.disabled = false;
-      btn.innerHTML = 'Submit Activation Request';
-    }
+    } catch { showNotice('activateError', '❌ Network error'); }
+    finally { btn.disabled = false; btn.innerHTML = 'Activate License Now'; }
   });
 
-  document.getElementById('clientModal').addEventListener('click', (e) => {
-    if (e.target === document.getElementById('clientModal')) closeModal();
-  });
-
-  document.addEventListener('keydown', e => { if (e.key === 'Escape') closeModal(); });
-
-  // Init
-  fetchDashboardData();
-  fetchClients();
-  fetchPendingApprovals();
-  fetchEarnings();
-  fetchHistory();
-  updateCommissionPreview();
+  loadDashboard(); loadClients();
 </script>
 </body>
 </html>
