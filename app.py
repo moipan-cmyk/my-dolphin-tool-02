@@ -2129,58 +2129,74 @@ def create_app(config_class=Config):
             'message': f'Command limits reset for {updated} users',
             'users_reset': updated
         })
-
     @app.route('/api/admin/reset-login-attempts', methods=['POST'])
     @login_required
     def admin_reset_login_attempts():
-        """Admin: Reset login attempts for a specific user or IP"""
         if not current_user.is_admin:
             return jsonify({'error': 'Unauthorized'}), 403
-        
+
         data = request.get_json()
         identifier = data.get('identifier')
         user_id = data.get('user_id')
-        
+
         if not identifier and not user_id:
             return jsonify({'error': 'Please provide identifier or user_id'}), 400
-        
-        query = LoginAttempt.query.filter(LoginAttempt.attempt_type == 'login')
+
         user = None
-        
-        if identifier:
-            query = query.filter(LoginAttempt.identifier == identifier)
-            # Try to find user by email or username
+        if user_id:
+            user = User.query.get(user_id)
+            if not user:
+                return jsonify({'error': 'User not found'}), 404
+        elif identifier:
             user = User.query.filter_by(email=identifier).first()
             if not user:
                 user = User.query.filter_by(username=identifier).first()
-        elif user_id:
-            user = User.query.get(user_id)
-            if user:
-                query = query.filter(LoginAttempt.identifier == user.email)
-            else:
-                return jsonify({'error': 'User not found'}), 404
-        
-        deleted_count = query.delete()
-        
-        # Clear suspension if user exists
+
+        deleted_count = 0
+        possible_identifiers = []
+
         if user:
+            possible_identifiers = list(filter(None, [
+                user.email,
+                user.username,
+                str(user.admission_number) if user.admission_number else None,
+            ]))
+
+            for ident in possible_identifiers:
+                count = LoginAttempt.query.filter(
+                    LoginAttempt.identifier == ident,
+                    LoginAttempt.attempt_type == 'login'
+                ).delete(synchronize_session=False)
+                deleted_count += count
+
             user.suspended_until = None
             user.failed_login_count = 0
             db.session.commit()
-            print(f"✅ Suspension cleared for user {user.username}")
-        
-        db.session.commit()
-        
-        log_system_action(current_user.id, 'reset_login_attempts', 
-                         f"Reset login attempts for {identifier or user.email if user else 'unknown'}, deleted: {deleted_count}")
-        
+
+        else:
+            deleted_count = LoginAttempt.query.filter(
+                LoginAttempt.identifier == identifier,
+                LoginAttempt.attempt_type == 'login'
+            ).delete(synchronize_session=False)
+            db.session.commit()
+            possible_identifiers = [identifier]
+
+        log_system_action(
+            current_user.id,
+            'reset_login_attempts',
+            f"Reset login attempts for {user.username if user else identifier}, "
+            f"deleted {deleted_count} records"
+        )
+
         return jsonify({
             'success': True,
-            'message': f'Login attempts reset ({deleted_count} deleted). User suspension cleared.',
+            'message': f'Reset complete. {deleted_count} attempt records deleted. Suspension cleared.',
             'deleted_attempts': deleted_count,
+            'identifiers_checked': possible_identifiers,
             'suspension_cleared': bool(user)
         })
 
+        
     @app.route('/api/admin/debug-user/<string:identifier>', methods=['GET'])
     @login_required
     def debug_user(identifier):
