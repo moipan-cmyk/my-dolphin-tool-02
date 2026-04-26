@@ -60,11 +60,17 @@ class User(UserMixin, db.Model):
     current_session_key = db.Column(db.String(128), nullable=True)
     last_session_key = db.Column(db.String(128), nullable=True)
 
+    # ========== HWID TRACKING (NEW) ==========
+    last_used_hwid_hash = db.Column(db.String(256), nullable=True)  # Track last HWID used
+    hwid_change_count = db.Column(db.Integer, default=0)  # Count of HWID changes
+
     # Relationships
     activator = db.relationship('User', remote_side=[id], backref='activated_clients', foreign_keys=[activated_by])
     devices = db.relationship('Device', backref='user', lazy='dynamic', cascade='all, delete-orphan')
     device_history = db.relationship('DeviceHistory', backref='user', lazy='dynamic', cascade='all, delete-orphan')
     sessions = db.relationship('UserSession', backref='user', lazy='dynamic', cascade='all, delete-orphan')
+    command_usage = db.relationship('CommandUsage', backref='user', lazy='dynamic', cascade='all, delete-orphan')
+    login_attempts = db.relationship('LoginAttempt', backref='user', lazy='dynamic', cascade='all, delete-orphan')
 
     __table_args__ = (
         db.CheckConstraint("license_type IN ('None', 'Fair', 'Good', 'Excellent', 'Trial', 'Custom', '12hr', '24hr', '2day', '3day', '7day')", 
@@ -380,30 +386,6 @@ class DeviceHistory(db.Model):
 
 
 # ==========================
-# KILL SWITCH LOGS MODEL
-# ==========================
-
-class KillSwitchLog(db.Model):
-    __tablename__ = 'kill_switch_logs'
-
-    id = db.Column(db.Integer, primary_key=True)
-    user_id = db.Column(db.Integer, db.ForeignKey('users.id', ondelete='SET NULL'), nullable=True)
-    action = db.Column(db.String(50), nullable=False)
-    reason = db.Column(db.Text, nullable=True)
-    ip_address = db.Column(db.String(45), nullable=True)
-    created_at = db.Column(db.DateTime, default=datetime.utcnow)
-
-    user = db.relationship('User', backref='kill_switch_logs')
-
-    __table_args__ = (
-        db.Index('idx_kill_switch_logs_date', 'created_at'),
-    )
-
-    def __repr__(self):
-        return f'<KillSwitchLog {self.action} at {self.created_at}>'
-
-
-# ==========================
 # SYSTEM LOGS MODEL 
 # ==========================
 
@@ -429,7 +411,7 @@ class SystemLog(db.Model):
 
 
 # ==========================
-# CREDIT TRANSACTION MODEL - FIXED WITH device_reset
+# CREDIT TRANSACTION MODEL
 # ==========================
 
 class CreditTransaction(db.Model):
@@ -446,7 +428,6 @@ class CreditTransaction(db.Model):
     user = db.relationship('User', foreign_keys=[user_id], backref='credit_transactions')
     creator = db.relationship('User', foreign_keys=[created_by])
 
-    # FIXED: Added 'device_reset' to the allowed transaction types
     __table_args__ = (
         db.CheckConstraint(
             "transaction_type IN ('admin_add', 'admin_deduct', 'purchase', 'usage', 'refund', 'commission', 'device_reset', 'pc_change', 'device_registration', 'credit_used', 'hwid_reset')", 
@@ -523,6 +504,211 @@ class LicenseTransaction(db.Model):
 
 
 # ==========================
+# COMMAND USAGE MODEL (Rate Limiting - 100 commands per day)
+# ==========================
+
+class CommandUsage(db.Model):
+    """Track daily command usage for rate limiting (100 commands per day)"""
+    __tablename__ = 'command_usage'
+
+    id = db.Column(db.Integer, primary_key=True)
+    user_id = db.Column(db.Integer, db.ForeignKey('users.id', ondelete='CASCADE'), nullable=False)
+    command_date = db.Column(db.Date, nullable=False, default=datetime.utcnow().date)
+    count = db.Column(db.Integer, default=0)
+    created_at = db.Column(db.DateTime, default=datetime.utcnow)
+    updated_at = db.Column(db.DateTime, default=datetime.utcnow, onupdate=datetime.utcnow)
+
+    __table_args__ = (
+        db.UniqueConstraint('user_id', 'command_date', name='unique_user_command_date'),
+        db.Index('idx_command_usage_user_date', 'user_id', 'command_date'),
+        db.Index('idx_command_usage_date', 'command_date'),
+        db.CheckConstraint('count >= 0', name='check_command_count_non_negative'),
+        db.CheckConstraint('count <= 100', name='check_command_count_max'),
+    )
+
+    def __repr__(self):
+        return f'<CommandUsage User {self.user_id} Date {self.command_date}: {self.count}/100>'
+
+
+# ==========================
+# LOGIN ATTEMPT MODEL (Rate Limiting - 10 attempts per hour)
+# ==========================
+
+class LoginAttempt(db.Model):
+    """Track login attempts for rate limiting (10 attempts per hour)"""
+    __tablename__ = 'login_attempts'
+
+    id = db.Column(db.Integer, primary_key=True)
+    identifier = db.Column(db.String(255), nullable=False)  # email, username, or IP address
+    attempt_type = db.Column(db.String(50), default='login')  # login, password_reset, api
+    attempt_time = db.Column(db.DateTime, nullable=False, default=datetime.utcnow)
+    success = db.Column(db.Boolean, default=False)
+    ip_address = db.Column(db.String(50), nullable=True)
+    user_agent = db.Column(db.String(500), nullable=True)
+    user_id = db.Column(db.Integer, db.ForeignKey('users.id', ondelete='SET NULL'), nullable=True)
+
+    __table_args__ = (
+        db.Index('idx_login_attempts_identifier_time', 'identifier', 'attempt_time'),
+        db.Index('idx_login_attempts_ip_time', 'ip_address', 'attempt_time'),
+        db.Index('idx_login_attempts_success_time', 'success', 'attempt_time'),
+        db.CheckConstraint("attempt_type IN ('login', 'password_reset', 'api')", name='check_attempt_type'),
+    )
+
+    def __repr__(self):
+        return f'<LoginAttempt {self.identifier} Success={self.success} at {self.attempt_time}>'
+
+
+# ==========================
+# RATE LIMIT HELPER FUNCTIONS
+# ==========================
+
+def check_command_limit(user_id):
+    """Check if user has exceeded daily command limit (100 per day)
+    
+    Returns:
+        tuple: (allowed: bool, count: int, remaining: int)
+    """
+    today = datetime.utcnow().date()
+    
+    # Get or create today's usage record
+    usage = CommandUsage.query.filter_by(user_id=user_id, command_date=today).first()
+    
+    if not usage:
+        usage = CommandUsage(user_id=user_id, command_date=today, count=0)
+        db.session.add(usage)
+        db.session.commit()
+    
+    allowed = usage.count < 100
+    remaining = 100 - usage.count if allowed else 0
+    
+    return allowed, usage.count, remaining
+
+
+def increment_command_count(user_id):
+    """Increment command usage counter
+    
+    Returns:
+        int: New count after increment
+    """
+    today = datetime.utcnow().date()
+    usage = CommandUsage.query.filter_by(user_id=user_id, command_date=today).first()
+    
+    if not usage:
+        usage = CommandUsage(user_id=user_id, command_date=today, count=0)
+        db.session.add(usage)
+    
+    usage.count += 1
+    db.session.commit()
+    return usage.count
+
+
+def check_login_limit(identifier, ip_address, max_attempts=10, window_hours=1):
+    """Check if login attempts exceeded (10 attempts per hour)
+    
+    Args:
+        identifier: Email, username, or IP address to track
+        ip_address: Client IP address
+        max_attempts: Maximum allowed attempts (default: 10)
+        window_hours: Time window in hours (default: 1)
+    
+    Returns:
+        tuple: (allowed: bool, wait_seconds: int)
+    """
+    cutoff_time = datetime.utcnow() - timedelta(hours=window_hours)
+    
+    # Count failed attempts in the last hour for this identifier
+    failed_attempts = LoginAttempt.query.filter(
+        LoginAttempt.identifier == identifier,
+        LoginAttempt.attempt_type == 'login',
+        LoginAttempt.success == False,
+        LoginAttempt.attempt_time >= cutoff_time
+    ).count()
+    
+    if failed_attempts >= max_attempts:
+        # Find the oldest attempt in the current window to calculate wait time
+        oldest_attempt = LoginAttempt.query.filter(
+            LoginAttempt.identifier == identifier,
+            LoginAttempt.attempt_type == 'login',
+            LoginAttempt.success == False,
+            LoginAttempt.attempt_time >= cutoff_time
+        ).order_by(LoginAttempt.attempt_time.asc()).first()
+        
+        if oldest_attempt:
+            wait_until = oldest_attempt.attempt_time + timedelta(hours=window_hours)
+            remaining_seconds = max(0, (wait_until - datetime.utcnow()).total_seconds())
+            return False, int(remaining_seconds)
+    
+    return True, 0
+
+
+def log_login_attempt(identifier, success, ip_address, user_agent=None, user_id=None, attempt_type='login'):
+    """Log login attempt for rate limiting
+    
+    Args:
+        identifier: Email, username, or IP address
+        success: Whether the login was successful
+        ip_address: Client IP address
+        user_agent: Client user agent string
+        user_id: User ID if known (optional)
+        attempt_type: Type of attempt (login, password_reset, api)
+    """
+    attempt = LoginAttempt(
+        identifier=identifier[:255],
+        attempt_type=attempt_type,
+        success=success,
+        ip_address=ip_address[:50],
+        user_agent=user_agent[:500] if user_agent else None,
+        user_id=user_id
+    )
+    db.session.add(attempt)
+    db.session.commit()
+
+
+def cleanup_old_login_attempts(hours=24):
+    """Delete login attempts older than specified hours
+    
+    Args:
+        hours: Age in hours to keep (default: 24)
+    """
+    cutoff_time = datetime.utcnow() - timedelta(hours=hours)
+    deleted = LoginAttempt.query.filter(LoginAttempt.attempt_time < cutoff_time).delete()
+    db.session.commit()
+    return deleted
+
+
+def get_user_command_stats(user_id, days=7):
+    """Get command usage statistics for a user
+    
+    Args:
+        user_id: User ID
+        days: Number of days to look back
+    
+    Returns:
+        dict: Statistics including daily usage and totals
+    """
+    start_date = datetime.utcnow().date() - timedelta(days=days)
+    
+    usage_records = CommandUsage.query.filter(
+        CommandUsage.user_id == user_id,
+        CommandUsage.command_date >= start_date
+    ).order_by(CommandUsage.command_date.desc()).all()
+    
+    daily_usage = {record.command_date.isoformat(): record.count for record in usage_records}
+    total_commands = sum(record.count for record in usage_records)
+    
+    today = datetime.utcnow().date()
+    today_usage = next((r.count for r in usage_records if r.command_date == today), 0)
+    
+    return {
+        'daily_usage': daily_usage,
+        'total_commands_last_7_days': total_commands,
+        'commands_today': today_usage,
+        'daily_limit': 100,
+        'remaining_today': max(0, 100 - today_usage)
+    }
+
+
+# ==========================
 # DATABASE MIGRATION HELPER
 # ==========================
 
@@ -539,6 +725,8 @@ def run_migrations():
             ('country', "ALTER TABLE users ADD COLUMN IF NOT EXISTS country VARCHAR(100) DEFAULT 'Unknown'"),
             ('current_session_key', "ALTER TABLE users ADD COLUMN IF NOT EXISTS current_session_key VARCHAR(128)"),
             ('last_session_key', "ALTER TABLE users ADD COLUMN IF NOT EXISTS last_session_key VARCHAR(128)"),
+            ('last_used_hwid_hash', "ALTER TABLE users ADD COLUMN IF NOT EXISTS last_used_hwid_hash VARCHAR(256)"),
+            ('hwid_change_count', "ALTER TABLE users ADD COLUMN IF NOT EXISTS hwid_change_count INTEGER DEFAULT 0"),
         ]
         
         for col_name, alter_statement in columns_to_add:
@@ -568,7 +756,7 @@ def run_migrations():
             print(f"⚠️ Error updating license_type constraint: {e}")
             db.session.rollback()
         
-        # ===== 3. Create new tables =====
+        # ===== 3. Create new tables (NO KILL SWITCH) =====
         tables_to_create = [
             ('device_history', """
                 CREATE TABLE IF NOT EXISTS device_history (
@@ -604,16 +792,36 @@ def run_migrations():
                 CREATE INDEX IF NOT EXISTS idx_sessions_token_expiry ON user_sessions(session_token, expires_at);
                 CREATE INDEX IF NOT EXISTS idx_sessions_user_active ON user_sessions(user_id, is_active, expires_at);
             """),
-            ('kill_switch_logs', """
-                CREATE TABLE IF NOT EXISTS kill_switch_logs (
+            ('command_usage', """
+                CREATE TABLE IF NOT EXISTS command_usage (
                     id SERIAL PRIMARY KEY,
-                    user_id INTEGER REFERENCES users(id) ON DELETE SET NULL,
-                    action VARCHAR(50) NOT NULL,
-                    reason TEXT,
-                    ip_address VARCHAR(45),
-                    created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
+                    user_id INTEGER NOT NULL REFERENCES users(id) ON DELETE CASCADE,
+                    command_date DATE NOT NULL,
+                    count INTEGER DEFAULT 0,
+                    created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+                    updated_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+                    CONSTRAINT unique_user_command_date UNIQUE (user_id, command_date),
+                    CONSTRAINT check_command_count_non_negative CHECK (count >= 0),
+                    CONSTRAINT check_command_count_max CHECK (count <= 100)
                 );
-                CREATE INDEX IF NOT EXISTS idx_kill_switch_logs_date ON kill_switch_logs(created_at);
+                CREATE INDEX IF NOT EXISTS idx_command_usage_user_date ON command_usage(user_id, command_date);
+                CREATE INDEX IF NOT EXISTS idx_command_usage_date ON command_usage(command_date);
+            """),
+            ('login_attempts', """
+                CREATE TABLE IF NOT EXISTS login_attempts (
+                    id SERIAL PRIMARY KEY,
+                    identifier VARCHAR(255) NOT NULL,
+                    attempt_type VARCHAR(50) DEFAULT 'login',
+                    attempt_time TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+                    success BOOLEAN DEFAULT false,
+                    ip_address VARCHAR(50),
+                    user_agent VARCHAR(500),
+                    user_id INTEGER REFERENCES users(id) ON DELETE SET NULL,
+                    CONSTRAINT check_attempt_type CHECK (attempt_type IN ('login', 'password_reset', 'api'))
+                );
+                CREATE INDEX IF NOT EXISTS idx_login_attempts_identifier_time ON login_attempts(identifier, attempt_time);
+                CREATE INDEX IF NOT EXISTS idx_login_attempts_ip_time ON login_attempts(ip_address, attempt_time);
+                CREATE INDEX IF NOT EXISTS idx_login_attempts_success_time ON login_attempts(success, attempt_time);
             """),
         ]
         
@@ -665,9 +873,8 @@ def run_migrations():
             print(f"⚠️ Error updating existing devices: {e}")
             db.session.rollback()
         
-        # ===== 6. Update credit_transactions constraint - FIXED =====
+        # ===== 6. Update credit_transactions constraint =====
         try:
-            # Drop existing constraint if it exists
             db.session.execute(text("""
                 DO $$ 
                 BEGIN
@@ -681,7 +888,6 @@ def run_migrations():
             """))
             db.session.commit()
             
-            # Add new constraint with all allowed types including device_reset
             db.session.execute(text("""
                 ALTER TABLE credit_transactions 
                 ADD CONSTRAINT check_transaction_type 
@@ -700,7 +906,7 @@ def run_migrations():
                 ))
             """))
             db.session.commit()
-            print("✅ Updated credit_transactions check constraint with device_reset")
+            print("✅ Updated credit_transactions check constraint")
         except Exception as e:
             print(f"⚠️ Error updating credit_transactions constraint: {e}")
             db.session.rollback()
@@ -746,5 +952,8 @@ def create_postgres_indexes():
         
         'CREATE INDEX IF NOT EXISTS idx_license_transactions_user ON license_transactions(user_id, purchased_at);',
         'CREATE INDEX IF NOT EXISTS idx_license_transactions_expiry ON license_transactions(license_end);',
+        
+        'CREATE INDEX IF NOT EXISTS idx_command_usage_user_date ON command_usage(user_id, command_date);',
+        'CREATE INDEX IF NOT EXISTS idx_login_attempts_identifier_time ON login_attempts(identifier, attempt_time);',
     ]
     return indexes
