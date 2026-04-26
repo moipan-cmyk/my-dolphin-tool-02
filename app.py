@@ -1828,8 +1828,8 @@ def validate_license():
         log_system_action(current_user.id, 'admin_password_change', f'Changed password for user {user.username}')
         
         return jsonify({'success': True, 'message': f'Password changed for {user.username}'})
-
-        add also be able to view any user dashborad     @app.route('/api/admin/change-user-password', methods=['POST'])
+   
+    @app.route('/api/admin/change-user-password', methods=['POST'])
     @login_required
     def admin_change_user_password():
         if not current_user.is_admin:
