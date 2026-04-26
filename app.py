@@ -356,7 +356,7 @@ def create_app(config_class=Config):
             print(f"❌ Failed to send reset email: {e}")
             return False
 
-       ######backup##ppppppppppppppppppppppppppppppppppppppppppppppppppppppppp###
+                    ######backup################################################################
        
     @app.route('/auth/reset-password/<token>', methods=['GET', 'POST'])
     def auth_reset_password(token):
@@ -392,123 +392,170 @@ def create_app(config_class=Config):
         return render_template('reset_password.html', token=token)
 
         #DESKTOP VALIDATION SPOT #################################################
-@app.route('/api/validate-license', methods=['POST'])
-def validate_license():
-    db_session = db.session
-    try:
-        data = request.get_json()
-        
-        if not data:
-            return jsonify({'success': False, 'error': 'No JSON data received'}), 400
-        
-        if not data.get('password'):
-            return jsonify({'success': False, 'error': 'Password required'}), 400
-        
-        email = data.get('email', '').strip()[:100] if data.get('email') else None
-        username = data.get('username', '').strip()[:80] if data.get('username') else None
-        admission = data.get('admission', '').strip()[:20] if data.get('admission') else None
-        admission_number = data.get('admission_number')
-        password = data.get('password', '')[:128]
-        hwid = data.get('hwid', '')[:256] if data.get('hwid') else None
-        
-        # Get IP for rate limiting
-        client_ip = get_real_ip()
-        
-        # Identify unique identifier for rate limiting
-        identifier = email or username or admission or str(admission_number) or client_ip
-        
-        # CHECK LOGIN RATE LIMIT (10 attempts per hour)
-        allowed, wait_seconds = check_login_limit(identifier, client_ip, max_attempts=10, window_hours=1)
-        
-        if not allowed:
-            wait_minutes = int(wait_seconds // 60)
-            wait_seconds_remain = int(wait_seconds % 60)
-            return jsonify({
-                'success': False,
-                'error': f'Too many login attempts. Please wait {wait_minutes} minutes and {wait_seconds_remain} seconds before trying again.',
-                'code': 'LOGIN_LIMIT_EXCEEDED',
-                'wait_seconds': wait_seconds,
-                'wait_minutes': wait_minutes
-            }), 429
-        
-        user = None
-        if email:
-            user = User.query.filter_by(email=email).first()
-        elif username:
-            user = User.query.filter_by(username=username).first()
-        elif admission:
-            if admission.isdigit():
-                user = User.query.filter_by(admission_number=int(admission)).first()
-        elif admission_number:
-            if str(admission_number).isdigit():
-                user = User.query.filter_by(admission_number=int(admission_number)).first()
-        
-        if not user:
-            log_login_attempt(identifier, False, client_ip)
-            return jsonify({'success': False, 'error': 'Invalid credentials'}), 401
-        
-        if not user.check_password(password):
-            log_login_attempt(identifier, False, client_ip)
-            return jsonify({'success': False, 'error': 'Invalid credentials'}), 401
-        
-        # SUCCESSFUL LOGIN - clear rate limit records
-        log_login_attempt(identifier, True, client_ip)
-        
-        # Delete old failed attempts on successful login
-        LoginAttempt.query.filter(
-            LoginAttempt.identifier == identifier,
-            LoginAttempt.attempt_type == 'login',
-            LoginAttempt.success == False,
-            LoginAttempt.attempt_time < datetime.utcnow() - timedelta(hours=1)
-        ).delete()
-        db_session.commit()
-        
-        if user.is_banned:
-            return jsonify({'success': False, 'error': 'Account is banned', 'is_banned': True}), 403
-        
-        if not user.is_license_valid():
-            return jsonify({
-                'success': False, 
-                'error': 'License has expired. Please renew your license.',
-                'license_expired': True,
-                'license_expiry': user.license_expiry_date.isoformat() if user.license_expiry_date else None
-            }), 403
-        
-        # ========== HWID TRACKING - TRACK CHANGES WITHOUT LOCKING ==========
-        device_registered = False
-        device_id = None
-        device_name = None
-        hashed_hwid = hash_hwid(hwid) if hwid else None
-        session_obj = None
-        hwid_changed = False
-        
-        if hashed_hwid:
-            # Check if this device is already registered for THIS user
-            existing_device = Device.query.filter_by(
-                user_id=user.id,
-                hwid_hash=hashed_hwid
-            ).first()
+    
+    @app.route('/api/validate-license', methods=['POST'])
+    def validate_license():
+        db_session = db.session
+        try:
+            data = request.get_json()
             
-            if existing_device:
-                # Device already registered for this user - reactivate if needed
-                device_registered = True
-                device_id = existing_device.id
-                device_name = existing_device.device_name
+            if not data:
+                return jsonify({'success': False, 'error': 'No JSON data received'}), 400
+            
+            if not data.get('password'):
+                return jsonify({'success': False, 'error': 'Password required'}), 400
+            
+            email = data.get('email', '').strip()[:100] if data.get('email') else None
+            username = data.get('username', '').strip()[:80] if data.get('username') else None
+            admission = data.get('admission', '').strip()[:20] if data.get('admission') else None
+            admission_number = data.get('admission_number')
+            password = data.get('password', '')[:128]
+            hwid = data.get('hwid', '')[:256] if data.get('hwid') else None
+            
+            # Get IP for rate limiting
+            client_ip = get_real_ip()
+            
+            # Identify unique identifier for rate limiting
+            identifier = email or username or admission or str(admission_number) or client_ip
+            
+            # CHECK LOGIN RATE LIMIT (10 attempts per hour)
+            allowed, wait_seconds = check_login_limit(identifier, client_ip, max_attempts=10, window_hours=1)
+            
+            if not allowed:
+                wait_minutes = int(wait_seconds // 60)
+                wait_seconds_remain = int(wait_seconds % 60)
+                return jsonify({
+                    'success': False,
+                    'error': f'Too many login attempts. Please wait {wait_minutes} minutes and {wait_seconds_remain} seconds before trying again.',
+                    'code': 'LOGIN_LIMIT_EXCEEDED',
+                    'wait_seconds': wait_seconds,
+                    'wait_minutes': wait_minutes
+                }), 429
+            
+            user = None
+            if email:
+                user = User.query.filter_by(email=email).first()
+            elif username:
+                user = User.query.filter_by(username=username).first()
+            elif admission:
+                if admission.isdigit():
+                    user = User.query.filter_by(admission_number=int(admission)).first()
+            elif admission_number:
+                if str(admission_number).isdigit():
+                    user = User.query.filter_by(admission_number=int(admission_number)).first()
+            
+            if not user:
+                log_login_attempt(identifier, False, client_ip)
+                return jsonify({'success': False, 'error': 'Invalid credentials'}), 401
+            
+            if not user.check_password(password):
+                log_login_attempt(identifier, False, client_ip)
+                return jsonify({'success': False, 'error': 'Invalid credentials'}), 401
+            
+            # SUCCESSFUL LOGIN - clear rate limit records
+            log_login_attempt(identifier, True, client_ip)
+            
+            # Delete old failed attempts on successful login
+            LoginAttempt.query.filter(
+                LoginAttempt.identifier == identifier,
+                LoginAttempt.attempt_type == 'login',
+                LoginAttempt.success == False,
+                LoginAttempt.attempt_time < datetime.utcnow() - timedelta(hours=1)
+            ).delete()
+            db_session.commit()
+            
+            if user.is_banned:
+                return jsonify({'success': False, 'error': 'Account is banned', 'is_banned': True}), 403
+            
+            if not user.is_license_valid():
+                return jsonify({
+                    'success': False, 
+                    'error': 'License has expired. Please renew your license.',
+                    'license_expired': True,
+                    'license_expiry': user.license_expiry_date.isoformat() if user.license_expiry_date else None
+                }), 403
+            
+            # ========== HWID CHECK - PREVENT SAME HWID ON MULTIPLE ACCOUNTS ==========
+            device_registered = False
+            device_id = None
+            device_name = None
+            hashed_hwid = hash_hwid(hwid) if hwid else None
+            session_obj = None
+            
+            if hashed_hwid:
+                # CRITICAL: Check if this HWID is already bound to ANY active account
+                existing_device = Device.query.filter_by(hwid_hash=hashed_hwid).first()
                 
-                if not existing_device.is_active:
-                    existing_device.is_active = True
-                    existing_device.last_seen = datetime.utcnow()
-                    existing_device.ip_address = get_real_ip()
-                    db_session.add(existing_device)
-                    log_device_history(user.id, 'reactivate', device_id, device_name, 'Device reactivated')
-                
-                # Check for existing active session
-                session_obj = UserSession.query.filter_by(
-                    device_id=device_id,
-                    is_active=True
-                ).filter(UserSession.expires_at > datetime.utcnow()).first()
-                
-                if not session_obj:
+                if existing_device:
+                    # HWID exists - check if it belongs to THIS user
+                    if existing_device.user_id == user.id:
+                        # Same user - allowed, reactivate if needed
+                        device_registered = True
+                        device_id = existing_device.id
+                        device_name = existing_device.device_name
+                        
+                        if not existing_device.is_active:
+                            existing_device.is_active = True
+                            existing_device.last_seen = datetime.utcnow()
+                            existing_device.ip_address = get_real_ip()
+                            db_session.add(existing_device)
+                            log_device_history(user.id, 'reactivate', device_id, device_name, 'Device reactivated')
+                        
+                        # Check for existing active session
+                        session_obj = UserSession.query.filter_by(
+                            device_id=device_id,
+                            is_active=True
+                        ).filter(UserSession.expires_at > datetime.utcnow()).first()
+                        
+                        if not session_obj:
+                            session_obj = UserSession(
+                                user_id=user.id,
+                                device_id=device_id,
+                                session_token=secrets.token_urlsafe(32),
+                                ip_address=get_real_ip(),
+                                user_agent=request.headers.get('User-Agent')[:500] if request.headers.get('User-Agent') else None,
+                                expires_at=datetime.utcnow() + timedelta(hours=SESSION_DURATION_HOURS),
+                                is_active=True
+                            )
+                            db_session.add(session_obj)
+                        
+                        log_device_history(user.id, 'login', device_id, device_name, 'Desktop client login')
+                    else:
+                        # HWID belongs to DIFFERENT user - BLOCK
+                        other_user = User.query.get(existing_device.user_id)
+                        return jsonify({
+                            'success': False, 
+                            'error': f'This hardware is already bound to another account ({other_user.username if other_user else "unknown"}). HWID cannot be used on multiple accounts.',
+                            'code': 'HWID_ALREADY_BOUND',
+                            'bound_to': other_user.username if other_user else None
+                        }), 403
+                else:
+                    # New HWID - check device limit for this user
+                    active_count = Device.query.filter_by(user_id=user.id, is_active=True).count()
+                    if active_count >= user.device_limit:
+                        return jsonify({
+                            'success': False,
+                            'error': f'Device limit reached ({active_count}/{user.device_limit} devices)',
+                            'code': 'DEVICE_LIMIT_REACHED',
+                            'requires_reset': True
+                        }), 403
+                    
+                    # Register new device
+                    new_device = Device(
+                        user_id=user.id,
+                        hardware_id=hwid,
+                        hwid_hash=hashed_hwid,
+                        device_name=f"Desktop-{hwid[:8]}" if hwid else "Unknown-Device",
+                        ip_address=get_real_ip(),
+                        is_active=True,
+                        is_bound=True
+                    )
+                    db_session.add(new_device)
+                    db_session.flush()
+                    device_id = new_device.id
+                    device_name = new_device.device_name
+                    device_registered = True
+                    
                     session_obj = UserSession(
                         user_id=user.id,
                         device_id=device_id,
@@ -519,52 +566,17 @@ def validate_license():
                         is_active=True
                     )
                     db_session.add(session_obj)
-                
-                log_device_history(user.id, 'login', device_id, device_name, 'Desktop client login')
-                
-                # Check if HWID changed from last used HWID
-                if user.last_used_hwid_hash and user.last_used_hwid_hash != hashed_hwid:
-                    hwid_changed = True
-                    user.hwid_change_count = (user.hwid_change_count or 0) + 1
-                    log_system_action(user.id, 'hwid_change', 
-                                    f'HWID changed from {user.last_used_hwid_hash[:16]}... to {hashed_hwid[:16]}... (Change #{user.hwid_change_count})')
-                    print(f"🔄 HWID changed for user {user.username}: Count now {user.hwid_change_count}")
-                
-                # Update last used HWID
-                user.last_used_hwid_hash = hashed_hwid
-                
-            else:
-                # New device for this user - always counts as a change
-                # Check device limit
-                active_count = Device.query.filter_by(user_id=user.id, is_active=True).count()
-                if active_count >= user.device_limit:
-                    return jsonify({
-                        'success': False,
-                        'error': f'Device limit reached ({active_count}/{user.device_limit} devices)',
-                        'code': 'DEVICE_LIMIT_REACHED',
-                        'requires_reset': True
-                    }), 403
-                
-                # Register new device
-                new_device = Device(
-                    user_id=user.id,
-                    hardware_id=hwid,
-                    hwid_hash=hashed_hwid,
-                    device_name=f"Desktop-{hwid[:8]}" if hwid else "Unknown-Device",
-                    ip_address=get_real_ip(),
-                    is_active=True,
-                    is_bound=True
-                )
-                db_session.add(new_device)
-                db_session.flush()
-                device_id = new_device.id
-                device_name = new_device.device_name
-                device_registered = True
-                hwid_changed = True  # New device always counts as change
-                
+                    
+                    user.total_devices_registered = (user.total_devices_registered or 0) + 1
+                    
+                    log_device_history(user.id, 'register', device_id, device_name, 'Desktop client registered')
+                    log_system_action(user.id, 'device_register', f'New desktop client registered: {device_name}')
+                    print(f"✅ New device registered: {device_name} for user {user.username}")
+            
+            if not session_obj:
                 session_obj = UserSession(
                     user_id=user.id,
-                    device_id=device_id,
+                    device_id=None,
                     session_token=secrets.token_urlsafe(32),
                     ip_address=get_real_ip(),
                     user_agent=request.headers.get('User-Agent')[:500] if request.headers.get('User-Agent') else None,
@@ -572,90 +584,65 @@ def validate_license():
                     is_active=True
                 )
                 db_session.add(session_obj)
-                
-                user.total_devices_registered = (user.total_devices_registered or 0) + 1
-                
-                # Increment HWID change count for new device
-                user.hwid_change_count = (user.hwid_change_count or 0) + 1
-                user.last_used_hwid_hash = hashed_hwid
-                
-                log_device_history(user.id, 'register', device_id, device_name, 'Desktop client registered')
-                log_system_action(user.id, 'device_register', f'New desktop client registered: {device_name}')
-                print(f"✅ New device registered: {device_name} for user {user.username}")
-                print(f"🔄 HWID change count: {user.hwid_change_count}")
-        
-        if not session_obj:
-            session_obj = UserSession(
-                user_id=user.id,
-                device_id=None,
-                session_token=secrets.token_urlsafe(32),
-                ip_address=get_real_ip(),
-                user_agent=request.headers.get('User-Agent')[:500] if request.headers.get('User-Agent') else None,
-                expires_at=datetime.utcnow() + timedelta(hours=SESSION_DURATION_HOURS),
-                is_active=True
-            )
-            db_session.add(session_obj)
-        
-        db_session.commit()
-        
-        session_key = session_obj.session_token
-        flask_session['module_key'] = session_key
-        user.current_session_key = session_key
-        db_session.commit()
-        
-        print(f"🔑 Session key saved: {session_key[:20]}...")
-        
-        device_count = Device.query.filter_by(user_id=user.id, is_active=True).count()
-        
-        days_remaining = 0
-        if user.license_expiry_date:
-            days_remaining = (user.license_expiry_date - datetime.utcnow()).days
-            if days_remaining < 0:
-                days_remaining = 0
+            
+            db_session.commit()
+            
+            session_key = session_obj.session_token
+            flask_session['module_key'] = session_key
+            user.current_session_key = session_key
+            db_session.commit()
+            
+            print(f"🔑 Session key saved: {session_key[:20]}...")
+            
+            device_count = Device.query.filter_by(user_id=user.id, is_active=True).count()
+            
+            days_remaining = 0
+            if user.license_expiry_date:
+                days_remaining = (user.license_expiry_date - datetime.utcnow()).days
+                if days_remaining < 0:
+                    days_remaining = 0
 
-        # Update last login
-        user.last_login = datetime.utcnow()
-        db_session.commit()
-        
-        response_data = {
-            'success': True,
-            'user_id': user.id,
-            'username': user.username,
-            'email': user.email,
-            'admission_number': user.admission_number,
-            'license_type': user.license_type,
-            'license_status': 'active' if user.is_license_valid() else 'expired',
-            'license_expiry': user.license_expiry_date.isoformat() if user.license_expiry_date else None,
-            'days_remaining': days_remaining,
-            'device_limit': user.device_limit,
-            'device_count': device_count,
-            'credits': user.credits or 0,
-            'is_admin': user.is_admin,
-            'is_reseller': user.is_reseller,
-            'is_banned': user.is_banned,
-            'license_valid': user.is_license_valid(),
-            'session_key': session_key,
-            'device_registered': device_registered,
-            'device_id': device_id,
-            'device_name': device_name,
-            'last_login': user.last_login.isoformat() if user.last_login else None,
-            'hwid_change_count': user.hwid_change_count or 0,  # Return change count to client
-            'hwid_changed': hwid_changed  # Indicate if HWID changed this login
-        }
-        
-        import base64
-        temp_key = hashlib.sha256(password.encode()).digest()
-        json_str = json.dumps(response_data, ensure_ascii=False)
-        json_bytes = json_str.encode('utf-8')
-        encrypted = bytes([b ^ temp_key[i % len(temp_key)] for i, b in enumerate(json_bytes)])
-        return jsonify({'encrypted': True, 'data': base64.b64encode(encrypted).decode('utf-8')}), 200
-        
-    except Exception as e:
-        db_session.rollback()
-        print(f"[ERROR] Validate license error: {e}")
-        import traceback
-        traceback.print_exc()
-        return jsonify({'success': False, 'error': str(e)}), 500
+            # Update last login (ONLY ONCE)
+            user.last_login = datetime.utcnow()
+            db_session.commit()
+            
+            response_data = {
+                'success': True,
+                'user_id': user.id,
+                'username': user.username,
+                'email': user.email,
+                'admission_number': user.admission_number,
+                'license_type': user.license_type,
+                'license_status': 'active' if user.is_license_valid() else 'expired',
+                'license_expiry': user.license_expiry_date.isoformat() if user.license_expiry_date else None,
+                'days_remaining': days_remaining,
+                'device_limit': user.device_limit,
+                'device_count': device_count,
+                'credits': user.credits or 0,
+                'is_admin': user.is_admin,
+                'is_reseller': user.is_reseller,
+                'is_banned': user.is_banned,
+                'license_valid': user.is_license_valid(),
+                'session_key': session_key,
+                'device_registered': device_registered,
+                'device_id': device_id,
+                'device_name': device_name,
+                'last_login': user.last_login.isoformat() if user.last_login else None
+            }
+            
+            import base64
+            temp_key = hashlib.sha256(password.encode()).digest()
+            json_str = json.dumps(response_data, ensure_ascii=False)
+            json_bytes = json_str.encode('utf-8')
+            encrypted = bytes([b ^ temp_key[i % len(temp_key)] for i, b in enumerate(json_bytes)])
+            return jsonify({'encrypted': True, 'data': base64.b64encode(encrypted).decode('utf-8')}), 200
+            
+        except Exception as e:
+            db_session.rollback()
+            print(f"[ERROR] Validate license error: {e}")
+            import traceback
+            traceback.print_exc()
+            return jsonify({'success': False, 'error': str(e)}), 500
             
         ##SESSION VALIDATION
     @app.route('/api/user/validate-session', methods=['POST'])
