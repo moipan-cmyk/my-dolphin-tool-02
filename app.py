@@ -2130,7 +2130,7 @@ def create_app(config_class=Config):
             'users_reset': updated
         })
 
-        @app.route('/api/admin/reset-login-attempts', methods=['POST'])
+    @app.route('/api/admin/reset-login-attempts', methods=['POST'])
     @login_required
     def admin_reset_login_attempts():
         """Admin: Reset login attempts for a specific user or IP"""
