@@ -2026,6 +2026,117 @@ def create_app(config_class=Config):
         
         # Reuse the dashboard function
         return admin_view_user_dashboard(user.id)
+
+
+
+    # ==================== ADMIN RESET ACTION ENDPOINTS ====================
+    # ADD THESE THREE ENDPOINTS:
+
+    @app.route('/api/admin/reset-command-limit', methods=['POST'])
+    @login_required
+    def admin_reset_command_limit():
+        """Admin: Reset command usage limit for a specific user"""
+        if not current_user.is_admin:
+            return jsonify({'error': 'Unauthorized'}), 403
+        
+        data = request.get_json()
+        user_id = data.get('user_id')
+        username = data.get('username')
+        email = data.get('email')
+        
+        user = None
+        if user_id:
+            user = User.query.get(user_id)
+        elif username:
+            user = User.query.filter_by(username=username).first()
+        elif email:
+            user = User.query.filter_by(email=email).first()
+        else:
+            return jsonify({'error': 'Please provide user_id, username, or email'}), 400
+        
+        if not user:
+            return jsonify({'error': 'User not found'}), 404
+        
+        today = datetime.utcnow().date()
+        usage = CommandUsage.query.filter_by(user_id=user.id, command_date=today).first()
+        
+        if usage:
+            old_count = usage.count
+            usage.count = 0
+            db.session.commit()
+            
+            log_system_action(current_user.id, 'reset_command_limit', 
+                             f"Reset command limit for user {user.username} from {old_count} to 0")
+            
+            return jsonify({
+                'success': True,
+                'message': f'Command limit reset for user {user.username}',
+                'previous_count': old_count
+            })
+        else:
+            return jsonify({
+                'success': True,
+                'message': f'User {user.username} has no command usage today'
+            })
+
+    @app.route('/api/admin/reset-command-limit-all', methods=['POST'])
+    @login_required
+    def admin_reset_command_limit_all():
+        """Admin: Reset command limits for ALL users (for maintenance)"""
+        if not current_user.is_admin:
+            return jsonify({'error': 'Unauthorized'}), 403
+        
+        today = datetime.utcnow().date()
+        updated = CommandUsage.query.filter_by(command_date=today).update({'count': 0})
+        db.session.commit()
+        
+        log_system_action(current_user.id, 'reset_all_command_limits', 
+                         f"Reset command limits for {updated} users")
+        
+        return jsonify({
+            'success': True,
+            'message': f'Command limits reset for {updated} users',
+            'users_reset': updated
+        })
+
+    @app.route('/api/admin/reset-login-attempts', methods=['POST'])
+    @login_required
+    def admin_reset_login_attempts():
+        """Admin: Reset login attempts for a specific user or IP"""
+        if not current_user.is_admin:
+            return jsonify({'error': 'Unauthorized'}), 403
+        
+        data = request.get_json()
+        identifier = data.get('identifier')
+        user_id = data.get('user_id')
+        
+        if not identifier and not user_id:
+            return jsonify({'error': 'Please provide identifier or user_id'}), 400
+        
+        query = LoginAttempt.query.filter(LoginAttempt.attempt_type == 'login')
+        
+        if identifier:
+            query = query.filter(LoginAttempt.identifier == identifier)
+        elif user_id:
+            user = User.query.get(user_id)
+            if user:
+                query = query.filter(LoginAttempt.identifier == user.email)
+            else:
+                return jsonify({'error': 'User not found'}), 404
+        
+        deleted_count = query.delete()
+        db.session.commit()
+        
+        log_system_action(current_user.id, 'reset_login_attempts', 
+                         f"Reset login attempts, deleted: {deleted_count}")
+        
+        return jsonify({
+            'success': True,
+            'message': f'Login attempts reset ({deleted_count} deleted)',
+            'deleted_attempts': deleted_count
+        })
+
+
     
         # ==================== RESELLER DASHBOARD API ENDPOINTS ====================
     
