@@ -2664,7 +2664,7 @@ def create_app(config_class=Config):
         """License agreement page"""
         return render_template('license.html')
 
-# ==================== COMMAND FETCH ENDPOINT ====================###############################
+            # ==================== COMMAND FETCH ENDPOINT ====================###############################
     @app.route('/api/get-command', methods=['POST'])
     @limiter.limit("100 per day") 
     @api_login_required
@@ -2699,6 +2699,19 @@ def create_app(config_class=Config):
             
             if not user.is_license_valid():
                 return jsonify({'error': 'License expired/not activated', 'code': 'LICENSE_EXPIRED'}), 403
+            
+            # ========== COMMAND LIMIT CHECK (100 per day) ==========
+            allowed, count, remaining = check_command_limit(user.id)
+            
+            if not allowed:
+                return jsonify({
+                    'error': f'Command limit reached. You have used {count}/100 commands today.',
+                    'code': 'COMMAND_LIMIT_REACHED',
+                    'commands_used': count,
+                    'commands_limit': 100,
+                    'commands_remaining': 0,
+                    'resets_at_midnight': True
+                }), 429
             
             # 2. MAP TAB to folder name
             tab_folders = {
@@ -2803,9 +2816,13 @@ def create_app(config_class=Config):
                 db.session.commit()
                 print(f"💰 Deducted {cost} credits from user {user.username} (Remaining: {user.credits})")
             
+            # ========== INCREMENT COMMAND COUNTER ==========
+            new_command_count = increment_command_count(user.id)
+            print(f"📊 Command count for today: {new_command_count}/100")
+            
             # 9. LOG REQUEST
             log_system_action(user.id, 'command_request', 
-                             f"Requested {tab}.{mode}.{action} on {device_info.get('model', 'unknown')} (Cost: {cost} credits)")
+                             f"Requested {tab}.{mode}.{action} on {device_info.get('model', 'unknown')} (Cost: {cost} credits) (Command {new_command_count}/100 today)")
             
             # 10. BUILD RESPONSE
             response = {
@@ -2826,8 +2843,11 @@ def create_app(config_class=Config):
                 'chunk_size': function_data.get('chunk_size', 4194304),
                 'backup_enabled': function_data.get('backup_enabled', False),
                 'cost': cost,
-                'original_cost': original_cost,  # Send original cost from JSON for reference
+                'original_cost': original_cost,
                 'credits_remaining': user.credits or 0,
+                'commands_used_today': new_command_count,
+                'commands_limit_today': 100,
+                'commands_remaining_today': 100 - new_command_count,
                 'config': function_data.get('config', {}),
                 
                 # For meta_action (factory_reset, frp)
@@ -2873,7 +2893,7 @@ def create_app(config_class=Config):
                 'reboot': function_data.get('reboot', False)
             }
 
-            print(f"✅ Command fetched: {tab}/{mode}/{action} (Cost: {cost} credits)")
+            print(f"✅ Command fetched: {tab}/{mode}/{action} (Cost: {cost} credits) (Command {new_command_count}/100 today)")
             
             # 🔒 ENCRYPT RESPONSE
             import base64
@@ -2907,7 +2927,7 @@ def create_app(config_class=Config):
             print(f"Error in get_command: {e}")
             traceback.print_exc()
             return jsonify({'error': f'Internal server error: {str(e)}'}), 500
-
+            
     # ==================== VERSION CHECK ENDPOINT ====================
     
     @app.route('/api/check-version', methods=['GET'])
