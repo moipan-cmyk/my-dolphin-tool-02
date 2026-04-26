@@ -15,6 +15,8 @@ from email.mime.text import MIMEText
 from email.mime.multipart import MIMEMultipart
 from functools import wraps
 import traceback
+from flask_limiter import Limiter
+from flask_limiter.util import get_remote_address
 
 # ==================== CONSTANTS ====================
 SESSION_DURATION_HOURS = 12       # Hardware binding: 12 hours
@@ -77,13 +79,54 @@ def create_app(config_class=Config):
     if not app.config.get('SECRET_KEY'):
         app.config['SECRET_KEY'] = 'dev-secret-key-change-in-production'
     
+    # Initialize database first
     db.init_app(app)
+    
+    # ==================== RATE LIMITING (FIXED) ====================
+    from flask_limiter import Limiter
+    from flask_limiter.util import get_remote_address
+    
+    # Custom key function for authenticated users - IMPORT current_user INSIDE the function
+    def get_user_key():
+        from flask_login import current_user  # Import here to avoid circular reference
+        try:
+            if current_user and current_user.is_authenticated:
+                return f"user:{current_user.id}"
+        except (RuntimeError, AttributeError):
+            # current_user not available yet, fall back to IP
+            pass
+        return get_remote_address()
+    
+    # Create limiter with the fixed key function
+    limiter = Limiter(
+        app=app,
+        key_func=get_user_key,  # Use the fixed function from the start
+        default_limits=["200 per day", "50 per hour"],
+        storage_uri="memory://",  # Change to os.environ.get('REDIS_URL', 'memory://') for production
+        headers_enabled=True  # Add rate limit headers to responses
+    )
+    
+    # Optional: Add rate limit error handler for JSON responses
+    @app.errorhandler(429)
+    def ratelimit_handler(e):
+        """Return JSON instead of HTML for rate limit errors"""
+        return jsonify({
+            'success': False,
+            'error': 'Too many requests. Please slow down.',
+            'code': 'RATE_LIMIT_EXCEEDED',
+            'retry_after': 60
+        }), 429
+    
+    # Initialize login manager AFTER rate limiter
+    login_manager.init_app(app)
+    login_manager.login_view = 'login'
+    login_manager.login_message = None
     
     with app.app_context():
         db.create_all()
         print("✅ Database tables created/verified")
         
-                # ==================== ADMIN USER SETUP FROM ENV ====================
+    # ==================== ADMIN USER SETUP FROM ENV ====================
         admin_email = os.environ.get('ADMIN_EMAIL')
         admin_password = os.environ.get('ADMIN_PASSWORD')
         
@@ -313,7 +356,8 @@ def create_app(config_class=Config):
             print(f"❌ Failed to send reset email: {e}")
             return False
 
-       ######backup#####
+       ######backup##ppppppppppppppppppppppppppppppppppppppppppppppppppppppppp###
+       
     @app.route('/auth/reset-password/<token>', methods=['GET', 'POST'])
     def auth_reset_password(token):
         if current_user.is_authenticated:
@@ -346,138 +390,125 @@ def create_app(config_class=Config):
             return redirect(url_for('login'))
         
         return render_template('reset_password.html', token=token)
-    
-    # ==================== API ENDPOINTS FOR DESKTOP CLIENT ====================
-    
-    @app.route('/api/validate-license', methods=['POST'])
-    def validate_license():
-        db_session = db.session
-        try:
-            data = request.get_json()
+
+        #DESKTOP VALIDATION SPOT #################################################
+@app.route('/api/validate-license', methods=['POST'])
+def validate_license():
+    db_session = db.session
+    try:
+        data = request.get_json()
+        
+        if not data:
+            return jsonify({'success': False, 'error': 'No JSON data received'}), 400
+        
+        if not data.get('password'):
+            return jsonify({'success': False, 'error': 'Password required'}), 400
+        
+        email = data.get('email', '').strip()[:100] if data.get('email') else None
+        username = data.get('username', '').strip()[:80] if data.get('username') else None
+        admission = data.get('admission', '').strip()[:20] if data.get('admission') else None
+        admission_number = data.get('admission_number')
+        password = data.get('password', '')[:128]
+        hwid = data.get('hwid', '')[:256] if data.get('hwid') else None
+        
+        # Get IP for rate limiting
+        client_ip = get_real_ip()
+        
+        # Identify unique identifier for rate limiting
+        identifier = email or username or admission or str(admission_number) or client_ip
+        
+        # CHECK LOGIN RATE LIMIT (10 attempts per hour)
+        allowed, wait_seconds = check_login_limit(identifier, client_ip, max_attempts=10, window_hours=1)
+        
+        if not allowed:
+            wait_minutes = int(wait_seconds // 60)
+            wait_seconds_remain = int(wait_seconds % 60)
+            return jsonify({
+                'success': False,
+                'error': f'Too many login attempts. Please wait {wait_minutes} minutes and {wait_seconds_remain} seconds before trying again.',
+                'code': 'LOGIN_LIMIT_EXCEEDED',
+                'wait_seconds': wait_seconds,
+                'wait_minutes': wait_minutes
+            }), 429
+        
+        user = None
+        if email:
+            user = User.query.filter_by(email=email).first()
+        elif username:
+            user = User.query.filter_by(username=username).first()
+        elif admission:
+            if admission.isdigit():
+                user = User.query.filter_by(admission_number=int(admission)).first()
+        elif admission_number:
+            if str(admission_number).isdigit():
+                user = User.query.filter_by(admission_number=int(admission_number)).first()
+        
+        if not user:
+            log_login_attempt(identifier, False, client_ip)
+            return jsonify({'success': False, 'error': 'Invalid credentials'}), 401
+        
+        if not user.check_password(password):
+            log_login_attempt(identifier, False, client_ip)
+            return jsonify({'success': False, 'error': 'Invalid credentials'}), 401
+        
+        # SUCCESSFUL LOGIN - clear rate limit records
+        log_login_attempt(identifier, True, client_ip)
+        
+        # Delete old failed attempts on successful login
+        LoginAttempt.query.filter(
+            LoginAttempt.identifier == identifier,
+            LoginAttempt.attempt_type == 'login',
+            LoginAttempt.success == False,
+            LoginAttempt.attempt_time < datetime.utcnow() - timedelta(hours=1)
+        ).delete()
+        db_session.commit()
+        
+        if user.is_banned:
+            return jsonify({'success': False, 'error': 'Account is banned', 'is_banned': True}), 403
+        
+        if not user.is_license_valid():
+            return jsonify({
+                'success': False, 
+                'error': 'License has expired. Please renew your license.',
+                'license_expired': True,
+                'license_expiry': user.license_expiry_date.isoformat() if user.license_expiry_date else None
+            }), 403
+        
+        # ========== HWID TRACKING - TRACK CHANGES WITHOUT LOCKING ==========
+        device_registered = False
+        device_id = None
+        device_name = None
+        hashed_hwid = hash_hwid(hwid) if hwid else None
+        session_obj = None
+        hwid_changed = False
+        
+        if hashed_hwid:
+            # Check if this device is already registered for THIS user
+            existing_device = Device.query.filter_by(
+                user_id=user.id,
+                hwid_hash=hashed_hwid
+            ).first()
             
-            if not data:
-                return jsonify({'success': False, 'error': 'No JSON data received'}), 400
-            
-            if not data.get('password'):
-                return jsonify({'success': False, 'error': 'Password required'}), 400
-            
-            email = data.get('email', '').strip()[:100] if data.get('email') else None
-            username = data.get('username', '').strip()[:80] if data.get('username') else None
-            admission = data.get('admission', '').strip()[:20] if data.get('admission') else None
-            admission_number = data.get('admission_number')
-            password = data.get('password', '')[:128]
-            hwid = data.get('hwid', '')[:256] if data.get('hwid') else None
-            
-            user = None
-            if email:
-                user = User.query.filter_by(email=email).first()
-            elif username:
-                user = User.query.filter_by(username=username).first()
-            elif admission:
-                if admission.isdigit():
-                    user = User.query.filter_by(admission_number=int(admission)).first()
-            elif admission_number:
-                if str(admission_number).isdigit():
-                    user = User.query.filter_by(admission_number=int(admission_number)).first()
-            
-            if not user:
-                return jsonify({'success': False, 'error': 'Invalid credentials'}), 401
-            
-            if not user.check_password(password):
-                return jsonify({'success': False, 'error': 'Invalid credentials'}), 401
-            
-            if user.is_banned:
-                return jsonify({'success': False, 'error': 'Account is banned', 'is_banned': True}), 403
-            
-            if not user.is_license_valid():
-                return jsonify({
-                    'success': False, 
-                    'error': 'License has expired. Please renew your license.',
-                    'license_expired': True,
-                    'license_expiry': user.license_expiry_date.isoformat() if user.license_expiry_date else None
-                }), 403
-            
-            device_registered = False
-            device_id = None
-            device_name = None
-            hashed_hwid = hash_hwid(hwid) if hwid else None
-            session_obj = None
-            
-            if hashed_hwid:
-                # Check for existing device (active OR inactive)
-                existing_device = Device.query.filter_by(
-                    user_id=user.id,
-                    hwid_hash=hashed_hwid
-                ).first()
+            if existing_device:
+                # Device already registered for this user - reactivate if needed
+                device_registered = True
+                device_id = existing_device.id
+                device_name = existing_device.device_name
                 
-                if existing_device:
-                    # Device exists - reactivate it if needed
-                    device_registered = True
-                    device_id = existing_device.id
-                    device_name = existing_device.device_name
-                    
-                    # Reactivate if inactive
-                    if not existing_device.is_active:
-                        existing_device.is_active = True
-                        existing_device.last_seen = datetime.utcnow()
-                        existing_device.ip_address = get_real_ip()
-                        db_session.add(existing_device)
-                        log_device_history(user.id, 'reactivate', device_id, device_name, 'Device reactivated')
-                    
-                    # Check for existing active session
-                    session_obj = UserSession.query.filter_by(
-                        device_id=device_id,
-                        is_active=True
-                    ).filter(UserSession.expires_at > datetime.utcnow()).first()
-                    
-                    if not session_obj:
-                        # Create new session for existing device
-                        session_obj = UserSession(
-                            user_id=user.id,
-                            device_id=device_id,
-                            session_token=secrets.token_urlsafe(32),
-                            ip_address=get_real_ip(),
-                            user_agent=request.headers.get('User-Agent')[:500] if request.headers.get('User-Agent') else None,
-                            expires_at=datetime.utcnow() + timedelta(hours=SESSION_DURATION_HOURS),
-                            is_active=True
-                        )
-                        db_session.add(session_obj)
-                    
-                    log_device_history(user.id, 'login', device_id, device_name, 'Desktop client login')
-                else:
-                    # Check if device is bound to another account
-                    other_device = Device.query.filter_by(hwid_hash=hashed_hwid, is_active=True).first()
-                    if other_device:
-                        return jsonify({
-                            'success': False, 
-                            'error': 'This hardware is already bound to another account',
-                            'code': 'HWID_ALREADY_BOUND'
-                        }), 403
-                    
-                    active_count = Device.query.filter_by(user_id=user.id, is_active=True).count()
-                    if active_count >= user.device_limit:
-                        return jsonify({
-                            'success': False,
-                            'error': f'Device limit reached ({active_count}/{user.device_limit} devices)',
-                            'code': 'DEVICE_LIMIT_REACHED',
-                            'requires_reset': True
-                        }), 403
-                    
-                    new_device = Device(
-                        user_id=user.id,
-                        hardware_id=hwid,
-                        hwid_hash=hashed_hwid,
-                        device_name=f"Desktop-{hwid[:8]}" if hwid else "Unknown-Device",
-                        ip_address=get_real_ip(),
-                        is_active=True,
-                        is_bound=True
-                    )
-                    db_session.add(new_device)
-                    db_session.flush()
-                    device_id = new_device.id
-                    device_name = new_device.device_name
-                    device_registered = True
-                    
+                if not existing_device.is_active:
+                    existing_device.is_active = True
+                    existing_device.last_seen = datetime.utcnow()
+                    existing_device.ip_address = get_real_ip()
+                    db_session.add(existing_device)
+                    log_device_history(user.id, 'reactivate', device_id, device_name, 'Device reactivated')
+                
+                # Check for existing active session
+                session_obj = UserSession.query.filter_by(
+                    device_id=device_id,
+                    is_active=True
+                ).filter(UserSession.expires_at > datetime.utcnow()).first()
+                
+                if not session_obj:
                     session_obj = UserSession(
                         user_id=user.id,
                         device_id=device_id,
@@ -488,18 +519,52 @@ def create_app(config_class=Config):
                         is_active=True
                     )
                     db_session.add(session_obj)
-                    
-                    user.total_devices_registered = (user.total_devices_registered or 0) + 1
-                    
-                    log_device_history(user.id, 'register', device_id, device_name, 'Desktop client registered')
-                    log_system_action(user.id, 'device_register', f'New desktop client registered: {device_name}')
-                    print(f"✅ New device registered: {device_name} for user {user.username}")
-            
-            if not session_obj:
-                # Create a session without device if no device was registered
+                
+                log_device_history(user.id, 'login', device_id, device_name, 'Desktop client login')
+                
+                # Check if HWID changed from last used HWID
+                if user.last_used_hwid_hash and user.last_used_hwid_hash != hashed_hwid:
+                    hwid_changed = True
+                    user.hwid_change_count = (user.hwid_change_count or 0) + 1
+                    log_system_action(user.id, 'hwid_change', 
+                                    f'HWID changed from {user.last_used_hwid_hash[:16]}... to {hashed_hwid[:16]}... (Change #{user.hwid_change_count})')
+                    print(f"🔄 HWID changed for user {user.username}: Count now {user.hwid_change_count}")
+                
+                # Update last used HWID
+                user.last_used_hwid_hash = hashed_hwid
+                
+            else:
+                # New device for this user - always counts as a change
+                # Check device limit
+                active_count = Device.query.filter_by(user_id=user.id, is_active=True).count()
+                if active_count >= user.device_limit:
+                    return jsonify({
+                        'success': False,
+                        'error': f'Device limit reached ({active_count}/{user.device_limit} devices)',
+                        'code': 'DEVICE_LIMIT_REACHED',
+                        'requires_reset': True
+                    }), 403
+                
+                # Register new device
+                new_device = Device(
+                    user_id=user.id,
+                    hardware_id=hwid,
+                    hwid_hash=hashed_hwid,
+                    device_name=f"Desktop-{hwid[:8]}" if hwid else "Unknown-Device",
+                    ip_address=get_real_ip(),
+                    is_active=True,
+                    is_bound=True
+                )
+                db_session.add(new_device)
+                db_session.flush()
+                device_id = new_device.id
+                device_name = new_device.device_name
+                device_registered = True
+                hwid_changed = True  # New device always counts as change
+                
                 session_obj = UserSession(
                     user_id=user.id,
-                    device_id=None,
+                    device_id=device_id,
                     session_token=secrets.token_urlsafe(32),
                     ip_address=get_real_ip(),
                     user_agent=request.headers.get('User-Agent')[:500] if request.headers.get('User-Agent') else None,
@@ -507,69 +572,92 @@ def create_app(config_class=Config):
                     is_active=True
                 )
                 db_session.add(session_obj)
-            
-            db_session.commit()
-            
-            session_key = session_obj.session_token
-            flask_session['module_key'] = session_key
-            user.current_session_key = session_key
-            db_session.commit()  # ✅ Save session key to database
-            
-            print(f"🔑 Session key saved: {session_key[:20]}...")
-            
-            device_count = Device.query.filter_by(user_id=user.id, is_active=True).count()
-            
-            days_remaining = 0
-            if user.license_expiry_date:
-                days_remaining = (user.license_expiry_date - datetime.utcnow()).days
-                if days_remaining < 0:
-                    days_remaining = 0
+                
+                user.total_devices_registered = (user.total_devices_registered or 0) + 1
+                
+                # Increment HWID change count for new device
+                user.hwid_change_count = (user.hwid_change_count or 0) + 1
+                user.last_used_hwid_hash = hashed_hwid
+                
+                log_device_history(user.id, 'register', device_id, device_name, 'Desktop client registered')
+                log_system_action(user.id, 'device_register', f'New desktop client registered: {device_name}')
+                print(f"✅ New device registered: {device_name} for user {user.username}")
+                print(f"🔄 HWID change count: {user.hwid_change_count}")
+        
+        if not session_obj:
+            session_obj = UserSession(
+                user_id=user.id,
+                device_id=None,
+                session_token=secrets.token_urlsafe(32),
+                ip_address=get_real_ip(),
+                user_agent=request.headers.get('User-Agent')[:500] if request.headers.get('User-Agent') else None,
+                expires_at=datetime.utcnow() + timedelta(hours=SESSION_DURATION_HOURS),
+                is_active=True
+            )
+            db_session.add(session_obj)
+        
+        db_session.commit()
+        
+        session_key = session_obj.session_token
+        flask_session['module_key'] = session_key
+        user.current_session_key = session_key
+        db_session.commit()
+        
+        print(f"🔑 Session key saved: {session_key[:20]}...")
+        
+        device_count = Device.query.filter_by(user_id=user.id, is_active=True).count()
+        
+        days_remaining = 0
+        if user.license_expiry_date:
+            days_remaining = (user.license_expiry_date - datetime.utcnow()).days
+            if days_remaining < 0:
+                days_remaining = 0
 
-         ######## Update last login##############
-            user.last_login = datetime.utcnow()
-            db_session.commit()
+        # Update last login
+        user.last_login = datetime.utcnow()
+        db_session.commit()
+        
+        response_data = {
+            'success': True,
+            'user_id': user.id,
+            'username': user.username,
+            'email': user.email,
+            'admission_number': user.admission_number,
+            'license_type': user.license_type,
+            'license_status': 'active' if user.is_license_valid() else 'expired',
+            'license_expiry': user.license_expiry_date.isoformat() if user.license_expiry_date else None,
+            'days_remaining': days_remaining,
+            'device_limit': user.device_limit,
+            'device_count': device_count,
+            'credits': user.credits or 0,
+            'is_admin': user.is_admin,
+            'is_reseller': user.is_reseller,
+            'is_banned': user.is_banned,
+            'license_valid': user.is_license_valid(),
+            'session_key': session_key,
+            'device_registered': device_registered,
+            'device_id': device_id,
+            'device_name': device_name,
+            'last_login': user.last_login.isoformat() if user.last_login else None,
+            'hwid_change_count': user.hwid_change_count or 0,  # Return change count to client
+            'hwid_changed': hwid_changed  # Indicate if HWID changed this login
+        }
+        
+        import base64
+        temp_key = hashlib.sha256(password.encode()).digest()
+        json_str = json.dumps(response_data, ensure_ascii=False)
+        json_bytes = json_str.encode('utf-8')
+        encrypted = bytes([b ^ temp_key[i % len(temp_key)] for i, b in enumerate(json_bytes)])
+        return jsonify({'encrypted': True, 'data': base64.b64encode(encrypted).decode('utf-8')}), 200
+        
+    except Exception as e:
+        db_session.rollback()
+        print(f"[ERROR] Validate license error: {e}")
+        import traceback
+        traceback.print_exc()
+        return jsonify({'success': False, 'error': str(e)}), 500
             
-            response_data = {
-                'success': True,
-                'user_id': user.id,
-                'username': user.username,
-                'email': user.email,
-                'admission_number': user.admission_number,
-                'license_type': user.license_type,
-                'license_status': 'active' if user.is_license_valid() else 'expired',
-                'license_expiry': user.license_expiry_date.isoformat() if user.license_expiry_date else None,
-                'days_remaining': days_remaining,
-                'device_limit': user.device_limit,
-                'device_count': device_count,
-                'credits': user.credits or 0,
-                'is_admin': user.is_admin,
-                'is_reseller': user.is_reseller,
-                'is_banned': user.is_banned,
-                'license_valid': user.is_license_valid(),
-                'session_key': session_key,
-                'device_registered': device_registered,
-                'device_id': device_id,
-                'device_name': device_name,
-                'last_login': user.last_login.isoformat() if user.last_login else None
-            }
-            
-            # 🔒 Encrypt login response with PASSWORD-derived key
-            import base64
-            # Use password hash as key (client also knows the password)
-            temp_key = hashlib.sha256(password.encode()).digest()
-            json_str = json.dumps(response_data, ensure_ascii=False)
-            json_bytes = json_str.encode('utf-8')
-            encrypted = bytes([b ^ temp_key[i % len(temp_key)] for i, b in enumerate(json_bytes)])
-            return jsonify({'encrypted': True, 'data': base64.b64encode(encrypted).decode('utf-8')}), 200
-            
-        except Exception as e:
-            db_session.rollback()
-            print(f"[ERROR] Validate license error: {e}")
-            import traceback
-            traceback.print_exc()
-            return jsonify({'success': False, 'error': str(e)}), 500
-            
-
+        ##SESSION VALIDATION
     @app.route('/api/user/validate-session', methods=['POST'])
     def validate_session_endpoint():
         try:
@@ -1740,6 +1828,191 @@ def create_app(config_class=Config):
         log_system_action(current_user.id, 'admin_password_change', f'Changed password for user {user.username}')
         
         return jsonify({'success': True, 'message': f'Password changed for {user.username}'})
+
+        add also be able to view any user dashborad     @app.route('/api/admin/change-user-password', methods=['POST'])
+    @login_required
+    def admin_change_user_password():
+        if not current_user.is_admin:
+            return jsonify({'error': 'Unauthorized'}), 403
+        
+        data = request.get_json()
+        email = data.get('email')
+        new_password = data.get('new_password')
+        
+        if not email or not new_password:
+            return jsonify({'error': 'Email and new password required'}), 400
+        
+        if len(new_password) < 6:
+            return jsonify({'error': 'Password must be at least 6 characters'}), 400
+        
+        user = User.query.filter_by(email=email).first()
+        if not user:
+            return jsonify({'error': 'User not found'}), 404
+        
+        user.set_password(new_password)
+        db.session.commit()
+        
+        log_system_action(current_user.id, 'admin_password_change', f'Changed password for user {user.username}')
+        
+        return jsonify({'success': True, 'message': f'Password changed for {user.username}'})
+
+    # ==================== ADMIN RESET LIMITS ENDPOINTS ====================
+
+    @app.route('/api/admin/reset-command-limit', methods=['POST'])
+    @login_required
+    def admin_reset_command_limit():
+        """Admin: Reset command usage limit for a specific user"""
+        if not current_user.is_admin:
+            return jsonify({'error': 'Unauthorized'}), 403
+        
+        data = request.get_json()
+        user_id = data.get('user_id')
+        username = data.get('username')
+        email = data.get('email')
+        
+        # Find the user
+        user = None
+        if user_id:
+            user = User.query.get(user_id)
+        elif username:
+            user = User.query.filter_by(username=username).first()
+        elif email:
+            user = User.query.filter_by(email=email).first()
+        else:
+            return jsonify({'error': 'Please provide user_id, username, or email'}), 400
+        
+        if not user:
+            return jsonify({'error': 'User not found'}), 404
+        
+        # Get today's usage record
+        today = datetime.utcnow().date()
+        usage = CommandUsage.query.filter_by(user_id=user.id, command_date=today).first()
+        
+        if usage:
+            old_count = usage.count
+            usage.count = 0
+            db.session.commit()
+            
+            log_system_action(current_user.id, 'reset_command_limit', 
+                             f"Reset command limit for user {user.username} from {old_count} to 0")
+            
+            return jsonify({
+                'success': True,
+                'message': f'Command limit reset for user {user.username}',
+                'user': user.username,
+                'previous_count': old_count,
+                'reset_to': 0
+            })
+        else:
+            return jsonify({
+                'success': True,
+                'message': f'User {user.username} has no command usage today',
+                'user': user.username,
+                'previous_count': 0
+            })
+
+    @app.route('/api/admin/reset-command-limit-all', methods=['POST'])
+    @login_required
+    def admin_reset_command_limit_all():
+        """Admin: Reset command limits for ALL users (for maintenance)"""
+        if not current_user.is_admin:
+            return jsonify({'error': 'Unauthorized'}), 403
+        
+        today = datetime.utcnow().date()
+        
+        # Reset all command usage for today
+        updated = CommandUsage.query.filter_by(command_date=today).update({'count': 0})
+        db.session.commit()
+        
+        log_system_action(current_user.id, 'reset_all_command_limits', 
+                         f"Reset command limits for {updated} users")
+        
+        return jsonify({
+            'success': True,
+            'message': f'Command limits reset for {updated} users',
+            'users_reset': updated
+        })
+
+    @app.route('/api/admin/reset-login-attempts', methods=['POST'])
+    @login_required
+    def admin_reset_login_attempts():
+        """Admin: Reset login attempts for a specific user or IP"""
+        if not current_user.is_admin:
+            return jsonify({'error': 'Unauthorized'}), 403
+        
+        data = request.get_json()
+        identifier = data.get('identifier')
+        user_id = data.get('user_id')
+        
+        if not identifier and not user_id:
+            return jsonify({'error': 'Please provide identifier or user_id'}), 400
+        
+        # Delete login attempts
+        query = LoginAttempt.query.filter(LoginAttempt.attempt_type == 'login')
+        
+        if identifier:
+            query = query.filter(LoginAttempt.identifier == identifier)
+        elif user_id:
+            user = User.query.get(user_id)
+            if user:
+                query = query.filter(LoginAttempt.identifier == user.email)
+            else:
+                return jsonify({'error': 'User not found'}), 404
+        
+        deleted_count = query.delete()
+        db.session.commit()
+        
+        log_system_action(current_user.id, 'reset_login_attempts', 
+                         f"Reset login attempts, deleted: {deleted_count}")
+        
+        return jsonify({
+            'success': True,
+            'message': 'Login attempts reset',
+            'deleted_attempts': deleted_count
+        })
+
+    @app.route('/api/admin/user-limits/<int:user_id>')
+    @login_required
+    def admin_get_user_limits(user_id):
+        """Admin: View user's current limit usage"""
+        if not current_user.is_admin:
+            return jsonify({'error': 'Unauthorized'}), 403
+        
+        user = User.query.get(user_id)
+        if not user:
+            return jsonify({'error': 'User not found'}), 404
+        
+        today = datetime.utcnow().date()
+        command_usage = CommandUsage.query.filter_by(user_id=user.id, command_date=today).first()
+        
+        # Get login attempts from last hour
+        cutoff = datetime.utcnow() - timedelta(hours=1)
+        login_attempts = LoginAttempt.query.filter(
+            LoginAttempt.identifier == user.email,
+            LoginAttempt.attempt_time >= cutoff
+        ).count()
+        
+        return jsonify({
+            'success': True,
+            'user': {
+                'id': user.id,
+                'username': user.username,
+                'email': user.email
+            },
+            'command_limit': {
+                'used_today': command_usage.count if command_usage else 0,
+                'limit_per_day': 100,
+                'remaining': 100 - (command_usage.count if command_usage else 0),
+                'resets_at_midnight': True
+            },
+            'login_limit': {
+                'attempts_last_hour': login_attempts,
+                'limit_per_hour': 10,
+                'remaining': max(0, 10 - login_attempts)
+            }
+        })
+
+    
         # ==================== RESELLER DASHBOARD API ENDPOINTS ====================
     
     @app.route('/api/reseller/dashboard')
@@ -2170,258 +2443,242 @@ def create_app(config_class=Config):
         return render_template('license.html')
         
 
-    # ==================== COMMAND FETCH ENDPOINT ===================
+   # ==================== COMMAND FETCH ENDPOINT ===================
     
-    @app.route('/api/get-command', methods=['POST'])
-    @api_login_required
-    def get_command():
-        """
-        Fetch command definition for desktop client
-        Expects: {"tab": "mediatek", "mode": "mdm", "action": "read_info", "device_info": {}}
-        """
-        try:
-            data = request.get_json()
-            tab = data.get('tab', '').lower()        # mediatek, unisoc, xiaomi, hmd, hxd
-            mode = data.get('mode', '').lower()      # mdm, adb, fastboot, etc.
-            action = data.get('action', '').lower()  # read_info, factory_reset, etc.
-            device_info = data.get('device_info', {})
-            
-            # DEBUG: Print what we're looking for
-            print(f"🔍 [DEBUG] Looking for: tab={tab}, mode={mode}, action={action}")
-            
-            user = current_user
-            
-            # 1. VALIDATION
-            if user.is_banned:
-                return jsonify({'error': 'Account banned', 'code': 'BANNED'}), 403
-            
-            if not user.is_license_valid():
-                return jsonify({'error': 'License expired/not activated', 'code': 'LICENSE_EXPIRED/NOT ACTIVATED'}), 403
-            
-            # 2. MAP TAB to folder name
-            tab_folders = {
-                'mediatek': 'mediatek_module',
-                'unisoc': 'unisoc_module',
-                'xiaomi': 'xiaomi_module',
-                'samsung': 'samsung_module',
-                'oplus': 'oplus_module',
-                'hxd': 'hxd_module',
-            }
-            
-            folder = tab_folders.get(tab)
-            if not folder:
-                return jsonify({'error': f'Invalid tab: {tab}'}), 404
-            
-            # 3. MAP MODE to JSON file (with _commands suffix)
-            filename = f"{mode}_commands.json"
-            
-            # 4. LOAD COMMANDS FROM SERVER
-            commands_dir = os.path.join(BASE_DIR, 'commands')
-            filepath = os.path.join(commands_dir, folder, filename)
-            
-            # DEBUG: Print paths
-            print(f"📁 [DEBUG] BASE_DIR: {BASE_DIR}")
-            print(f"📁 [DEBUG] commands_dir: {commands_dir}")
-            print(f"📁 [DEBUG] Looking for file: {filepath}")
-            print(f"📁 [DEBUG] commands_dir exists: {os.path.exists(commands_dir)}")
-            
-            # List what's in the commands directory for debugging
-            if os.path.exists(commands_dir):
-                print(f"📁 [DEBUG] Contents of commands dir: {os.listdir(commands_dir)}")
-                for folder_name in os.listdir(commands_dir):
-                    folder_path = os.path.join(commands_dir, folder_name)
-                    if os.path.isdir(folder_path):
-                        print(f"📁 [DEBUG] Contents of {folder_name}: {os.listdir(folder_path)}")
-            else:
-                print(f"❌ [DEBUG] commands directory NOT FOUND at: {commands_dir}")
-                # Try alternative paths
-                alt_paths = [
-                    os.path.join(os.getcwd(), 'commands'),
-                    os.path.join(os.path.dirname(os.path.dirname(BASE_DIR)), 'commands'),
-                ]
-                for alt in alt_paths:
-                    print(f"📁 [DEBUG] Checking alternative path: {alt} - exists: {os.path.exists(alt)}")
-                    if os.path.exists(alt):
-                        commands_dir = alt
-                        filepath = os.path.join(commands_dir, folder, filename)
-                        print(f"📁 [DEBUG] Using alternative path: {filepath}")
-                        break
+@app.route('/api/get-command', methods=['POST'])
+@limiter.limit("100 per day") 
+@api_login_required
+def get_command():
+    """
+    Fetch command definition for desktop client
+    Expects: {"tab": "mediatek", "mode": "mdm", "action": "read_info", "device_info": {}}
+    """
+    try:
+        data = request.get_json()
+        tab = data.get('tab', '').lower()        # mediatek, unisoc, xiaomi, hmd, hxd
+        mode = data.get('mode', '').lower()      # mdm, adb, fastboot, etc.
+        action = data.get('action', '').lower()  # read_info, factory_reset, etc.
+        device_info = data.get('device_info', {})
+        
+        # DEBUG: Print what we're looking for
+        print(f"🔍 [DEBUG] Looking for: tab={tab}, mode={mode}, action={action}")
+        
+        user = current_user
+        
+        # 1. VALIDATION
+        if user.is_banned:
+            return jsonify({'error': 'Account banned', 'code': 'BANNED'}), 403
+        
+        if not user.is_license_valid():
+            return jsonify({'error': 'License expired/not activated', 'code': 'LICENSE_EXPIRED'}), 403
+        
+        # 2. MAP TAB to folder name
+        tab_folders = {
+            'mediatek': 'mediatek_module',
+            'unisoc': 'unisoc_module',
+            'xiaomi': 'xiaomi_module',
+            'samsung': 'samsung_module',
+            'oplus': 'oplus_module',
+            'hxd': 'hxd_module',
+        }
+        
+        folder = tab_folders.get(tab)
+        if not folder:
+            return jsonify({'error': f'Invalid tab: {tab}'}), 404
+        
+        # 3. MAP MODE to JSON file
+        filename = f"{mode}_commands.json"
+        
+        # 4. LOAD COMMANDS FROM SERVER
+        commands_dir = os.path.join(BASE_DIR, 'commands')
+        filepath = os.path.join(commands_dir, folder, filename)
+        
+        # Check if file exists with fallback paths
+        if not os.path.exists(filepath):
+            alt_paths = [
+                os.path.join(os.getcwd(), 'commands'),
+                os.path.join(os.path.dirname(os.path.dirname(BASE_DIR)), 'commands'),
+            ]
+            for alt in alt_paths:
+                alt_filepath = os.path.join(alt, folder, filename)
+                if os.path.exists(alt_filepath):
+                    filepath = alt_filepath
+                    break
             
             if not os.path.exists(filepath):
-                # Return more detailed error for debugging
                 return jsonify({
                     'error': f'Commands not found for {tab}/{mode}',
                     'debug': {
-                        'base_dir': BASE_DIR,
-                        'commands_dir': commands_dir,
                         'filepath': filepath,
-                        'file_exists': os.path.exists(filepath),
-                        'dir_exists': os.path.exists(commands_dir),
                         'requested_tab': tab,
                         'requested_mode': mode,
                         'requested_action': action
                     }
                 }), 404
-            
-            with open(filepath, 'r') as f:
-                commands_data = json.load(f)
-            
-            # 5. GET SPECIFIC ACTION
-            function_data = commands_data.get('functions', {}).get(action)
+        
+        with open(filepath, 'r') as f:
+            commands_data = json.load(f)
+        
+        # 5. GET SPECIFIC ACTION
+        function_data = commands_data.get('functions', {}).get(action)
+        
+        if not function_data:
+            # Try case-insensitive search
+            for key, value in commands_data.get('functions', {}).items():
+                if key.lower() == action:
+                    function_data = value
+                    break
             
             if not function_data:
-                # Try case-insensitive search
-                for key, value in commands_data.get('functions', {}).items():
-                    if key.lower() == action:
-                        function_data = value
-                        break
-                
-                if not function_data:
-                    available_actions = list(commands_data.get('functions', {}).keys())
-                    return jsonify({
-                        'error': f'Action "{action}" not found. Available: {available_actions}'
-                    }), 404
-            
-            # 6. CHECK PERMISSIONS
-            if function_data.get('requires_admin', False) and not user.is_admin:
-                return jsonify({'error': 'Admin access required'}), 403
-            
-            # 7. CHECK CREDITS
-            cost = function_data.get('cost', 0)
-            if cost > 0 and (user.credits or 0) < cost:
-                return jsonify({'error': f'Insufficient credits. Need {cost} credits', 'code': 'INSUFFICIENT_CREDITS'}), 403
-            
-            # 8. DEDUCT CREDITS if cost > 0
-            if cost > 0:
-                user.credits = (user.credits or 0) - cost
-                transaction = CreditTransaction(
-                    user_id=user.id,
-                    amount=-cost,
-                    transaction_type='command_usage',
-                    description=f'Executed {tab}.{mode}.{action}'
-                )
-                db.session.add(transaction)
-                db.session.commit()
-            
-            # 9. LOG REQUEST
-            log_system_action(user.id, 'command_request', 
-                             f"Requested {tab}.{mode}.{action} on {device_info.get('model', 'unknown')}")
-            
-            # 10. BUILD RESPONSE - ADD THE MISSING FIELDS
-            response = {
-                'success': True,
-                'tab': tab,
-                'mode': mode,
-                'action': action,
-                'type': function_data.get('type', 'adb_commands'),
-                'requires_device': function_data.get('requires_device', False),
-                'device_type': function_data.get('device_type', 'adb'),
-                'progress_steps': function_data.get('progress_steps', []),
-                'commands': function_data.get('commands', []),
-                'filter_keywords': function_data.get('filter_keywords', {}),
-                'unique_filters': function_data.get('unique_filters', {}),
-                'success_message': function_data.get('success_message', '✅ Operation completed'),
-                'error_message': function_data.get('error_message', '❌ Operation failed'),
-                'timeout': function_data.get('timeout', 60),
-                'chunk_size': function_data.get('chunk_size', 4194304),
-                'backup_enabled': function_data.get('backup_enabled', False),
-                'cost': cost,
-                'credits_remaining': user.credits or 0,
-                'config': function_data.get('config', {}),
-                
-                # ========== CRITICAL MISSING FIELDS ==========
-                # For meta_action (factory_reset, frp)
-                'action_command': function_data.get('action_command', ''),
-                # For meta_command (read_info)
-                'command': function_data.get('command', ''),
-                # For meta_boot (handshake, detection, etc.)
-                'handshake': function_data.get('handshake', {}),
-                'preloader_detection': function_data.get('preloader_detection', {}),
-                'boot_methods': function_data.get('boot_methods', []),
-                'meta_detection': function_data.get('meta_detection', {}),
-                'final_progress': function_data.get('final_progress', 100),
-                # For nvram operations
-                'partitions': function_data.get('partitions', []),
-                'operation': function_data.get('operation', ''),
-                'progress_per_partition': function_data.get('progress_per_partition', 80),
-                'output_format': function_data.get('output_format', ''),
-                'input_format': function_data.get('input_format', ''),
-                # For imei operations
-                'parse_response': function_data.get('parse_response', {}),
-                'default_info': function_data.get('default_info', []),
-                'requires_connection': function_data.get('requires_connection', False),
-                'requires_auth': function_data.get('requires_auth', False),
-                'requires_imei': function_data.get('requires_imei', False),
-                # For stop operation
-                'disconnect_command': function_data.get('disconnect_command', ''),
-                'disconnect_delay': function_data.get('disconnect_delay', 0.5),
-                'reset_connection': function_data.get('reset_connection', False),
-                
-                # APK Download Information (for MDM bypass commands)
-                'requires_apk': function_data.get('requires_apk', False),
-                'apk_name': function_data.get('apk_name', ''),
-                'apk_download_url': function_data.get('apk_download_url', ''),
-                'apk_package': function_data.get('apk_package', ''),
-                'phases': function_data.get('phases', []),
-                'block_apps': function_data.get('block_apps', []),
-                'block_commands_per_app': function_data.get('block_commands_per_app', []),
-                'global_settings': function_data.get('global_settings', []),
-                'set_device_owner': function_data.get('set_device_owner', {}),
-                'grant_permissions': function_data.get('grant_permissions', []),
-                'launch_methods': function_data.get('launch_methods', []),
-                'uninstall_apps': function_data.get('uninstall_apps', []),
-                'uninstall_commands': function_data.get('uninstall_commands', []),
-                'reboot': function_data.get('reboot', False)
-            }
-
-                        # DEBUG: Print what we're sending
-            print(f"✅ [DEBUG] Command fetched successfully: {tab}/{mode}/{action}")
-            print(f"   type: {response['type']}")
-            if response['type'] == 'meta_action':
-                print(f"   action_command: '{response['action_command']}'")
-            elif response['type'] == 'meta_command':
-                print(f"   command: '{response['command']}'")
-            
-                       
-         # 🔒 FORCED ENCRYPTION - Try multiple sources for the key
-            import base64
-            
-            # Try ALL possible sources for session key
-            session_key = ''
-            
-            # 1. Authorization header (client sends Bearer token)
-            auth = request.headers.get('Authorization', '')
-            if auth.startswith('Bearer '):
-                session_key = auth.split(' ')[1]
-            
-            # 2. Request body session_token
-            if not session_key:
-                session_key = data.get('session_token', '')
-            
-            # 3. User's database record (permanent)
-            if not session_key:
-                session_key = user.current_session_key or ''
-            
-            # 4. Flask session (last resort)
-            if not session_key:
-                session_key = flask_session.get('module_key', '')
-            
-            print(f"🔑 Session key found: {bool(session_key)} (len: {len(session_key) if session_key else 0})")
-            
-            if session_key:
-                key = hashlib.sha256(session_key.encode()).digest()
-                json_str = json.dumps(response, ensure_ascii=False)
-                # ✅ Fix: encode to bytes first, then XOR
-                json_bytes = json_str.encode('utf-8')
-                encrypted = bytes([b ^ key[i % len(key)] for i, b in enumerate(json_bytes)])
-                return jsonify({'encrypted': True, 'data': base64.b64encode(encrypted).decode('utf-8')}), 200
+                available_actions = list(commands_data.get('functions', {}).keys())
+                return jsonify({
+                    'error': f'Action "{action}" not found. Available: {available_actions}'
+                }), 404
+        
+        # 6. CHECK PERMISSIONS
+        if function_data.get('requires_admin', False) and not user.is_admin:
+            return jsonify({'error': 'Admin access required'}), 403
+        
+        # ========== CUSTOM CREDIT LOGIC FOR XIAOMI TAB ==========
+        # Get base cost from JSON
+        cost = function_data.get('cost', 0)
+        original_cost = cost  # Store for logging
+        
+        # Apply Xiaomi special pricing
+        if tab == 'xiaomi':
+            if action == 'read_info':
+                cost = 0  # Free
+                print(f"💰 [XIAOMI] read_info is FREE (original cost: {original_cost})")
             else:
-                return jsonify({'error': 'Encryption required. Please re-login.', 'code': 'NO_SESSION_KEY'}), 403
+                cost = 5  # 5 credits for any other Xiaomi operation
+                print(f"💰 [XIAOMI] Setting cost to 5 credits for {action} (original cost: {original_cost})")
+        
+        # 7. CHECK CREDITS
+        if cost > 0 and (user.credits or 0) < cost:
+            return jsonify({
+                'error': f'Insufficient credits. Need {cost} credits', 
+                'code': 'INSUFFICIENT_CREDITS',
+                'credits_available': user.credits or 0,
+                'credits_needed': cost
+            }), 403
+        
+        # 8. DEDUCT CREDITS if cost > 0
+        if cost > 0:
+            user.credits = (user.credits or 0) - cost
+            transaction = CreditTransaction(
+                user_id=user.id,
+                amount=-cost,
+                transaction_type='command_usage',
+                description=f'Executed {tab}.{mode}.{action} (Cost: {cost} credits)'
+            )
+            db.session.add(transaction)
+            db.session.commit()
+            print(f"💰 Deducted {cost} credits from user {user.username} (Remaining: {user.credits})")
+        
+        # 9. LOG REQUEST
+        log_system_action(user.id, 'command_request', 
+                         f"Requested {tab}.{mode}.{action} on {device_info.get('model', 'unknown')} (Cost: {cost} credits)")
+        
+        # 10. BUILD RESPONSE
+        response = {
+            'success': True,
+            'tab': tab,
+            'mode': mode,
+            'action': action,
+            'type': function_data.get('type', 'adb_commands'),
+            'requires_device': function_data.get('requires_device', False),
+            'device_type': function_data.get('device_type', 'adb'),
+            'progress_steps': function_data.get('progress_steps', []),
+            'commands': function_data.get('commands', []),
+            'filter_keywords': function_data.get('filter_keywords', {}),
+            'unique_filters': function_data.get('unique_filters', {}),
+            'success_message': function_data.get('success_message', '✅ Operation completed'),
+            'error_message': function_data.get('error_message', '❌ Operation failed'),
+            'timeout': function_data.get('timeout', 60),
+            'chunk_size': function_data.get('chunk_size', 4194304),
+            'backup_enabled': function_data.get('backup_enabled', False),
+            'cost': cost,
+            'original_cost': original_cost,  # Send original cost from JSON for reference
+            'credits_remaining': user.credits or 0,
+            'config': function_data.get('config', {}),
             
-        except Exception as e:
-            print(f"Error in get_command: {e}")
-            traceback.print_exc()
-            return jsonify({'error': f'Internal server error: {str(e)}'}), 500
+            # For meta_action (factory_reset, frp)
+            'action_command': function_data.get('action_command', ''),
+            # For meta_command (read_info)
+            'command': function_data.get('command', ''),
+            # For meta_boot (handshake, detection, etc.)
+            'handshake': function_data.get('handshake', {}),
+            'preloader_detection': function_data.get('preloader_detection', {}),
+            'boot_methods': function_data.get('boot_methods', []),
+            'meta_detection': function_data.get('meta_detection', {}),
+            'final_progress': function_data.get('final_progress', 100),
+            # For nvram operations
+            'partitions': function_data.get('partitions', []),
+            'operation': function_data.get('operation', ''),
+            'progress_per_partition': function_data.get('progress_per_partition', 80),
+            'output_format': function_data.get('output_format', ''),
+            'input_format': function_data.get('input_format', ''),
+            # For imei operations
+            'parse_response': function_data.get('parse_response', {}),
+            'default_info': function_data.get('default_info', []),
+            'requires_connection': function_data.get('requires_connection', False),
+            'requires_auth': function_data.get('requires_auth', False),
+            'requires_imei': function_data.get('requires_imei', False),
+            # For stop operation
+            'disconnect_command': function_data.get('disconnect_command', ''),
+            'disconnect_delay': function_data.get('disconnect_delay', 0.5),
+            'reset_connection': function_data.get('reset_connection', False),
+            # APK Download Information
+            'requires_apk': function_data.get('requires_apk', False),
+            'apk_name': function_data.get('apk_name', ''),
+            'apk_download_url': function_data.get('apk_download_url', ''),
+            'apk_package': function_data.get('apk_package', ''),
+            'phases': function_data.get('phases', []),
+            'block_apps': function_data.get('block_apps', []),
+            'block_commands_per_app': function_data.get('block_commands_per_app', []),
+            'global_settings': function_data.get('global_settings', []),
+            'set_device_owner': function_data.get('set_device_owner', {}),
+            'grant_permissions': function_data.get('grant_permissions', []),
+            'launch_methods': function_data.get('launch_methods', []),
+            'uninstall_apps': function_data.get('uninstall_apps', []),
+            'uninstall_commands': function_data.get('uninstall_commands', []),
+            'reboot': function_data.get('reboot', False)
+        }
+
+        print(f"✅ Command fetched: {tab}/{mode}/{action} (Cost: {cost} credits)")
+        
+        # 🔒 ENCRYPT RESPONSE
+        import base64
+        
+        session_key = ''
+        
+        # Try all sources for session key
+        auth = request.headers.get('Authorization', '')
+        if auth.startswith('Bearer '):
+            session_key = auth.split(' ')[1]
+        
+        if not session_key:
+            session_key = data.get('session_token', '')
+        
+        if not session_key:
+            session_key = user.current_session_key or ''
+        
+        if not session_key:
+            session_key = flask_session.get('module_key', '')
+        
+        if session_key:
+            key = hashlib.sha256(session_key.encode()).digest()
+            json_str = json.dumps(response, ensure_ascii=False)
+            json_bytes = json_str.encode('utf-8')
+            encrypted = bytes([b ^ key[i % len(key)] for i, b in enumerate(json_bytes)])
+            return jsonify({'encrypted': True, 'data': base64.b64encode(encrypted).decode('utf-8')}), 200
+        else:
+            return jsonify({'error': 'Encryption required. Please re-login.', 'code': 'NO_SESSION_KEY'}), 403
+        
+    except Exception as e:
+        print(f"Error in get_command: {e}")
+        traceback.print_exc()
+        return jsonify({'error': f'Internal server error: {str(e)}'}), 500
 
     # ==================== VERSION CHECK ENDPOINT ====================
     
