@@ -2181,6 +2181,42 @@ def create_app(config_class=Config):
             'suspension_cleared': bool(user)
         })
 
+    @app.route('/api/admin/debug-user/<string:identifier>', methods=['GET'])
+    @login_required
+    def debug_user(identifier):
+        if not current_user.is_admin:
+            return jsonify({'error': 'Unauthorized'}), 403
+        
+        user = User.query.filter_by(email=identifier).first()
+        if not user:
+            user = User.query.filter_by(username=identifier).first()
+        
+        if not user:
+            return jsonify({'error': 'User not found'}), 404
+        
+        # Get login attempts
+        attempts = LoginAttempt.query.filter(
+            LoginAttempt.identifier == user.email,
+            LoginAttempt.attempt_type == 'login'
+        ).order_by(LoginAttempt.attempt_time.desc()).limit(10).all()
+        
+        attempts_data = [{
+            'time': a.attempt_time.isoformat(),
+            'success': a.success,
+            'ip': a.ip_address
+        } for a in attempts]
+        
+        return jsonify({
+            'user': {
+                'id': user.id,
+                'username': user.username,
+                'email': user.email,
+                'suspended_until': user.suspended_until.isoformat() if user.suspended_until else None,
+                'failed_login_count': user.failed_login_count
+            },
+            'recent_attempts': attempts_data,
+            'attempts_count': len(attempts_data)
+        })
 
     
         # ==================== RESELLER DASHBOARD API ENDPOINTS ====================
