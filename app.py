@@ -394,12 +394,21 @@ def create_app(config_class=Config):
         
         return render_template('reset_password.html', token=token)
 
-                #DESKTOP VALIDATION SPOT #################################################
+    ##########DESKTOP VALIDATION SPOT #################################################
     
     @app.route('/api/validate-license', methods=['POST'])
     def validate_license():
         db_session = db.session
         try:
+            # ========== CHECK MAINTENANCE MODE ==========
+            if is_maintenance_mode():
+                return jsonify({
+                    'success': False,
+                    'error': 'System is currently under maintenance. Please try again later.',
+                    'code': 'MAINTENANCE_MODE',
+                    'maintenance': True
+                }), 503
+            
             data = request.get_json()
             
             if not data:
@@ -663,6 +672,15 @@ def create_app(config_class=Config):
     @app.route('/api/user/validate-session', methods=['POST'])
     def validate_session_endpoint():
         try:
+            # ========== CHECK MAINTENANCE MODE ==========
+            if is_maintenance_mode():
+                return jsonify({
+                    'success': False,
+                    'error': 'System is currently under maintenance. Please try again later.',
+                    'code': 'MAINTENANCE_MODE',
+                    'maintenance': True
+                }), 503
+            
             data = request.get_json() or {}
             session_token = data.get('session_token', '')[:256]
             hwid = data.get('hwid', '')[:256] if data.get('hwid') else None
@@ -711,6 +729,7 @@ def create_app(config_class=Config):
         except Exception as e:
             db.session.rollback()
             return jsonify({'success': False, 'error': str(e)}), 500
+            
     
     # ==================== USER DASHBOARD API ENDPOINTS ====================
     # Using api_login_required instead of login_required for API endpoints
@@ -2579,8 +2598,7 @@ def create_app(config_class=Config):
         """License agreement page"""
         return render_template('license.html')
 
-            # ==================== COMMAND FETCH ENDPOINT ====================
-    
+# ==================== COMMAND FETCH ENDPOINT ====================###############################
     @app.route('/api/get-command', methods=['POST'])
     @limiter.limit("100 per day") 
     @api_login_required
@@ -2590,6 +2608,14 @@ def create_app(config_class=Config):
         Expects: {"tab": "mediatek", "mode": "mdm", "action": "read_info", "device_info": {}}
         """
         try:
+            # ========== CHECK MAINTENANCE MODE ==========
+            if is_maintenance_mode():
+                return jsonify({
+                    'error': 'System is currently under maintenance. Please try again later.',
+                    'code': 'MAINTENANCE_MODE',
+                    'maintenance': True
+                }), 503
+            
             data = request.get_json()
             tab = data.get('tab', '').lower()        # mediatek, unisoc, xiaomi, hmd, hxd
             mode = data.get('mode', '').lower()      # mdm, adb, fastboot, etc.
