@@ -1820,6 +1820,7 @@ def create_app(config_class=Config):
         
         return jsonify({'success': True, 'message': f'Password changed for {user.username}'})
 
+
     # ==================== ADMIN RESET LIMITS ENDPOINTS ====================
     @app.route('/api/admin/user-limits/<int:user_id>')
     @login_required
