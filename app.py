@@ -1857,124 +1857,10 @@ def validate_license():
         return jsonify({'success': True, 'message': f'Password changed for {user.username}'})
 
     # ==================== ADMIN RESET LIMITS ENDPOINTS ====================
-
-    @app.route('/api/admin/reset-command-limit', methods=['POST'])
-    @login_required
-    def admin_reset_command_limit():
-        """Admin: Reset command usage limit for a specific user"""
-        if not current_user.is_admin:
-            return jsonify({'error': 'Unauthorized'}), 403
-        
-        data = request.get_json()
-        user_id = data.get('user_id')
-        username = data.get('username')
-        email = data.get('email')
-        
-        # Find the user
-        user = None
-        if user_id:
-            user = User.query.get(user_id)
-        elif username:
-            user = User.query.filter_by(username=username).first()
-        elif email:
-            user = User.query.filter_by(email=email).first()
-        else:
-            return jsonify({'error': 'Please provide user_id, username, or email'}), 400
-        
-        if not user:
-            return jsonify({'error': 'User not found'}), 404
-        
-        # Get today's usage record
-        today = datetime.utcnow().date()
-        usage = CommandUsage.query.filter_by(user_id=user.id, command_date=today).first()
-        
-        if usage:
-            old_count = usage.count
-            usage.count = 0
-            db.session.commit()
-            
-            log_system_action(current_user.id, 'reset_command_limit', 
-                             f"Reset command limit for user {user.username} from {old_count} to 0")
-            
-            return jsonify({
-                'success': True,
-                'message': f'Command limit reset for user {user.username}',
-                'user': user.username,
-                'previous_count': old_count,
-                'reset_to': 0
-            })
-        else:
-            return jsonify({
-                'success': True,
-                'message': f'User {user.username} has no command usage today',
-                'user': user.username,
-                'previous_count': 0
-            })
-
-    @app.route('/api/admin/reset-command-limit-all', methods=['POST'])
-    @login_required
-    def admin_reset_command_limit_all():
-        """Admin: Reset command limits for ALL users (for maintenance)"""
-        if not current_user.is_admin:
-            return jsonify({'error': 'Unauthorized'}), 403
-        
-        today = datetime.utcnow().date()
-        
-        # Reset all command usage for today
-        updated = CommandUsage.query.filter_by(command_date=today).update({'count': 0})
-        db.session.commit()
-        
-        log_system_action(current_user.id, 'reset_all_command_limits', 
-                         f"Reset command limits for {updated} users")
-        
-        return jsonify({
-            'success': True,
-            'message': f'Command limits reset for {updated} users',
-            'users_reset': updated
-        })
-
-    @app.route('/api/admin/reset-login-attempts', methods=['POST'])
-    @login_required
-    def admin_reset_login_attempts():
-        """Admin: Reset login attempts for a specific user or IP"""
-        if not current_user.is_admin:
-            return jsonify({'error': 'Unauthorized'}), 403
-        
-        data = request.get_json()
-        identifier = data.get('identifier')
-        user_id = data.get('user_id')
-        
-        if not identifier and not user_id:
-            return jsonify({'error': 'Please provide identifier or user_id'}), 400
-        
-        # Delete login attempts
-        query = LoginAttempt.query.filter(LoginAttempt.attempt_type == 'login')
-        
-        if identifier:
-            query = query.filter(LoginAttempt.identifier == identifier)
-        elif user_id:
-            user = User.query.get(user_id)
-            if user:
-                query = query.filter(LoginAttempt.identifier == user.email)
-            else:
-                return jsonify({'error': 'User not found'}), 404
-        
-        deleted_count = query.delete()
-        db.session.commit()
-        
-        log_system_action(current_user.id, 'reset_login_attempts', 
-                         f"Reset login attempts, deleted: {deleted_count}")
-        
-        return jsonify({
-            'success': True,
-            'message': 'Login attempts reset',
-            'deleted_attempts': deleted_count
-        })
-
     @app.route('/api/admin/user-limits/<int:user_id>')
     @login_required
     def admin_get_user_limits(user_id):
-        """Admin: View user's current limit usage"""
+        """Admin: Quick view of user's current limit usage (lightweight)"""
         if not current_user.is_admin:
             return jsonify({'error': 'Unauthorized'}), 403
         
@@ -2012,6 +1898,169 @@ def validate_license():
             }
         })
 
+    @app.route('/api/admin/user-dashboard/<int:user_id>')
+    @login_required
+    def admin_view_user_dashboard(user_id):
+        """Admin: Complete user dashboard (detailed view)"""
+        if not current_user.is_admin:
+            return jsonify({'error': 'Unauthorized'}), 403
+        
+        user = User.query.get(user_id)
+        if not user:
+            return jsonify({'error': 'User not found'}), 404
+        
+        # Get devices
+        devices = Device.query.filter_by(user_id=user.id).order_by(Device.created_at.desc()).all()
+        active_devices = [d for d in devices if d.is_active]
+        
+        # Get sessions
+        active_sessions = UserSession.query.filter(
+            UserSession.user_id == user.id,
+            UserSession.is_active == True,
+            UserSession.expires_at > datetime.utcnow()
+        ).count()
+        
+        # Get command usage for last 7 days
+        today = datetime.utcnow().date()
+        command_stats = []
+        for i in range(7):
+            date = today - timedelta(days=i)
+            usage = CommandUsage.query.filter_by(user_id=user.id, command_date=date).first()
+            command_stats.append({
+                'date': date.isoformat(),
+                'count': usage.count if usage else 0
+            })
+        
+        # Get login attempts (last 24 hours)
+        cutoff = datetime.utcnow() - timedelta(hours=24)
+        recent_login_attempts = LoginAttempt.query.filter(
+            LoginAttempt.identifier == user.email,
+            LoginAttempt.attempt_time >= cutoff
+        ).order_by(LoginAttempt.attempt_time.desc()).limit(20).all()
+        
+        login_attempts_data = [{
+            'time': attempt.attempt_time.isoformat(),
+            'success': attempt.success,
+            'ip': attempt.ip_address
+        } for attempt in recent_login_attempts]
+        
+        # Get recent activity logs
+        recent_activity = SystemLog.query.filter_by(user_id=user.id).order_by(SystemLog.created_at.desc()).limit(20).all()
+        
+        activity_data = [{
+            'time': log.created_at.isoformat(),
+            'type': log.log_type,
+            'message': log.message,
+            'ip': log.ip_address
+        } for log in recent_activity]
+        
+        # Get credit transactions (last 20)
+        transactions = CreditTransaction.query.filter_by(user_id=user.id).order_by(CreditTransaction.created_at.desc()).limit(20).all()
+        
+        transactions_data = [{
+            'date': t.created_at.isoformat(),
+            'amount': t.amount,
+            'type': t.transaction_type,
+            'description': t.description
+        } for t in transactions]
+        
+        # Calculate days remaining on license
+        days_remaining = 0
+        if user.license_expiry_date:
+            days_remaining = (user.license_expiry_date - datetime.utcnow()).days
+            if days_remaining < 0:
+                days_remaining = 0
+        
+        # Get HWID change count
+        hwid_changes = user.hwid_change_count or 0
+        
+        return jsonify({
+            'success': True,
+            'user': {
+                'id': user.id,
+                'username': user.username,
+                'email': user.email,
+                'admission_number': user.admission_number,
+                'country': user.country or 'Not set',
+                'created_at': user.created_at.isoformat() if user.created_at else None,
+                'last_login': user.last_login.isoformat() if user.last_login else None,
+                'is_banned': user.is_banned,
+                'is_admin': user.is_admin,
+                'is_reseller': user.is_reseller
+            },
+            'license': {
+                'type': user.license_type or 'None',
+                'status': 'Active' if user.is_license_valid() else 'Expired',
+                'expiry_date': user.license_expiry_date.isoformat() if user.license_expiry_date else None,
+                'days_remaining': days_remaining,
+                'device_limit': user.device_limit if user.device_limit < 999999 else 'Unlimited'
+            },
+            'credits': {
+                'balance': user.credits or 0,
+                'total_earned': db.session.query(func.sum(CreditTransaction.amount)).filter(CreditTransaction.user_id == user.id, CreditTransaction.amount > 0).scalar() or 0,
+                'total_spent': abs(db.session.query(func.sum(CreditTransaction.amount)).filter(CreditTransaction.user_id == user.id, CreditTransaction.amount < 0).scalar() or 0)
+            },
+            'devices': {
+                'total': len(devices),
+                'active': len(active_devices),
+                'limit': user.device_limit,
+                'list': [{
+                    'id': d.id,
+                    'name': d.device_name,
+                    'hwid': d.hwid_hash[:16] + '...' if d.hwid_hash else 'N/A',
+                    'is_active': d.is_active,
+                    'last_seen': d.last_seen.isoformat() if d.last_seen else None,
+                    'created_at': d.created_at.isoformat() if d.created_at else None
+                } for d in devices[:10]]
+            },
+            'sessions': {
+                'active': active_sessions
+            },
+            'commands': {
+                'used_today': command_stats[0]['count'] if command_stats else 0,
+                'limit_per_day': 100,
+                'remaining_today': 100 - (command_stats[0]['count'] if command_stats else 0),
+                'last_7_days': command_stats,
+                'hwid_change_count': hwid_changes
+            },
+            'security': {
+                'recent_login_attempts': login_attempts_data,
+                'failed_attempts_last_hour': LoginAttempt.query.filter(
+                    LoginAttempt.identifier == user.email,
+                    LoginAttempt.success == False,
+                    LoginAttempt.attempt_time >= (datetime.utcnow() - timedelta(hours=1))
+                ).count()
+            },
+            'activity': {
+                'recent': activity_data
+            },
+            'transactions': transactions_data
+        })
+
+    @app.route('/api/admin/user-dashboard', methods=['POST'])
+    @login_required
+    def admin_view_user_dashboard_by_search():
+        """Admin: View user dashboard by username or email (convenience method)"""
+        if not current_user.is_admin:
+            return jsonify({'error': 'Unauthorized'}), 403
+        
+        data = request.get_json()
+        username = data.get('username')
+        email = data.get('email')
+        
+        user = None
+        if username:
+            user = User.query.filter_by(username=username).first()
+        elif email:
+            user = User.query.filter_by(email=email).first()
+        else:
+            return jsonify({'error': 'Please provide username or email'}), 400
+        
+        if not user:
+            return jsonify({'error': 'User not found'}), 404
+        
+        # Reuse the dashboard function
+        return admin_view_user_dashboard(user.id)
     
         # ==================== RESELLER DASHBOARD API ENDPOINTS ====================
     
