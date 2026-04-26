@@ -140,7 +140,7 @@ def create_app(config_class=Config):
                     username='admin',
                     email=admin_email,
                     admission_number=1000,
-                    credits=1000,
+                    credits=10,
                     is_admin=True,
                     is_active=True,
                     device_limit=0,
@@ -174,7 +174,7 @@ def create_app(config_class=Config):
     login_manager.login_view = 'login'
     login_manager.login_message = None
 
-     # ==================== MAINTENANCE MODE ====================
+        # ==================== MAINTENANCE MODE ====================
     
     MAINTENANCE_FILE = os.path.join(BASE_DIR, 'maintenance.json')
     
@@ -187,7 +187,7 @@ def create_app(config_class=Config):
             pass
         return False
     
-    def set_maintenance(enabled, msg="Under maintenance"):
+    def set_maintenance(enabled, msg="Server under maintenance. Please check back later. Thank you for your patience."):
         with open(MAINTENANCE_FILE, 'w') as f:
             json.dump({'maintenance': enabled, 'message': msg}, f)
     
@@ -204,7 +204,12 @@ def create_app(config_class=Config):
                 if current_user.is_authenticated and current_user.is_admin:
                     return None
             if request.path.startswith('/api/'):
-                return jsonify({'success': False, 'error': 'Maintenance in progress', 'maintenance': True}), 503
+                return jsonify({
+                    'success': False, 
+                    'error': 'Server under maintenance. Please check back later. Thank you for your patience.',
+                    'code': 'MAINTENANCE_MODE',
+                    'maintenance': True
+                }), 503
             if 'text/html' in request.headers.get('Accept', ''):
                 return render_template('maintanance.html'), 503
     
@@ -394,7 +399,7 @@ def create_app(config_class=Config):
         
         return render_template('reset_password.html', token=token)
 
-    ##########DESKTOP VALIDATION SPOT #################################################
+            ##########DESKTOP VALIDATION SPOT #################################################
     
     @app.route('/api/validate-license', methods=['POST'])
     def validate_license():
@@ -404,7 +409,7 @@ def create_app(config_class=Config):
             if is_maintenance_mode():
                 return jsonify({
                     'success': False,
-                    'error': 'System is currently under maintenance. Please try again later.',
+                    'error': 'Server under maintenance. Please check back later. Thank you for your patience.',
                     'code': 'MAINTENANCE_MODE',
                     'maintenance': True
                 }), 503
@@ -667,8 +672,8 @@ def create_app(config_class=Config):
             import traceback
             traceback.print_exc()
             return jsonify({'success': False, 'error': str(e)}), 500
-            
-        ##SESSION VALIDATION
+
+     ############################# ##SESSION VALIDATION
     @app.route('/api/user/validate-session', methods=['POST'])
     def validate_session_endpoint():
         try:
@@ -676,7 +681,7 @@ def create_app(config_class=Config):
             if is_maintenance_mode():
                 return jsonify({
                     'success': False,
-                    'error': 'System is currently under maintenance. Please try again later.',
+                    'error': 'Server under maintenance. Please check back later. Thank you for your patience.',
                     'code': 'MAINTENANCE_MODE',
                     'maintenance': True
                 }), 503
@@ -729,6 +734,8 @@ def create_app(config_class=Config):
         except Exception as e:
             db.session.rollback()
             return jsonify({'success': False, 'error': str(e)}), 500
+
+
             
     
     # ==================== USER DASHBOARD API ENDPOINTS ====================
@@ -2677,7 +2684,7 @@ def create_app(config_class=Config):
             # ========== CHECK MAINTENANCE MODE ==========
             if is_maintenance_mode():
                 return jsonify({
-                    'error': 'System is currently under maintenance. Please try again later.',
+                    'error': 'Server under maintenance. Please check back later. Thank you for your patience.',
                     'code': 'MAINTENANCE_MODE',
                     'maintenance': True
                 }), 503
@@ -2927,6 +2934,7 @@ def create_app(config_class=Config):
             print(f"Error in get_command: {e}")
             traceback.print_exc()
             return jsonify({'error': f'Internal server error: {str(e)}'}), 500
+            
             
     # ==================== VERSION CHECK ENDPOINT ====================
     
