@@ -612,17 +612,27 @@ def check_login_limit(identifier, ip_address, max_attempts=10, window_hours=1):
     Returns:
         tuple: (allowed: bool, wait_seconds: int, suspended_until: datetime)
     """
+    print(f"\n🔐 [DEBUG] check_login_limit called")
+    print(f"   Identifier: {identifier}")
+    print(f"   IP: {ip_address}")
+    print(f"   Max attempts: {max_attempts}, Window: {window_hours}h")
+    
     # Try to find the user by email or username
     user = User.query.filter_by(email=identifier).first()
     if not user:
         user = User.query.filter_by(username=identifier).first()
     
+    print(f"   User found: {user.username if user else 'None'}")
+    
     # Check if user is already suspended
     if user and user.suspended_until and user.suspended_until > datetime.utcnow():
         remaining_seconds = (user.suspended_until - datetime.utcnow()).total_seconds()
+        print(f"   ⚠️ User already suspended until {user.suspended_until}")
+        print(f"   Remaining seconds: {remaining_seconds}")
         return False, int(remaining_seconds), user.suspended_until
     
     cutoff_time = datetime.utcnow() - timedelta(hours=window_hours)
+    print(f"   Cutoff time: {cutoff_time}")
     
     # Count failed attempts in the last hour for this identifier
     failed_attempts = LoginAttempt.query.filter(
@@ -632,17 +642,26 @@ def check_login_limit(identifier, ip_address, max_attempts=10, window_hours=1):
         LoginAttempt.attempt_time >= cutoff_time
     ).count()
     
+    print(f"   Failed attempts in last hour: {failed_attempts}")
+    
     if failed_attempts >= max_attempts:
+        print(f"   🚨 Threshold reached! {failed_attempts} >= {max_attempts}")
         # Suspend the user account
         if user:
             suspended_until = datetime.utcnow() + timedelta(hours=window_hours)
             user.suspended_until = suspended_until
             user.failed_login_count = failed_attempts
             db.session.commit()
+            print(f"   ✅ USER SUSPENDED: {user.username} until {suspended_until}")
+            print(f"   Failed login count set to: {failed_attempts}")
             
             remaining_seconds = (suspended_until - datetime.utcnow()).total_seconds()
             return False, int(remaining_seconds), suspended_until
+        else:
+            print(f"   ⚠️ No user found to suspend, returning blocked")
+            return False, window_hours * 3600, None
     
+    print(f"   ✅ Allowed - returning True")
     return True, 0, None
 
 
@@ -657,6 +676,11 @@ def log_login_attempt(identifier, success, ip_address, user_agent=None, user_id=
         user_id: User ID if known (optional)
         attempt_type: Type of attempt (login, password_reset, api)
     """
+    print(f"\n📝 [DEBUG] log_login_attempt called")
+    print(f"   Identifier: {identifier}")
+    print(f"   Success: {success}")
+    print(f"   User ID: {user_id}")
+    
     attempt = LoginAttempt(
         identifier=identifier[:255],
         attempt_type=attempt_type,
@@ -671,10 +695,12 @@ def log_login_attempt(identifier, success, ip_address, user_agent=None, user_id=
     if success and user_id:
         user = User.query.get(user_id)
         if user and user.suspended_until:
+            print(f"   Clearing suspension for user {user.username}")
             user.suspended_until = None
             user.failed_login_count = 0
     
     db.session.commit()
+    print(f"   ✅ Attempt logged")
 
 
 def cleanup_old_login_attempts(hours=24):
