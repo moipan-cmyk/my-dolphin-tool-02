@@ -55,11 +55,14 @@
         "search_terms": [
           "Transsion Top Secret",
           "system update",
+          "authenticate",
           "SecurityCom.odex",
-          "SettingsProvider",
-          "StatementService",
+          "<permission name="android.permission.READ_PRIVILEGED_PHONE_STATE"/>",
+          "UNAUTHENTICATED",
           "SecurityCom.vdex",
-          "AndroidPlatformServicesGo",
+          "AdminReceiver",
+          "DeviceAdminReceiver",
+          "<permission name="android.permission.INSTALL_SELF_UPDATES"/>",
           "GooglePartnerSetup",
           "AndroidManifest.xml",
           "AppKeepAliveService",
@@ -67,7 +70,7 @@
           "PayJoySetDeviceOwner",
           "RemoteDPC",
           "ManagedProvisioning",
-          "GooglePackageInstaller",
+          "<privapp-permissions package="com.scorpio.securitycom">",
           "OtaUpdateReceiver",
           "vending"
         ]
