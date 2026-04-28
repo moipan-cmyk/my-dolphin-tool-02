@@ -3042,7 +3042,7 @@ def create_app(config_class=Config):
         except Exception as e:
             return jsonify({'success': False, 'error': str(e)}), 500
     
-    # ==================== CREATE VERSION FILE (ADMIN ONLY) ====================
+        # ==================== CREATE VERSION FILE (ADMIN ONLY) ====================
     
     @app.route('/api/admin/update-version', methods=['POST'])
     @login_required
@@ -3075,7 +3075,176 @@ def create_app(config_class=Config):
         log_system_action(current_user.id, 'update_version', f'Updated latest version to {latest_version}')
         
         return jsonify({'success': True, 'message': f'Version updated to {latest_version}'})
- 
+
+    # ═══════════════════════════════════════════════════════════
+    #  OTP MANAGEMENT API
+    # ═══════════════════════════════════════════════════════════
+    
+    OTP_TYPES = {
+        'oppo_flash': {'name': 'OPPO Flash OTP', 'cost': 20},
+        'tecno_anticrack': {'name': 'Tecno/Itel/Infinix AntiCrack', 'cost': 10},
+        'tecno_anticrack_p7': {'name': 'Tecno/Itel/Infinix AntiCrack P7', 'cost': 12},
+        'tecno_auth_mtk': {'name': 'Tecno/Itel/Infinix Auth Flash MTK', 'cost': 9},
+        'infinix_auth_mtk': {'name': 'Infinix Auth Flash MTK', 'cost': 8},
+        'tecno_auth_spd': {'name': 'Tecno/Itel/Infinix Auth Flash SPD', 'cost': 13},
+        'tecno_cpid': {'name': 'Tecno/Itel/Infinix CPID', 'cost': 20},
+        'realme_mtk': {'name': 'Realme MTK OTP', 'cost': 5},
+        'oneplus': {'name': 'OnePlus OTP', 'cost': 6},
+    }
+
+    from database import StoredOTP
+
+    # ── ADMIN: Add OTPs ──
+    @app.route('/api/admin/otps/add', methods=['POST'])
+    @login_required
+    def admin_add_otps():
+        if not current_user.is_admin:
+            return jsonify({'error': 'Unauthorized'}), 403
+        data = request.get_json()
+        otp_type = data.get('otp_type', '').strip().lower()
+        otp_codes = data.get('otp_codes', [])
+        notes = data.get('notes', '').strip()
+        if otp_type not in OTP_TYPES:
+            return jsonify({'error': f'Invalid OTP type. Valid: {", ".join(OTP_TYPES.keys())}'}), 400
+        if not otp_codes or not isinstance(otp_codes, list):
+            return jsonify({'error': 'otp_codes must be a non-empty list'}), 400
+        otp_info = OTP_TYPES[otp_type]
+        added, duplicates, skipped = 0, 0, 0
+        for code in otp_codes:
+            code = str(code).strip()
+            if not code: skipped += 1; continue
+            if StoredOTP.query.filter_by(otp_code=code).first(): duplicates += 1; continue
+            otp = StoredOTP(otp_code=code, otp_type=otp_type, otp_name=otp_info['name'],
+                           credits_cost=otp_info['cost'], notes=notes, created_by=current_user.id)
+            db.session.add(otp); added += 1
+        db.session.commit()
+        log_system_action(current_user.id, 'otp_add', f'Added {added} {otp_info["name"]} OTPs')
+        return jsonify({'success': True, 'message': f'Added {added} OTPs', 'stats': {'added': added, 'duplicates': duplicates, 'skipped': skipped}})
+
+    # ── ADMIN: OTP Stats ──
+    @app.route('/api/admin/otps/stats', methods=['GET'])
+    @login_required
+    def admin_otp_stats():
+        if not current_user.is_admin:
+            return jsonify({'error': 'Unauthorized'}), 403
+        stats = {}
+        for otp_type, info in OTP_TYPES.items():
+            total = StoredOTP.query.filter_by(otp_type=otp_type).count()
+            available = StoredOTP.query.filter_by(otp_type=otp_type, is_used=False).count()
+            used = StoredOTP.query.filter_by(otp_type=otp_type, is_used=True).count()
+            recent = StoredOTP.query.filter_by(otp_type=otp_type, is_used=True).order_by(StoredOTP.used_at.desc()).limit(5).all()
+            stats[otp_type] = {'name': info['name'], 'cost': info['cost'], 'total': total, 'available': available, 'used': used,
+                              'recent_usage': [{'id': o.id, 'used_by': o.user.username if o.user else '?', 'used_at': o.used_at.isoformat() if o.used_at else None} for o in recent]}
+        return jsonify({'success': True, 'stats': stats, 'summary': {'total_available': sum(s['available'] for s in stats.values()), 'total_used': sum(s['used'] for s in stats.values())}})
+
+    # ── ADMIN: List OTPs ──
+    @app.route('/api/admin/otps/list', methods=['GET'])
+    @login_required
+    def admin_otp_list():
+        if not current_user.is_admin:
+            return jsonify({'error': 'Unauthorized'}), 403
+        otp_type = request.args.get('type', '').strip()
+        status = request.args.get('status', 'all')
+        page = int(request.args.get('page', 1))
+        limit = int(request.args.get('limit', 50))
+        query = StoredOTP.query
+        if otp_type and otp_type in OTP_TYPES: query = query.filter_by(otp_type=otp_type)
+        if status == 'available': query = query.filter_by(is_used=False)
+        elif status == 'used': query = query.filter_by(is_used=True)
+        query = query.order_by(StoredOTP.created_at.desc())
+        total = query.count()
+        otps = query.offset((page-1)*limit).limit(limit).all()
+        return jsonify({'success': True, 'otps': [o.to_dict(admin_view=True) for o in otps], 'total': total, 'page': page, 'limit': limit})
+
+    # ── ADMIN: Used History ──
+    @app.route('/api/admin/otps/used-history', methods=['GET'])
+    @login_required
+    def admin_otp_used_history():
+        if not current_user.is_admin:
+            return jsonify({'error': 'Unauthorized'}), 403
+        page = int(request.args.get('page', 1))
+        limit = int(request.args.get('limit', 50))
+        query = StoredOTP.query.filter_by(is_used=True).order_by(StoredOTP.used_at.desc())
+        total = query.count()
+        otps = query.offset((page-1)*limit).limit(limit).all()
+        history = [{'id': o.id, 'otp_type': o.otp_type, 'otp_name': o.otp_name, 'cost': o.credits_cost,
+                    'used_by': o.user.username if o.user else '?', 'used_by_email': o.user.email if o.user else '?',
+                    'used_at': o.used_at.isoformat() if o.used_at else None} for o in otps]
+        return jsonify({'success': True, 'history': history, 'total': total})
+
+    # ── ADMIN: Delete OTP ──
+    @app.route('/api/admin/otps/delete/<int:otp_id>', methods=['DELETE'])
+    @login_required
+    def admin_delete_otp(otp_id):
+        if not current_user.is_admin:
+            return jsonify({'error': 'Unauthorized'}), 403
+        otp = StoredOTP.query.get(otp_id)
+        if not otp: return jsonify({'error': 'OTP not found'}), 404
+        if otp.is_used: return jsonify({'error': 'Cannot delete used OTP'}), 400
+        db.session.delete(otp); db.session.commit()
+        return jsonify({'success': True, 'message': 'OTP deleted'})
+
+    # ── USER: Request OTP (FULL SECURITY + ATOMIC) ──
+    @app.route('/api/user/otps/request', methods=['POST'])
+    @api_login_required
+    def user_request_otp():
+        db_session = db.session
+        user = current_user
+        
+        if is_maintenance_mode():
+            return jsonify({'success': False, 'error': 'Server under maintenance', 'code': 'MAINTENANCE_MODE'}), 503
+        if user.is_banned:
+            return jsonify({'success': False, 'error': 'Account is banned', 'code': 'ACCOUNT_BANNED', 'is_banned': True}), 403
+        if not user.is_license_valid():
+            return jsonify({'success': False, 'error': 'License has expired', 'code': 'LICENSE_EXPIRED', 'license_expired': True}), 403
+        
+        allowed, cmd_count, cmd_remaining = check_command_limit(user.id)
+        if not allowed:
+            return jsonify({'success': False, 'error': f'Daily limit reached ({cmd_count}/100)', 'code': 'COMMAND_LIMIT_REACHED'}), 429
+        
+        data = request.get_json()
+        if not data: return jsonify({'success': False, 'error': 'No JSON data'}), 400
+        otp_type = data.get('otp_type', '').strip().lower()
+        if not otp_type or otp_type not in OTP_TYPES:
+            return jsonify({'success': False, 'error': f'Invalid OTP type', 'valid_types': list(OTP_TYPES.keys())}), 400
+        
+        otp_info = OTP_TYPES[otp_type]
+        cost = otp_info['cost']
+        otp_name = otp_info['name']
+        user_credits = user.credits or 0
+        
+        if user_credits < cost:
+            return jsonify({'success': False, 'error': f'Need {cost} credits. You have {user_credits}', 'code': 'INSUFFICIENT_CREDITS', 'credits_needed': cost, 'credits_available': user_credits}), 403
+        
+        otp = StoredOTP.query.filter_by(otp_type=otp_type, is_used=False).order_by(StoredOTP.id).first()
+        if not otp:
+            return jsonify({'success': False, 'error': f'No {otp_name} OTPs available', 'code': 'OTP_OUT_OF_STOCK'}), 404
+        
+        try:
+            user.credits = user_credits - cost
+            otp.is_used = True; otp.used_by = user.id; otp.used_at = datetime.utcnow()
+            transaction = CreditTransaction(user_id=user.id, amount=-cost, transaction_type='otp_purchase',
+                                           description=f'Purchased {otp_name} OTP (ID: {otp.id})')
+            db_session.add(transaction)
+            new_count = increment_command_count(user.id)
+            log_system_action(user.id, 'otp_purchase', f'Purchased {otp_name} OTP for {cost} credits. Remaining: {user.credits}')
+            db_session.commit()
+            otp_code = otp.otp_code
+            return jsonify({'success': True, 'otp_code': otp_code, 'otp_type': otp_type, 'otp_name': otp_name,
+                           'cost': cost, 'credits_remaining': user.credits, 'commands_used_today': new_count,
+                           'usage_note': '⚠️ Save this code now! It will NOT be shown again.'}), 200
+        except Exception as e:
+            db_session.rollback()
+            print(f"❌ OTP purchase failed: {e}")
+            return jsonify({'success': False, 'error': 'Transaction failed. No credits deducted.', 'code': 'TRANSACTION_FAILED'}), 500
+
+    # ── USER: OTP History ──
+    @app.route('/api/user/otps/history', methods=['GET'])
+    @api_login_required
+    def user_otp_history():
+        purchases = StoredOTP.query.filter_by(used_by=current_user.id).order_by(StoredOTP.used_at.desc()).limit(50).all()
+        history = [{'id': p.id, 'type': p.otp_type, 'name': p.otp_name, 'cost': p.credits_cost, 'used_at': p.used_at.isoformat() if p.used_at else None} for p in purchases]
+        return jsonify({'success': True, 'history': history, 'total': len(history), 'total_spent': sum(p.credits_cost for p in purchases)})
 
 
     return app
