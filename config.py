@@ -20,52 +20,40 @@ class Config:
     # ------------------------------
     # POSTGRESQL CONFIG
     # ------------------------------
-    # Support both Render's DATABASE_URL and manual config
+    # Support Render's DATABASE_URL (already fully qualified by Render)
     DATABASE_URL = os.getenv('DATABASE_URL')
     
-    # Also check for individual components (Render sometimes provides these separately)
-    DB_HOST = os.getenv('DB_HOST')
-    DB_PORT = os.getenv('DB_PORT', '5432')
-    DB_USER = os.getenv('DB_USER')
-    DB_PASSWORD = os.getenv('DB_PASSWORD')
-    DB_NAME = os.getenv('DB_NAME')
-
-    # Fix incomplete hostname if needed
-    if DB_HOST and not DB_HOST.endswith('.com') and not DB_HOST.endswith('.net'):
-        # Add the Render domain if missing
-        if 'oregon-postgres.render.com' not in DB_HOST:
-            DB_HOST = f"{DB_HOST}.oregon-postgres.render.com"
-            print(f"✅ Fixed DB_HOST to: {DB_HOST}")
-
-    # Construct DATABASE_URL from individual components if needed
-    if not DATABASE_URL and DB_USER and DB_PASSWORD and DB_HOST and DB_NAME:
-        encoded_password = quote_plus(DB_PASSWORD)
-        DATABASE_URL = f"postgresql://{DB_USER}:{encoded_password}@{DB_HOST}:{DB_PORT}/{DB_NAME}"
-        print(f"✅ Constructed DATABASE_URL from components")
-
     if DATABASE_URL:
-        # Use Render's DATABASE_URL directly
+        # Use Render's DATABASE_URL directly - it's already correct!
         SQLALCHEMY_DATABASE_URI = DATABASE_URL
-        # Fix for postgres:// vs postgresql://
+        
+        # Fix for postgres:// vs postgresql:// (needed for some older Render instances)
         if SQLALCHEMY_DATABASE_URI and SQLALCHEMY_DATABASE_URI.startswith('postgres://'):
             SQLALCHEMY_DATABASE_URI = SQLALCHEMY_DATABASE_URI.replace('postgres://', 'postgresql://', 1)
         
-        # Fix incomplete hostname in DATABASE_URL
-        if 'dpg-' in SQLALCHEMY_DATABASE_URI and '.com' not in SQLALCHEMY_DATABASE_URI:
-            # Replace the incomplete hostname with full hostname
-            import re
-            match = re.search(r'dpg-[a-zA-Z0-9]+', SQLALCHEMY_DATABASE_URI)
-            if match:
-                old_host = match.group()
-                new_host = f"{old_host}.oregon-postgres.render.com"
-                SQLALCHEMY_DATABASE_URI = SQLALCHEMY_DATABASE_URI.replace(old_host, new_host)
-                print(f"✅ Fixed DATABASE_URL hostname: {old_host} -> {new_host}")
+        # ✅ FIXED: Don't modify Render's internal hostnames - they're already correct!
+        # Render provides fully qualified internal hostnames like:
+        #   dpg-d7of54beo5us73e6aclg-a (internal, same region)
+        # These are NOT incomplete - they work within Render's internal network
+        # Only external URLs have the full domain: dpg-xxx.frankfurt-postgres.render.com
         
         print(f"✅ Database URI configured (host: {SQLALCHEMY_DATABASE_URI.split('@')[1].split('/')[0] if '@' in SQLALCHEMY_DATABASE_URI else 'unknown'})")
     else:
-        # Fallback to SQLite for local development
-        SQLALCHEMY_DATABASE_URI = os.getenv('SQLALCHEMY_DATABASE_URI', 'sqlite:///local.db')
-        print(f"⚠️ Using SQLite database: {SQLALCHEMY_DATABASE_URI}")
+        # Check for individual components
+        DB_HOST = os.getenv('DB_HOST')
+        DB_PORT = os.getenv('DB_PORT', '5432')
+        DB_USER = os.getenv('DB_USER')
+        DB_PASSWORD = os.getenv('DB_PASSWORD')
+        DB_NAME = os.getenv('DB_NAME')
+        
+        if DB_USER and DB_PASSWORD and DB_HOST and DB_NAME:
+            encoded_password = quote_plus(DB_PASSWORD)
+            SQLALCHEMY_DATABASE_URI = f"postgresql://{DB_USER}:{encoded_password}@{DB_HOST}:{DB_PORT}/{DB_NAME}"
+            print(f"✅ Constructed DATABASE_URL from components")
+        else:
+            # Fallback to SQLite for local development
+            SQLALCHEMY_DATABASE_URI = os.getenv('SQLALCHEMY_DATABASE_URI', 'sqlite:///local.db')
+            print(f"⚠️ Using SQLite database: {SQLALCHEMY_DATABASE_URI}")
 
     SQLALCHEMY_TRACK_MODIFICATIONS = False
     
@@ -74,6 +62,9 @@ class Config:
         'pool_size': int(os.getenv('DB_POOL_SIZE', 10)),
         'pool_recycle': int(os.getenv('DB_POOL_RECYCLE', 300)),
         'pool_pre_ping': True,  # Verifies connections before using
+        'connect_args': {
+            'connect_timeout': 10
+        }
     }
 
     # ------------------------------
@@ -115,9 +106,9 @@ class Config:
     # LICENSE SETTINGS
     # ------------------------------
     # License durations in days
-    LICENSE_DURATION_FAIR = int(os.getenv('LICENSE_DURATION_FAIR', 90))        # 3 months
-    LICENSE_DURATION_GOOD = int(os.getenv('LICENSE_DURATION_GOOD', 180))       # 6 months
-    LICENSE_DURATION_EXCELLENT = int(os.getenv('LICENSE_DURATION_EXCELLENT', 365))  # 12 months
+    LICENSE_DURATION_FAIR = int(os.getenv('LICENSE_DURATION_FAIR', 90))
+    LICENSE_DURATION_GOOD = int(os.getenv('LICENSE_DURATION_GOOD', 180))
+    LICENSE_DURATION_EXCELLENT = int(os.getenv('LICENSE_DURATION_EXCELLENT', 365))
     
     # Device limits per license type
     DEVICE_LIMIT_FAIR = int(os.getenv('DEVICE_LIMIT_FAIR', 10))
@@ -132,16 +123,10 @@ class Config:
     # ------------------------------
     # CORE MODULES CONFIGURATION
     # ------------------------------
-    # Directory where core modules are stored for serving to clients
     CORE_MODULES_DIR = os.getenv('CORE_MODULES_DIR', os.path.join(os.path.dirname(__file__), 'core_modules'))
-    
-    # Module encryption key for client-server communication
     MODULE_ENCRYPTION_KEY = os.getenv('MODULE_ENCRYPTION_KEY', 'my-secret-key-change-this-in-production')
-    
-    # List of available modules (for validation)
     AVAILABLE_MODULES = ['adb', 'fastboot', 'mdm', 'mtp', 'unisoc', 'meta', 'bootrom', 'hxd', 'xiaomi']
     
-    # Module version tracking (for cache invalidation)
     MODULE_VERSIONS = {
         'adb': '1.0.0',
         'fastboot': '1.0.0',
@@ -163,7 +148,6 @@ class Config:
     # ------------------------------
     # COUNTRY LIST (Optional)
     # ------------------------------
-    # List of supported countries for registration
     SUPPORTED_COUNTRIES = [
         'Kenya', 'Uganda', 'Tanzania', 'Nigeria', 'South Africa', 
         'Ghana', 'Egypt', 'India', 'America', 'Morocco', 'Algeria', 'Ethiopia',
@@ -174,8 +158,6 @@ class Config:
     # DEVICE & RATE LIMITING
     # ------------------------------
     DEVICE_LIMIT = int(os.getenv('DEVICE_LIMIT', 2))
-    
-    # Rate limiting (if you implement it later)
     RATE_LIMIT_PER_HOUR = int(os.getenv('RATE_LIMIT_PER_HOUR', 10))
 
     # ------------------------------
