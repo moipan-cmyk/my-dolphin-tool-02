@@ -1,0 +1,108 @@
+{
+  "metadata": {
+    "module": "unisoc",
+    "mode": "fdl",
+    "version": "1.0.0",
+    "protocol": "spd_binary",
+    "description": "SPD/Unisoc FDL Download Mode - Binary protocol"
+  },
+  "functions": {
+    "read_info": {
+      "type": "spd_read_info",
+      "cost": 0,
+      "timeout": 30,
+      "requires_device": true,
+      "device_type": "spd_serial",
+      "progress_steps": [
+        {"percent": 10, "message": "Initializing SPD connection..."},
+        {"percent": 25, "message": "Handshaking with device..."},
+        {"percent": 40, "message": "Reading flash configuration..."},
+        {"percent": 55, "message": "Reading chip identification..."},
+        {"percent": 70, "message": "Reading hardware info..."},
+        {"percent": 85, "message": "Reading firmware version..."},
+        {"percent": 95, "message": "Compiling device info..."},
+        {"percent": 100, "message": "Complete"}
+      ],
+      "handshake": {
+        "command": "0x00",
+        "expected_response": "0x80"
+      },
+      "preloader_detection": {
+        "vid": "0x1782",
+        "pid": "0x4D00",
+        "description": "Unisoc/Spreadtrum FDL"
+      },
+      "meta_detection": {
+        "timeout": 10,
+        "description": "Detect SPD device on COM port"
+      },
+      "success_message": "✅ SPD Device Info Read Successfully",
+      "error_message": "❌ Failed to read SPD device info - check connection"
+    },
+    "factory_reset": {
+      "type": "spd_action",
+      "action_command": "0xFD",
+      "cost": 3,
+      "timeout": 120,
+      "requires_device": true,
+      "device_type": "spd_serial",
+      "progress_steps": [
+        {"percent": 20, "message": "Preparing factory reset..."},
+        {"percent": 40, "message": "Erasing userdata partition..."},
+        {"percent": 60, "message": "Erasing cache partition..."},
+        {"percent": 80, "message": "Formatting partitions..."},
+        {"percent": 95, "message": "Finalizing..."},
+        {"percent": 100, "message": "Complete"}
+      ],
+      "success_message": "✅ Factory Reset Completed Successfully",
+      "error_message": "❌ Factory Reset Failed - device may need manual reset"
+    },
+    "frp": {
+      "type": "spd_action",
+      "action_command": "0xFC",
+      "cost": 5,
+      "timeout": 120,
+      "requires_device": true,
+      "device_type": "spd_serial",
+      "progress_steps": [
+        {"percent": 15, "message": "Preparing FRP reset..."},
+        {"percent": 35, "message": "Reading FRP partition..."},
+        {"percent": 55, "message": "Erasing FRP data..."},
+        {"percent": 75, "message": "Verifying FRP removal..."},
+        {"percent": 90, "message": "Writing clean FRP partition..."},
+        {"percent": 100, "message": "Complete"}
+      ],
+      "success_message": "✅ FRP Reset Completed Successfully",
+      "error_message": "❌ FRP Reset Failed - check if device is in FDL mode"
+    },
+    "reset_and_frp": {
+      "type": "spd_action",
+      "action_command": "0xFB",
+      "cost": 5,
+      "timeout": 180,
+      "requires_device": true,
+      "device_type": "spd_serial",
+      "progress_steps": [
+        {"percent": 10, "message": "Preparing full reset..."},
+        {"percent": 25, "message": "Erasing userdata..."},
+        {"percent": 40, "message": "Erasing cache..."},
+        {"percent": 55, "message": "Removing FRP lock..."},
+        {"percent": 70, "message": "Formatting partitions..."},
+        {"percent": 85, "message": "Writing clean data..."},
+        {"percent": 95, "message": "Verifying..."},
+        {"percent": 100, "message": "Complete"}
+      ],
+      "success_message": "✅ Factory Reset + FRP Completed Successfully",
+      "error_message": "❌ Reset + FRP Failed - try individual operations"
+    },
+    "stop_operation": {
+      "type": "spd_disconnect",
+      "cost": 0,
+      "disconnect_command": "0x07",
+      "disconnect_delay": 0.5,
+      "reset_connection": true,
+      "success_message": "✅ SPD Connection Closed",
+      "error_message": "❌ Failed to disconnect"
+    }
+  }
+}
