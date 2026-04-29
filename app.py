@@ -3246,6 +3246,34 @@ def create_app(config_class=Config):
         history = [{'id': p.id, 'type': p.otp_type, 'name': p.otp_name, 'cost': p.credits_cost, 'used_at': p.used_at.isoformat() if p.used_at else None} for p in purchases]
         return jsonify({'success': True, 'history': history, 'total': len(history), 'total_spent': sum(p.credits_cost for p in purchases)})
 
+    # ═══════════════════════════════════════════════════════════
+    #  AUTO-FIX: Ensure OTP constraint exists
+    # ═══════════════════════════════════════════════════════════
+    @app.before_request
+    def _ensure_otp_constraint():
+        """Run once to fix credit_transactions constraint for OTP purchases"""
+        if not getattr(app, '_otp_constraint_fixed', False):
+            try:
+                from sqlalchemy import text
+                db.session.execute(text("ALTER TABLE credit_transactions DROP CONSTRAINT IF EXISTS check_transaction_type"))
+                db.session.execute(text("ALTER TABLE credit_transactions DROP CONSTRAINT IF EXISTS credit_transactions_transaction_type_check"))
+                db.session.commit()
+            except:
+                db.session.rollback()
+            try:
+                db.session.execute(text("""
+                    ALTER TABLE credit_transactions ADD CONSTRAINT check_transaction_type 
+                    CHECK (transaction_type IN (
+                        'admin_add','admin_deduct','purchase','usage','refund','commission',
+                        'device_reset','pc_change','device_registration','credit_used','hwid_reset','otp_purchase'
+                    ))
+                """))
+                db.session.commit()
+                print("✅ OTP constraint auto-fixed")
+            except Exception as e:
+                db.session.rollback()
+                print(f"⚠️ OTP constraint already OK: {e}")
+            app._otp_constraint_fixed = True
 
     return app
 
