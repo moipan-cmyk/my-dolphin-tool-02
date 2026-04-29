@@ -1,40 +1,52 @@
 {
-  "sideload_commands": {
-    "Xiaomi": {
-      "mode": "recovery",
-      "protocol": "adb_sideload",
-      "operations": [
-        {
-          "name": "factory_reset",
-          "display": "Factory Reset",
-          "text": "Factory Reset",
-          "command": "factory_reset",
-          "color": "#f59e0b",
-          "adb_command": "adb shell recovery --wipe_data",
-          "requires_reboot": true
-        },
-        {
-          "name": "frp",
-          "display": "FRP Reset",
-          "text": "FRP Reset",
-          "command": "frp",
-          "color": "#ef4444",
-          "adb_command": "adb shell recovery --wipe_frp",
-          "requires_reboot": true
-        },
-        {
-          "name": "frp_reset",
-          "display": "Factory Reset + FRP",
-          "text": "Factory Reset + FRP",
-          "command": "frp_reset",
-          "color": "#8b5cf6",
-          "adb_commands": [
-            "adb shell recovery --wipe_data",
-            "adb shell recovery --wipe_frp"
-          ],
-          "requires_reboot": true
-        }
-      ]
+  "metadata": {
+    "module": "xiaomi",
+    "mode": "sideload",
+    "version": "1.0.0"
+  },
+  "functions": {
+    "read_info": {
+      "type": "adb_commands",
+      "cost": 0,
+      "commands": [
+        "adb shell getprop ro.product.manufacturer",
+        "adb shell getprop ro.product.model",
+        "adb shell getprop ro.build.version.release"
+      ],
+      "success_message": "✅ Device info read successfully"
+    },
+    "factory_reset": {
+      "type": "adb_command",
+      "cost": 5,
+      "commands": ["adb shell recovery --wipe_data"],
+      "requires_reboot": true,
+      "success_message": "✅ Factory reset initiated",
+      "error_message": "❌ Factory reset failed"
+    },
+    "frp": {
+      "type": "adb_command", 
+      "cost": 5,
+      "commands": ["adb shell recovery --wipe_frp"],
+      "requires_reboot": true,
+      "success_message": "✅ FRP reset initiated",
+      "error_message": "❌ FRP reset failed"
+    },
+    "frp_reset": {
+      "type": "adb_commands",
+      "cost": 5,
+      "commands": [
+        "adb shell recovery --wipe_data",
+        "adb shell recovery --wipe_frp"
+      ],
+      "requires_reboot": true,
+      "success_message": "✅ Factory Reset + FRP initiated",
+      "error_message": "❌ Operation failed"
+    },
+    "stop_operation": {
+      "type": "adb_command",
+      "cost": 0,
+      "commands": ["echo STOP"],
+      "success_message": "✅ Stopped"
     }
   }
 }
