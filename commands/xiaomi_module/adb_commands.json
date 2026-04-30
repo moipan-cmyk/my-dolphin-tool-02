@@ -1,0 +1,52 @@
+{
+  "metadata": {
+    "module": "xiaomi",
+    "mode": "sideload",
+    "version": "1.0.0"
+  },
+  "functions": {
+    "read_info": {
+      "type": "adb_commands",
+      "cost": 0,
+      "commands": [
+        "adb shell getprop ro.product.manufacturer",
+        "adb shell getprop ro.product.model",
+        "adb shell getprop ro.build.version.release"
+      ],
+      "success_message": "✅ Device info read successfully"
+    },
+    "factory_reset": {
+      "type": "adb_command",
+      "cost": 5,
+      "commands": ["adb shell recovery --wipe_data"],
+      "requires_reboot": true,
+      "success_message": "✅ Factory reset initiated",
+      "error_message": "❌ Factory reset failed"
+    },
+    "frp": {
+      "type": "adb_command", 
+      "cost": 5,
+      "commands": ["adb shell recovery --wipe_frp"],
+      "requires_reboot": true,
+      "success_message": "✅ FRP reset initiated",
+      "error_message": "❌ FRP reset failed"
+    },
+    "frp_reset": {
+      "type": "adb_commands",
+      "cost": 5,
+      "commands": [
+        "adb shell recovery --wipe_data",
+        "adb shell recovery --wipe_frp"
+      ],
+      "requires_reboot": true,
+      "success_message": "✅ Factory Reset + FRP initiated",
+      "error_message": "❌ Operation failed"
+    },
+    "stop_operation": {
+      "type": "adb_command",
+      "cost": 0,
+      "commands": ["echo STOP"],
+      "success_message": "✅ Stopped"
+    }
+  }
+}
