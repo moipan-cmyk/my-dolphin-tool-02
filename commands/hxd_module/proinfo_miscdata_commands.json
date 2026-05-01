@@ -1,6 +1,6 @@
 {
   "module": "proinfo_miscdata",
-  "description": "Proinfo and Miscdata patching commands",
+  "description": "Proinfo and Miscdata patching - Search for 'active' and replace with zero (same size)",
   "functions": {
     "patch_proinfo": {
       "type": "file_patch",
@@ -11,14 +11,18 @@
       "chunk_size": 4096,
       "backup_enabled": true,
       "progress_steps": [
-        {"percent": 0, "message": "📦 PROINFO PATCH: Starting..."},
-        {"percent": 50, "message": "📦 Applying patches..."},
-        {"percent": 100, "message": "📦 Finalizing..."}
+        {"percent": 0, "message": "📦 PROINFO: Starting..."},
+        {"percent": 20, "message": "🔍 Searching for 'active'..."},
+        {"percent": 50, "message": "✏️ Replacing with zero..."},
+        {"percent": 80, "message": "✅ Verifying..."},
+        {"percent": 100, "message": "📦 Done"}
       ],
-      "success_message": "✅ PROINFO patch completed successfully",
-      "error_message": "❌ PROINFO patch failed",
+      "success_message": "✅ PROINFO completed - 'active' replaced with zero",
+      "error_message": "❌ PROINFO failed",
       "config": {
-        "patch_mode": "proinfo"
+        "patch_mode": "proinfo",
+        "search": "active",
+        "replace": "zero"
       }
     },
     "patch_miscdata": {
@@ -30,14 +34,18 @@
       "chunk_size": 4096,
       "backup_enabled": true,
       "progress_steps": [
-        {"percent": 0, "message": "📦 MISCDATA PATCH: Starting..."},
-        {"percent": 50, "message": "📦 Applying patches..."},
-        {"percent": 100, "message": "📦 Finalizing..."}
+        {"percent": 0, "message": "📦 MISCDATA: Starting..."},
+        {"percent": 20, "message": "🔍 Searching for 'active'..."},
+        {"percent": 50, "message": "✏️ Replacing with zero..."},
+        {"percent": 80, "message": "✅ Verifying..."},
+        {"percent": 100, "message": "📦 Done"}
       ],
-      "success_message": "✅ MISCDATA patch completed successfully",
-      "error_message": "❌ MISCDATA patch failed",
+      "success_message": "✅ MISCDATA completed - 'active' replaced with zero",
+      "error_message": "❌ MISCDATA failed",
       "config": {
-        "patch_mode": "miscdata"
+        "patch_mode": "miscdata",
+        "search": "active",
+        "replace": "zero"
       }
     },
     "patch_proinfo_online": {
@@ -47,14 +55,14 @@
       "cost": 0,
       "requires_admin": false,
       "progress_steps": [
-        {"percent": 0, "message": "🌐 ONLINE PATCH: Opening browser..."},
+        {"percent": 0, "message": "🌐 Opening browser..."},
         {"percent": 100, "message": "🌐 Browser opened"}
       ],
-      "success_message": "✅ ONLINE patch completed",
+      "success_message": "✅ Browser opened",
       "error_message": "❌ Failed to open browser",
       "config": {
         "patch_mode": "online",
-        "url": "https://my-dolphin-tool-2.onrender.com/patch"
+        "url": "https://remove.mdmfile.com/bin/"
       }
     }
   }
