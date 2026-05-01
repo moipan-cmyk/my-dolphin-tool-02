@@ -1,6 +1,6 @@
 {
   "module": "imei",
-  "description": "IMEI patching commands",
+  "description": "IMEI patching commands - Server tells client where to write based on found IMEIs",
   "functions": {
     "patch_imei_nv": {
       "type": "imei_patch",
@@ -12,15 +12,17 @@
       "backup_enabled": true,
       "progress_steps": [
         {"percent": 0, "message": "🔧 IMEI NV PATCH: Starting..."},
-        {"percent": 25, "message": "🔧 Reading NV partition..."},
-        {"percent": 50, "message": "🔧 Writing IMEI values..."},
-        {"percent": 75, "message": "🔧 Verifying changes..."},
-        {"percent": 100, "message": "🔧 Finalizing..."}
+        {"percent": 10, "message": "🔍 Searching for existing IMEI locations..."},
+        {"percent": 30, "message": "📡 Sending found IMEIs to server..."},
+        {"percent": 50, "message": "📝 Server instructing where to write..."},
+        {"percent": 75, "message": "✏️ Writing new IMEI values..."},
+        {"percent": 100, "message": "✅ Finalizing changes..."}
       ],
       "success_message": "✅ IMEI NV patch completed successfully",
       "error_message": "❌ IMEI NV patch failed",
       "config": {
-        "patch_mode": "nv"
+        "patch_mode": "nv",
+        "instruction_type": "write_at_found_locations"
       }
     },
     "patch_imei_nvram": {
@@ -33,15 +35,17 @@
       "backup_enabled": true,
       "progress_steps": [
         {"percent": 0, "message": "🔧 IMEI NVRAM PATCH: Starting..."},
-        {"percent": 25, "message": "🔧 Reading NVRAM partition..."},
-        {"percent": 50, "message": "🔧 Writing IMEI values..."},
-        {"percent": 75, "message": "🔧 Verifying changes..."},
-        {"percent": 100, "message": "🔧 Finalizing..."}
+        {"percent": 10, "message": "🔍 Searching for existing IMEI locations..."},
+        {"percent": 30, "message": "📡 Sending found IMEIs to server..."},
+        {"percent": 50, "message": "📝 Server instructing where to write..."},
+        {"percent": 75, "message": "✏️ Writing new IMEI values..."},
+        {"percent": 100, "message": "✅ Finalizing changes..."}
       ],
       "success_message": "✅ IMEI NVRAM patch completed successfully",
       "error_message": "❌ IMEI NVRAM patch failed",
       "config": {
-        "patch_mode": "nvram"
+        "patch_mode": "nvram",
+        "instruction_type": "write_at_found_locations"
       }
     }
   }
