@@ -128,6 +128,10 @@ def create_app(config_class=Config):
     with app.app_context():
         db.create_all()
         print("✅ Database tables created/verified")
+
+        # ==================== RUN DATABASE MIGRATIONS ====================
+        from database import run_migrations
+        run_migrations()
         
     # ==================== ADMIN USER SETUP FROM ENV ====================
         admin_email = os.environ.get('ADMIN_EMAIL')
