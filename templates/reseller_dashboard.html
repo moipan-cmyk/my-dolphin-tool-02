@@ -11,6 +11,7 @@
     --slate-600: #475569; --slate-700: #334155; --slate-800: #1e293b; --slate-900: #0f172a;
     --amber-50: #faeeda; --amber-400: #ba7517; --amber-600: #854f0b;
     --red-50: #fcebeb; --red-400: #e24b4a; --red-600: #a32d2d;
+    --blue-50: #e6f0ff; --blue-400: #3b82f6; --blue-600: #2563eb;
     --font: 'Segoe UI', system-ui, sans-serif; --mono: 'Consolas', monospace;
     --r-sm: 8px; --r-md: 12px; --r-lg: 18px; --r-xl: 24px; --sidebar-w: 240px;
   }
@@ -28,7 +29,6 @@
   .nav-item:hover { background: rgba(255,255,255,0.07); color: white; }
   .nav-item.active { background: rgba(29,158,117,0.25); color: var(--teal-100); border: 1px solid rgba(29,158,117,0.35); }
   .nav-item .icon { width: 18px; font-size: 16px; }
-  .nav-badge { margin-left: auto; background: var(--teal-400); color: white; font-size: 10px; font-weight: 700; padding: 1px 7px; border-radius: 99px; }
   .sidebar-footer { padding: 16px 12px; border-top: 1px solid rgba(255,255,255,0.08); }
   .user-info { display: flex; align-items: center; gap: 10px; padding: 10px 12px; border-radius: var(--r-sm); background: rgba(255,255,255,0.06); }
   .avatar { width: 34px; height: 34px; border-radius: 50%; background: var(--teal-400); display: flex; align-items: center; justify-content: center; font-size: 13px; font-weight: 700; color: white; }
@@ -58,17 +58,26 @@
   .info-label { font-size: 11px; font-weight: 600; text-transform: uppercase; letter-spacing: 0.5px; color: var(--slate-400); }
   .info-val { font-size: 14px; font-weight: 600; color: var(--slate-800); font-family: var(--mono); }
   .panel { background: white; border: 1px solid var(--slate-200); border-radius: var(--r-xl); padding: 24px; margin-bottom: 20px; }
-  .panel-title { font-size: 15px; font-weight: 600; color: var(--slate-900); margin-bottom: 20px; }
+  .panel-title { font-size: 15px; font-weight: 600; color: var(--slate-900); margin-bottom: 20px; display: flex; align-items: center; gap: 10px; }
+  .method-tabs { display: flex; gap: 12px; margin-bottom: 24px; border-bottom: 1px solid var(--slate-200); }
+  .method-tab { padding: 10px 20px; background: none; border: none; font-size: 14px; font-weight: 600; color: var(--slate-500); cursor: pointer; border-bottom: 2px solid transparent; transition: all 0.2s; }
+  .method-tab.active { color: var(--teal-600); border-bottom-color: var(--teal-400); }
+  .method-tab:hover { color: var(--teal-400); }
+  .method-content { display: none; }
+  .method-content.active { display: block; }
   .form-grid { display: grid; grid-template-columns: 1fr 1fr; gap: 16px; }
   .form-group { display: flex; flex-direction: column; gap: 6px; }
   .form-group.full { grid-column: 1 / -1; }
   label { font-size: 12.5px; font-weight: 600; color: var(--slate-600); }
+  label .required { color: var(--red-400); margin-left: 3px; }
   input, select { padding: 10px 14px; border-radius: var(--r-md); border: 1.5px solid var(--slate-200); font-family: var(--font); font-size: 14px; color: var(--slate-800); background: white; width: 100%; }
   input:focus, select:focus { outline: none; border-color: var(--teal-200); box-shadow: 0 0 0 3px rgba(29,158,117,0.12); }
   .btn { display: inline-flex; align-items: center; gap: 7px; padding: 10px 20px; border-radius: 99px; font-family: var(--font); font-size: 13.5px; font-weight: 600; cursor: pointer; border: none; text-decoration: none; }
   .btn-primary { background: var(--teal-400); color: white; }
   .btn-primary:hover { background: var(--teal-600); }
   .btn-secondary { background: var(--slate-100); color: var(--slate-700); border: 1px solid var(--slate-200); }
+  .btn-info { background: var(--blue-400); color: white; }
+  .btn-info:hover { background: var(--blue-600); }
   .btn-sm { padding: 6px 14px; font-size: 12px; }
   table { width: 100%; border-collapse: collapse; }
   th { padding: 10px 14px; text-align: left; font-size: 11px; font-weight: 700; text-transform: uppercase; color: var(--slate-400); background: var(--slate-50); border-bottom: 1px solid var(--slate-200); }
@@ -76,17 +85,22 @@
   .badge { display: inline-flex; align-items: center; gap: 5px; padding: 3px 10px; border-radius: 99px; font-size: 11.5px; font-weight: 600; }
   .badge-active { background: var(--teal-50); color: var(--teal-800); }
   .badge-expired { background: var(--red-50); color: var(--red-600); }
+  .badge-warning { background: var(--amber-50); color: var(--amber-600); }
   .notice { border-radius: var(--r-md); padding: 12px 16px; margin-bottom: 20px; font-size: 13.5px; display: none; }
   .notice-success { background: var(--teal-50); color: var(--teal-800); border-left: 3px solid var(--teal-400); display: block; }
   .notice-error { background: var(--red-50); color: var(--red-600); border-left: 3px solid var(--red-400); display: block; }
+  .notice-info { background: var(--blue-50); color: var(--blue-600); border-left: 3px solid var(--blue-400); display: block; }
   .tab-content { display: none; }
   .tab-content.active { display: block; }
   .controls-row { display: flex; flex-wrap: wrap; gap: 10px; margin-bottom: 20px; align-items: center; }
-  .search-input { flex: 1; min-width: 180px; max-width: 340px; }
+  .search-input { flex: 1; min-width: 180px; max-width: 340px; position: relative; }
   .search-input input { padding-left: 36px; }
+  .search-input::before { content: "🔍"; position: absolute; left: 12px; top: 50%; transform: translateY(-50%); }
   .hint-box { background: var(--slate-50); border: 1px solid var(--slate-200); border-radius: var(--r-md); padding: 12px 16px; margin-top: 20px; font-size: 12.5px; color: var(--slate-500); display: flex; gap: 10px; }
-  .limit-info { background: var(--amber-50); border: 1px solid #fac775; border-radius: var(--r-md); padding: 12px 16px; margin-bottom: 16px; font-size: 13px; font-weight: 600; color: var(--amber-600); }
-  @media (max-width: 768px) { .main { margin-left: 0; } .content { padding: 20px 16px; } .form-grid { grid-template-columns: 1fr; } }
+  .limit-info { background: var(--amber-50); border: 1px solid #fac775; border-radius: var(--r-md); padding: 12px 16px; margin-bottom: 16px; font-size: 13px; font-weight: 600; color: var(--amber-600); display: flex; justify-content: space-between; align-items: center; }
+  .password-display { background: var(--teal-50); border: 1px solid var(--teal-200); border-radius: var(--r-md); padding: 12px; margin-top: 16px; font-family: var(--mono); font-size: 13px; word-break: break-all; }
+  .password-display strong { color: var(--teal-600); }
+  @media (max-width: 768px) { .main { margin-left: 0; } .content { padding: 20px 16px; } .form-grid { grid-template-columns: 1fr; } .method-tabs { flex-direction: column; } }
 </style>
 </head>
 <body>
@@ -109,7 +123,7 @@
 </aside>
 <main class="main">
   <div class="topbar">
-    <div><div class="page-title" id="pageTitle">Activate Client</div><div class="page-subtitle">Direct activation · No admin approval needed</div></div>
+    <div><div class="page-title" id="pageTitle">Activate Client</div><div class="page-subtitle" id="pageSubtitle">Two activation methods available</div></div>
     <div class="topbar-right"><div class="status-pill"><div class="status-dot"></div><span>Active</span></div></div>
   </div>
   <div class="content">
@@ -131,26 +145,96 @@
     <!-- ACTIVATE TAB -->
     <div id="activate-tab" class="tab-content active">
       <div class="panel">
-        <div class="panel-title">⚡ Direct License Activation</div>
-        <div class="limit-info" id="limitInfo">Activations used: <span id="usedActivations">0</span> / <span id="maxActivations">10</span></div>
+        <div class="panel-title">
+          <span>⚡ License Activation</span>
+        </div>
+        <div class="limit-info">
+          <span>📊 Activations used: <span id="usedActivations">0</span> / <span id="maxActivations">10</span></span>
+          <span>💰 Credits available: <span id="creditsAvailable">0</span></span>
+        </div>
+        
+        <!-- Method Selection Tabs -->
+        <div class="method-tabs">
+          <button class="method-tab active" onclick="switchMethod('new-user')">📝 New User Registration</button>
+          <button class="method-tab" onclick="switchMethod('existing-user')">🔄 Activate Existing User</button>
+        </div>
+
         <div id="activateSuccess" class="notice notice-success" style="display:none;"></div>
         <div id="activateError" class="notice notice-error" style="display:none;"></div>
-        <form id="activationForm">
-          <div class="form-grid">
-            <div class="form-group"><label>Full Name *</label><input type="text" id="clientName" required></div>
-            <div class="form-group"><label>Email *</label><input type="email" id="clientEmail" required></div>
-            <div class="form-group"><label>Country</label><select id="clientCountry"><option>Kenya</option><option>Nigeria</option><option>South Africa</option><option>Global</option></select></div>
-            <div class="form-group"><label>License Plan *</label><select id="activationPlan" required onchange="updateDeviceInfo()">
-              <option value="">— Select —</option>
-              <option value="12hr">12 Hours · 1 Device</option>
-              <option value="3_months">3 Months · 10 Devices</option>
-              <option value="6_months">6 Months · 20 Devices</option>
-              <option value="1_year">1 Year · 45 Devices</option>
-            </select></div>
+        <div id="activateInfo" class="notice notice-info" style="display:none;"></div>
+
+        <!-- Method 1: New User Registration (Create + Activate) -->
+        <div id="new-user-method" class="method-content active">
+          <form id="newUserForm">
+            <div class="form-grid">
+              <div class="form-group">
+                <label>Full Name <span class="required">*</span></label>
+                <input type="text" id="newUserName" placeholder="John Doe" required>
+              </div>
+              <div class="form-group">
+                <label>Email <span class="required">*</span></label>
+                <input type="email" id="newUserEmail" placeholder="client@example.com" required>
+              </div>
+              <div class="form-group">
+                <label>Country <span class="required">*</span></label>
+                <select id="newUserCountry" required>
+                  <option value="">Select Country</option>
+                  <option>Kenya</option><option>Nigeria</option><option>South Africa</option>
+                  <option>Ghana</option><option>Egypt</option><option>Morocco</option>
+                  <option>USA</option><option>UK</option><option>Global</option>
+                </select>
+              </div>
+              <div class="form-group">
+                <label>License Plan <span class="required">*</span></label>
+                <select id="newUserPlan" required>
+                  <option value="">— Select Plan —</option>
+                  <option value="12hr">12 Hours · 1 Device</option>
+                  <option value="3_months">3 Months · 10 Devices</option>
+                  <option value="6_months">6 Months · 20 Devices</option>
+                  <option value="1_year">1 Year · 45 Devices</option>
+                </select>
+              </div>
+            </div>
+            <div style="margin-top:20px;">
+              <button type="submit" class="btn btn-primary">✨ Create & Activate Account</button>
+            </div>
+          </form>
+          <div id="newUserResult" class="password-display" style="display:none;"></div>
+          <div class="hint-box">
+            <span>📝</span>
+            <span>Creates a NEW user account with auto-generated password. Credentials will be sent to the user's email automatically.</span>
           </div>
-          <div style="margin-top:20px;"><button type="submit" class="btn btn-primary">Activate License Now</button></div>
-        </form>
-        <div class="hint-box"><span>🔒</span><span>License is hardware-locked. Device limits are fixed per plan. Activation is immediate — no admin approval required.</span></div>
+        </div>
+
+        <!-- Method 2: Activate Existing User -->
+        <div id="existing-user-method" class="method-content">
+          <form id="existingUserForm">
+            <div class="form-grid">
+              <div class="form-group full">
+                <label>User Email <span class="required">*</span></label>
+                <input type="email" id="existingUserEmail" placeholder="existing-client@example.com" required>
+                <small style="color: var(--slate-500);">User must already be registered</small>
+              </div>
+              <div class="form-group">
+                <label>License Plan <span class="required">*</span></label>
+                <select id="existingUserPlan" required>
+                  <option value="">— Select Plan —</option>
+                  <option value="12hr">12 Hours · 1 Device</option>
+                  <option value="3_months">3 Months · 10 Devices</option>
+                  <option value="6_months">6 Months · 20 Devices</option>
+                  <option value="1_year">1 Year · 45 Devices</option>
+                </select>
+              </div>
+            </div>
+            <div style="margin-top:20px;">
+              <button type="submit" class="btn btn-info">🔄 Activate License</button>
+            </div>
+          </form>
+          <div class="hint-box">
+            <span>⚠️</span>
+            <span>For users who already have an account. Their existing password will NOT be changed. They will receive an email notification about the license activation.</span>
+          </div>
+        </div>
       </div>
     </div>
 
@@ -159,8 +243,8 @@
       <div class="panel">
         <div class="panel-title">👥 My Clients</div>
         <div class="controls-row">
-          <div class="search-input"><input type="text" id="clientSearchInput" placeholder="Search..."></div>
-          <button class="btn btn-primary btn-sm" onclick="searchClients()">🔍</button>
+          <div class="search-input"><input type="text" id="clientSearchInput" placeholder="Search by name, email or admission..."></div>
+          <button class="btn btn-primary btn-sm" onclick="searchClients()">🔍 Search</button>
           <button class="btn btn-secondary btn-sm" onclick="clearSearch()">Clear</button>
         </div>
         <div id="clientsList"><p>Loading...</p></div>
@@ -169,8 +253,25 @@
   </div>
 </main>
 <script>
-  function showNotice(id, msg) { const el = document.getElementById(id); el.innerText = msg; el.style.display = 'block'; setTimeout(() => el.style.display = 'none', 5000); }
-  function esc(s) { return String(s||'').replace(/[&<>]/g, c => ({'&':'&amp;','<':'&lt;','>':'&gt;'}[c])); }
+  let currentMethod = 'new-user';
+  
+  function showNotice(id, msg, isError = false) {
+    const el = document.getElementById(id);
+    el.innerText = msg;
+    el.style.display = 'block';
+    setTimeout(() => el.style.display = 'none', 6000);
+  }
+
+  function hideNotices() {
+    ['activateSuccess', 'activateError', 'activateInfo'].forEach(id => {
+      const el = document.getElementById(id);
+      if (el) el.style.display = 'none';
+    });
+  }
+
+  function esc(s) { 
+    return String(s || '').replace(/[&<>]/g, c => ({'&':'&amp;','<':'&lt;','>':'&gt;'}[c])); 
+  }
   
   function switchTab(tabId, btn) {
     document.querySelectorAll('.tab-content').forEach(t => t.classList.remove('active'));
@@ -178,8 +279,23 @@
     document.querySelectorAll('.nav-item').forEach(b => b.classList.remove('active'));
     if (btn) btn.classList.add('active');
     document.getElementById('pageTitle').innerText = tabId === 'activate-tab' ? 'Activate Client' : 'My Clients';
-    document.getElementById('pageSubtitle').innerText = tabId === 'activate-tab' ? 'Direct activation · No approval needed' : 'All clients registered under your account';
+    document.getElementById('pageSubtitle').innerText = tabId === 'activate-tab' ? 'Choose activation method below' : 'All clients registered under your account';
     if (tabId === 'clients-tab') loadClients();
+  }
+
+  function switchMethod(method) {
+    currentMethod = method;
+    document.querySelectorAll('.method-tab').forEach(tab => tab.classList.remove('active'));
+    document.querySelectorAll('.method-content').forEach(content => content.classList.remove('active'));
+    
+    if (method === 'new-user') {
+      document.querySelector('.method-tab:first-child').classList.add('active');
+      document.getElementById('new-user-method').classList.add('active');
+    } else {
+      document.querySelector('.method-tab:last-child').classList.add('active');
+      document.getElementById('existing-user-method').classList.add('active');
+    }
+    hideNotices();
   }
 
   async function loadDashboard() {
@@ -188,7 +304,7 @@
       const d = await r.json();
       if (!d.success) return;
       document.getElementById('sidebarName').innerText = d.username || 'Reseller';
-      document.getElementById('userAvatar').innerText = (d.username||'R').charAt(0).toUpperCase();
+      document.getElementById('userAvatar').innerText = (d.username || 'R').charAt(0).toUpperCase();
       document.getElementById('resellerName').innerText = d.username || '—';
       document.getElementById('resellerEmail').innerText = d.email || '—';
       document.getElementById('commissionRate').innerText = (d.commission_rate || 15) + '%';
@@ -197,7 +313,7 @@
       document.getElementById('activeLicenses').innerText = d.active_clients || 0;
       document.getElementById('expiredClients').innerText = d.expired_clients || 0;
       document.getElementById('monthClients').innerText = d.this_month_clients || 0;
-      // Fetch detailed stats for activation limits
+      
       const r2 = await fetch('/api/user/profile', { credentials: 'same-origin' });
       const d2 = await r2.json();
       if (d2.success) {
@@ -207,56 +323,173 @@
         document.getElementById('usedActivations').innerText = used;
         document.getElementById('maxActivations').innerText = limit;
         document.getElementById('resellerLimit').innerText = `${used}/${limit} activations`;
+        document.getElementById('creditsAvailable').innerText = d2.credits || 0;
       }
     } catch(e) { console.error(e); }
   }
 
   async function loadClients() {
     try {
-      const r = await fetch('/api/reseller/clients?limit=100', { credentials: 'same-origin' });
+      const search = document.getElementById('clientSearchInput')?.value || '';
+      const url = search ? `/api/reseller/clients?limit=100&search=${encodeURIComponent(search)}` : '/api/reseller/clients?limit=100';
+      const r = await fetch(url, { credentials: 'same-origin' });
       const d = await r.json();
       if (d.success && d.clients) {
-        let h = '<table><tr><th>Admission</th><th>Client</th><th>Email</th><th>License</th><th>Expiry</th><th>Devices</th><th>Status</th></tr>';
+        if (d.clients.length === 0) {
+          document.getElementById('clientsList').innerHTML = '<p>No clients found.</p>';
+          return;
+        }
+        let h = '<table><thead><tr><th>Admission</th><th>Client</th><th>Email</th><th>License</th><th>Expiry</th><th>Devices</th><th>Status</th></tr></thead><tbody>';
         d.clients.forEach(c => {
-          const badge = c.is_banned ? 'badge-expired">Banned' : c.is_active ? 'badge-active">Active' : 'badge-expired">Expired';
-          h += `<tr><td>${esc(c.admission_number)}</td><td style="font-weight:600;">${esc(c.username)}</td><td>${esc(c.email)}</td><td>${esc(c.license_type)}</td><td>${c.license_expiry ? new Date(c.license_expiry).toLocaleDateString() : '—'}</td><td>${c.device_limit||1}</td><td><span class="badge ${badge}</span></td></tr>`;
+          let badgeClass = 'badge-expired';
+          let badgeText = 'Expired';
+          if (c.is_banned) { badgeClass = 'badge-expired'; badgeText = 'Banned'; }
+          else if (c.is_active) { badgeClass = 'badge-active'; badgeText = 'Active'; }
+          h += `<tr>
+            <td>${esc(c.admission_number)}</td>
+            <td style="font-weight:600;">${esc(c.username)}</td>
+            <td>${esc(c.email)}</td>
+            <td>${esc(c.license_type)}</td>
+            <td>${c.license_expiry ? new Date(c.license_expiry).toLocaleDateString() : '—'}</td>
+            <td>${c.device_limit || 1}</td>
+            <td><span class="badge ${badgeClass}">${badgeText}</span></td>
+          </tr>`;
         });
-        h += '</table>';
-        document.getElementById('clientsList').innerHTML = h || '<p>No clients yet.</p>';
+        h += '</tbody></table>';
+        document.getElementById('clientsList').innerHTML = h;
+      } else {
+        document.getElementById('clientsList').innerHTML = '<p>No clients yet.</p>';
       }
-    } catch(e) { document.getElementById('clientsList').innerHTML = '<p>Error loading clients.</p>'; }
+    } catch(e) { 
+      console.error(e);
+      document.getElementById('clientsList').innerHTML = '<p>Error loading clients.</p>'; 
+    }
   }
 
-  function searchClients() { /* implement search */ loadClients(); }
-  function clearSearch() { document.getElementById('clientSearchInput').value = ''; loadClients(); }
+  function searchClients() { loadClients(); }
+  function clearSearch() { 
+    document.getElementById('clientSearchInput').value = ''; 
+    loadClients(); 
+  }
 
-  document.getElementById('activationForm').addEventListener('submit', async (e) => {
+  // New User Registration Form
+  document.getElementById('newUserForm').addEventListener('submit', async (e) => {
     e.preventDefault();
-    const name = document.getElementById('clientName').value.trim();
-    const email = document.getElementById('clientEmail').value.trim();
-    const plan = document.getElementById('activationPlan').value;
-    if (!name || !email || !plan) { showNotice('activateError', '❌ Fill all required fields'); return; }
+    hideNotices();
+    
+    const name = document.getElementById('newUserName').value.trim();
+    const email = document.getElementById('newUserEmail').value.trim();
+    const country = document.getElementById('newUserCountry').value;
+    const plan = document.getElementById('newUserPlan').value;
+    
+    if (!name || !email || !country || !plan) {
+      showNotice('activateError', '❌ Please fill all required fields');
+      return;
+    }
+    
     const btn = e.target.querySelector('button');
-    btn.disabled = true; btn.innerHTML = 'Activating…';
+    const originalText = btn.innerHTML;
+    btn.disabled = true;
+    btn.innerHTML = 'Creating account...';
+    
     try {
       const r = await fetch('/api/reseller/activate', {
-        method: 'POST', credentials: 'same-origin',
+        method: 'POST',
+        credentials: 'same-origin',
         headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ full_name: name, email, country: document.getElementById('clientCountry').value, license_type: plan })
+        body: JSON.stringify({ 
+          full_name: name, 
+          email: email, 
+          country: country, 
+          license_type: plan 
+        })
       });
       const d = await r.json();
+      
       if (d.success) {
-        showNotice('activateSuccess', `✅ Activated! Password: ${d.temp_password || 'sent via email'}`);
-        e.target.reset();
+        const resultDiv = document.getElementById('newUserResult');
+        resultDiv.innerHTML = `
+          <strong>✅ Account Created Successfully!</strong><br>
+          <strong>Username:</strong> ${esc(d.client.username)}<br>
+          <strong>Email:</strong> ${esc(d.client.email)}<br>
+          <strong>Admission Number:</strong> ${d.client.admission_number}<br>
+          <strong>Password:</strong> <span style="color: var(--teal-600); font-weight: bold;">${d.temp_password}</span><br>
+          <strong>License:</strong> ${d.client.license_type} (${d.client.days} days)<br>
+          <small>⚠️ Credentials have also been sent to the user's email. Please save this password now!</small>
+        `;
+        resultDiv.style.display = 'block';
+        showNotice('activateSuccess', `✅ ${d.message}`);
+        document.getElementById('newUserForm').reset();
         loadDashboard();
+        loadClients();
+        
+        // Auto hide password display after 30 seconds
+        setTimeout(() => { resultDiv.style.display = 'none'; }, 30000);
       } else {
-        showNotice('activateError', `❌ ${d.error || 'Failed'}`);
+        showNotice('activateError', `❌ ${d.error || 'Failed to create account'}`);
       }
-    } catch { showNotice('activateError', '❌ Network error'); }
-    finally { btn.disabled = false; btn.innerHTML = 'Activate License Now'; }
+    } catch(err) { 
+      showNotice('activateError', '❌ Network error. Please try again.'); 
+    } finally { 
+      btn.disabled = false; 
+      btn.innerHTML = originalText; 
+    }
   });
 
-  loadDashboard(); loadClients();
+  // Existing User Activation Form
+  document.getElementById('existingUserForm').addEventListener('submit', async (e) => {
+    e.preventDefault();
+    hideNotices();
+    
+    const email = document.getElementById('existingUserEmail').value.trim();
+    const plan = document.getElementById('existingUserPlan').value;
+    
+    if (!email || !plan) {
+      showNotice('activateError', '❌ Please fill all required fields');
+      return;
+    }
+    
+    const btn = e.target.querySelector('button');
+    const originalText = btn.innerHTML;
+    btn.disabled = true;
+    btn.innerHTML = 'Activating license...';
+    
+    try {
+      const r = await fetch('/api/reseller/activate', {
+        method: 'POST',
+        credentials: 'same-origin',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ 
+          email: email, 
+          license_type: plan 
+        })
+      });
+      const d = await r.json();
+      
+      if (d.success) {
+        showNotice('activateSuccess', `✅ ${d.message}`);
+        document.getElementById('existingUserForm').reset();
+        loadDashboard();
+        loadClients();
+      } else {
+        let errorMsg = d.error || 'Failed to activate license';
+        if (d.code === 'USER_NOT_FOUND') {
+          errorMsg = 'User not found. Please ask the user to register first, or use "New User Registration" method.';
+        } else if (d.code === 'ALREADY_ASSIGNED') {
+          errorMsg = 'This user is already managed by another reseller.';
+        }
+        showNotice('activateError', `❌ ${errorMsg}`);
+      }
+    } catch(err) { 
+      showNotice('activateError', '❌ Network error. Please try again.'); 
+    } finally { 
+      btn.disabled = false; 
+      btn.innerHTML = originalText; 
+    }
+  });
+
+  loadDashboard(); 
+  loadClients();
 </script>
 </body>
 </html>
