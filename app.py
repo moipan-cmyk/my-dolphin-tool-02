@@ -368,6 +368,198 @@ def create_app(config_class=Config):
             print(f"❌ Failed to send reset email: {e}")
             return False
 
+            
+    # ==================== ADD THESE TWO FUNCTIONS RIGHT HERE ====================
+    
+    def send_welcome_email_with_credentials(email, username, password, license_type, days, admission_number):
+        """Send welcome email with login credentials to newly registered user"""
+        try:
+            config = app.config
+            smtp_server = config.get('SMTP_SERVER', 'smtp.gmail.com')
+            smtp_port = config.get('SMTP_PORT', 587)
+            smtp_user = config.get('SMTP_USER')
+            smtp_password = config.get('SMTP_PASSWORD')
+            from_email = config.get('FROM_EMAIL', smtp_user)
+            app_name = config.get('APP_NAME', 'Dolphin Bypass Tool')
+            
+            base_url = os.environ.get('BASE_URL') or config.get('BASE_URL') or 'https://my-dolphin-tool-02.onrender.com'
+            
+            # Device limits for display
+            device_limits_display = {
+                '12hr': 1,
+                '3_months': 10,
+                '6_months': 20,
+                '1_year': 45
+            }
+            
+            html_content = f"""
+            <!DOCTYPE html>
+            <html>
+            <head>
+                <meta charset="UTF-8">
+                <title>Welcome to {app_name}</title>
+                <style>
+                    body {{ font-family: Arial, sans-serif; line-height: 1.6; }}
+                    .container {{ max-width: 600px; margin: 0 auto; padding: 20px; background: #f9f9f9; }}
+                    .header {{ background: #667eea; color: white; padding: 20px; text-align: center; }}
+                    .content {{ padding: 20px; background: white; }}
+                    .credentials {{ background: #f0f0f0; padding: 15px; margin: 15px 0; font-family: monospace; }}
+                    .footer {{ text-align: center; padding: 20px; font-size: 12px; color: #666; }}
+                </style>
+            </head>
+            <body>
+                <div class="container">
+                    <div class="header">
+                        <h2>Welcome to {app_name}</h2>
+                    </div>
+                    <div class="content">
+                        <h3>Your account has been created!</h3>
+                        <p>Dear <strong>{username}</strong>,</p>
+                        <p>A {license_type} license has been activated for you by a reseller.</p>
+                        
+                        <div class="credentials">
+                            <strong>Login Credentials:</strong><br>
+                            Email: {email}<br>
+                            Username: {username}<br>
+                            Admission Number: {admission_number}<br>
+                            Password: <strong style="color: #667eea;">{password}</strong><br>
+                        </div>
+                        
+                        <p><strong>License Details:</strong></p>
+                        <ul>
+                            <li>License Type: {license_type}</li>
+                            <li>Duration: {days} days</li>
+                            <li>Device Limit: {device_limits_display.get(license_type, 1)} devices</li>
+                        </ul>
+                        
+                        <p><strong>Important:</strong> Please change your password after your first login.</p>
+                        
+                        <p><a href="{base_url}/login" style="display: inline-block; padding: 10px 20px; background: #667eea; color: white; text-decoration: none; border-radius: 5px;">Login to Dashboard</a></p>
+                        
+                        <p>If you have any questions, please contact your reseller or our support team.</p>
+                    </div>
+                    <div class="footer">
+                        <p>{app_name} - Professional Tool for Technicians</p>
+                        <p>This email was sent automatically. Please do not reply.</p>
+                    </div>
+                </div>
+            </body>
+            </html>
+            """
+            
+            if smtp_user and smtp_password and smtp_user != 'your-email@gmail.com':
+                msg = MIMEMultipart('alternative')
+                msg['Subject'] = f"Welcome to {app_name} - Your Account Details"
+                msg['From'] = from_email
+                msg['To'] = email
+                msg.attach(MIMEText(html_content, 'html'))
+                
+                server = smtplib.SMTP(smtp_server, smtp_port)
+                server.starttls()
+                server.login(smtp_user, smtp_password)
+                server.send_message(msg)
+                server.quit()
+                print(f"✅ Welcome email sent to {email}")
+                return True
+            else:
+                # Print to console if email not configured
+                print(f"\n{'='*60}")
+                print(f"📧 WELCOME EMAIL (Email not configured)")
+                print(f"To: {email}")
+                print(f"Username: {username}")
+                print(f"Password: {password}")
+                print(f"Admission: {admission_number}")
+                print(f"License: {license_type} ({days} days)")
+                print(f"{'='*60}\n")
+                return True
+        except Exception as e:
+            print(f"❌ Failed to send welcome email: {e}")
+            return False
+
+    def send_license_activation_email(email, username, license_type, days):
+        """Send notification email for license activation to existing user"""
+        try:
+            config = app.config
+            smtp_server = config.get('SMTP_SERVER', 'smtp.gmail.com')
+            smtp_port = config.get('SMTP_PORT', 587)
+            smtp_user = config.get('SMTP_USER')
+            smtp_password = config.get('SMTP_PASSWORD')
+            from_email = config.get('FROM_EMAIL', smtp_user)
+            app_name = config.get('APP_NAME', 'Dolphin Bypass Tool')
+            
+            base_url = os.environ.get('BASE_URL') or config.get('BASE_URL') or 'https://my-dolphin-tool-02.onrender.com'
+            
+            html_content = f"""
+            <!DOCTYPE html>
+            <html>
+            <head>
+                <meta charset="UTF-8">
+                <title>License Activated - {app_name}</title>
+                <style>
+                    body {{ font-family: Arial, sans-serif; line-height: 1.6; }}
+                    .container {{ max-width: 600px; margin: 0 auto; padding: 20px; background: #f9f9f9; }}
+                    .header {{ background: #48bb78; color: white; padding: 20px; text-align: center; }}
+                    .content {{ padding: 20px; background: white; }}
+                    .footer {{ text-align: center; padding: 20px; font-size: 12px; color: #666; }}
+                </style>
+            </head>
+            <body>
+                <div class="container">
+                    <div class="header">
+                        <h2>License Activated!</h2>
+                    </div>
+                    <div class="content">
+                        <h3>Hello {username}!</h3>
+                        <p>Your {license_type} license has been activated successfully.</p>
+                        
+                        <p><strong>License Details:</strong></p>
+                        <ul>
+                            <li>License Type: {license_type}</li>
+                            <li>Duration: {days} days</li>
+                        </ul>
+                        
+                        <p>You can now access all features of {app_name}.</p>
+                        
+                        <p><a href="{base_url}/login" style="display: inline-block; padding: 10px 20px; background: #48bb78; color: white; text-decoration: none; border-radius: 5px;">Login to Dashboard</a></p>
+                        
+                        <p>Note: Your existing password remains unchanged.</p>
+                    </div>
+                    <div class="footer">
+                        <p>{app_name} - Professional Tool for Technicians</p>
+                    </div>
+                </div>
+            </body>
+            </html>
+            """
+            
+            if smtp_user and smtp_password and smtp_user != 'your-email@gmail.com':
+                msg = MIMEMultipart('alternative')
+                msg['Subject'] = f"License Activated - {app_name}"
+                msg['From'] = from_email
+                msg['To'] = email
+                msg.attach(MIMEText(html_content, 'html'))
+                
+                server = smtplib.SMTP(smtp_server, smtp_port)
+                server.starttls()
+                server.login(smtp_user, smtp_password)
+                server.send_message(msg)
+                server.quit()
+                print(f"✅ License activation email sent to {email}")
+                return True
+            else:
+                print(f"\n{'='*60}")
+                print(f"📧 LICENSE ACTIVATION (Email not configured)")
+                print(f"To: {email}")
+                print(f"License: {license_type} ({days} days)")
+                print(f"{'='*60}\n")
+                return True
+        except Exception as e:
+            print(f"❌ Failed to send license email: {e}")
+            return False
+
+
+
+
                     ######backup################################################################
        
     @app.route('/auth/reset-password/<token>', methods=['GET', 'POST'])
@@ -2436,74 +2628,151 @@ def create_app(config_class=Config):
             traceback.print_exc()
             return jsonify({'success': False, 'error': str(e)}), 500
 
-                # ==================== DIRECT ACTIVATION (RESELLERS) ====================
-    @app.route('/api/reseller/activate', methods=['POST'])
-    @api_login_required
-    def reseller_activate_license():
-        """Activate license directly - no admin approval needed"""
-        try:
-            user = current_user
-            if not user.is_reseller and not user.is_admin:
-                return jsonify({'success': False, 'error': 'Unauthorized'}), 403
+            # ==================== DIRECT ACTIVATION (RESELLERS) ====================
+@app.route('/api/reseller/activate', methods=['POST'])
+@api_login_required
+def reseller_activate_license():
+    """Activate license - supports both: create new user OR activate existing user"""
+    try:
+        user = current_user
+        if not user.is_reseller and not user.is_admin:
+            return jsonify({'success': False, 'error': 'Unauthorized'}), 403
+        
+        # Check activation limit for resellers
+        if user.is_reseller:
+            used = user.activations_used or 0
+            limit = user.activation_limit or 10
+            if used >= limit:
+                return jsonify({
+                    'success': False, 
+                    'error': f'Activation limit reached ({used}/{limit})'
+                }), 403
+        
+        data = request.get_json()
+        email = data.get('email', '').strip().lower()
+        license_type = data.get('license_type', '12hr')
+        
+        # Check which mode we're in based on provided fields
+        full_name = data.get('full_name', '').strip()
+        country = data.get('country', '')
+        
+        # Reseller durations and device limits
+        durations = {
+            '12hr': 1,
+            '3_months': 90,
+            '6_months': 180,
+            '1_year': 365
+        }
+        device_limits = {
+            '12hr': 1,
+            '3_months': 10,
+            '6_months': 20,
+            '1_year': 45
+        }
+        days = durations.get(license_type, 90)
+        device_limit = device_limits.get(license_type, 1)
+        
+        import random
+        import string
+        
+        # Check if user already exists
+        existing_user = User.query.filter_by(email=email).first()
+        
+        if existing_user:
+            # ========== OPTION 1: NORMAL ACTIVATION (Email only) ==========
+            # Only requires email, no full_name or country needed
             
-            # Check activation limit
+            # Check if this user is already activated by another reseller
+            if existing_user.activated_by and existing_user.activated_by != user.id and not user.is_admin:
+                return jsonify({
+                    'success': False, 
+                    'error': f'User {email} is already managed by another reseller',
+                    'code': 'ALREADY_ASSIGNED'
+                }), 403
+            
+            # Update existing user's license
+            existing_user.license_type = license_type
+            existing_user.license_expiry_date = datetime.utcnow() + timedelta(days=days)
+            existing_user.device_limit = device_limit
+            existing_user.license_status = 'active'
+            existing_user.license_valid = True
+            
+            # Set activated_by if not already set
+            if not existing_user.activated_by:
+                existing_user.activated_by = user.id
+            
+            # DO NOT change existing user's password - they keep their own password
+            # existing_user.set_password(temp_password)  # REMOVED - keep their password
+            
+            db.session.commit()
+            
+            # Increment activation count for reseller
             if user.is_reseller:
-                used = user.activations_used or 0
-                limit = user.activation_limit or 10
-                if used >= limit:
-                    return jsonify({
-                        'success': False, 
-                        'error': f'Activation limit reached ({used}/{limit})'
-                    }), 403
+                user.activations_used = (user.activations_used or 0) + 1
+                db.session.commit()
             
-            data = request.get_json()
-            full_name = data.get('full_name', '').strip()
-            email = data.get('email', '').strip().lower()
-            country = data.get('country', '')
-            license_type = data.get('license_type', '12hr')
+            log_system_action(user.id, 'reseller_activate_existing', 
+                            f'Activated {license_type} ({days}d) for existing user {email}')
             
-            if not full_name or not email:
-                return jsonify({'success': False, 'error': 'Missing fields'}), 400
+            # Send email notification to user about license activation
+            send_license_activation_email(email, existing_user.username, license_type, days)
             
-            if User.query.filter_by(email=email).first():
-                return jsonify({'success': False, 'error': 'Email exists'}), 400
+            return jsonify({
+                'success': True,
+                'message': f'License activated for existing user {email}',
+                'activation_type': 'existing_user',
+                'client': {
+                    'username': existing_user.username,
+                    'email': existing_user.email,
+                    'admission_number': existing_user.admission_number,
+                    'license_type': license_type,
+                    'days': days,
+                    'device_limit': device_limit,
+                    'already_registered': True
+                }
+            })
+        
+        else:
+            # ========== OPTION 2: DIRECT REGISTRATION (Full name, email, country) ==========
+            # Requires: full_name, email, country
+            if not full_name:
+                return jsonify({
+                    'success': False, 
+                    'error': 'Full name required for direct registration',
+                    'required_fields': ['full_name', 'email', 'country']
+                }), 400
             
-            # Generate username
+            if not country:
+                return jsonify({
+                    'success': False, 
+                    'error': 'Country required for direct registration',
+                    'required_fields': ['full_name', 'email', 'country']
+                }), 400
+            
+            # Generate username from full name
             username = full_name.lower().replace(' ', '.')
             base = username
             counter = 1
             while User.query.filter_by(username=username).first():
-                username = f"{base}{counter}"; counter += 1
+                username = f"{base}{counter}"
+                counter += 1
             
             admission_number = get_next_admission_number()
             
-      # ✅ Reseller durations and device limits (fixed by admin)
-            durations = {
-                '12hr': 1,
-                '3_months': 90,
-                '6_months': 180,
-                '1_year': 365
-            }
-            device_limits = {
-                '12hr': 1,       # 12 hours = 1 device
-                '3_months': 10,  # 3 months = 10 devices
-                '6_months': 20,  # 6 months = 20 devices
-                '1_year': 45     # 12 months = 45 devices
-            }
-            days = durations.get(license_type, 90)
-            device_limit = device_limits.get(license_type, 1)
-            
-            import random
-            import string
-            temp_password = ''.join(random.choices(string.ascii_letters + string.digits, k=10))
+            # Generate strong password
+            temp_password = ''.join(random.choices(string.ascii_letters + string.digits + "!@#$%", k=12))
             
             new_user = User(
-                username=username, email=email, country=country,
-                admission_number=admission_number, credits=0,
+                username=username,
+                email=email,
+                country=country,
+                admission_number=admission_number,
+                credits=0,
                 device_limit=device_limit,
                 license_type=license_type,
                 license_expiry_date=datetime.utcnow() + timedelta(days=days),
-                license_status='active', license_valid=True,
+                license_status='active',
+                license_valid=True,
                 activated_by=current_user.id
             )
             new_user.set_password(temp_password)
@@ -2515,23 +2784,39 @@ def create_app(config_class=Config):
             
             db.session.commit()
             
-            log_system_action(current_user.id, 'reseller_activate', 
-                            f'Activated {license_type} ({days}d) for {email}')
+            # Send email with credentials and license info
+            send_welcome_email_with_credentials(email, username, temp_password, license_type, days, admission_number)
+            
+            log_system_action(current_user.id, 'reseller_activate_new', 
+                            f'Created and activated {license_type} ({days}d) for new user {email}')
             
             return jsonify({
                 'success': True,
-                'message': f'License activated for {email}',
-                'temp_password': temp_password,
+                'message': f'New user created and license activated for {email}. Credentials sent to email.',
+                'activation_type': 'new_user',
+                'temp_password': temp_password,  # Only for display in response (email also sent)
                 'client': {
-                    'username': username, 'email': email,
-                    'license_type': license_type, 'days': days
+                    'username': username,
+                    'email': email,
+                    'admission_number': admission_number,
+                    'country': country,
+                    'license_type': license_type,
+                    'days': days,
+                    'device_limit': device_limit,
+                    'already_registered': False
                 }
             })
-        except Exception as e:
-            db.session.rollback()
-            return jsonify({'success': False, 'error': str(e)}), 500
             
-                # ==================== ADMIN RESELLER MANAGEMENT ENDPOINTS ====================
+    except Exception as e:
+        db.session.rollback()
+        print(f"Error in reseller_activate_license: {e}")
+        traceback.print_exc()
+        return jsonify({'success': False, 'error': str(e)}), 500
+
+
+
+            
+   # ==================== ADMIN RESELLER MANAGEMENT ENDPOINTS ====================
     
     @app.route('/api/admin/remove-reseller/<int:user_id>', methods=['DELETE', 'POST'])
     @login_required
