@@ -2628,191 +2628,185 @@ def create_app(config_class=Config):
             traceback.print_exc()
             return jsonify({'success': False, 'error': str(e)}), 500
 
-            # ==================== DIRECT ACTIVATION (RESELLERS) ====================
-@app.route('/api/reseller/activate', methods=['POST'])
-@api_login_required
-def reseller_activate_license():
-    """Activate license - supports both: create new user OR activate existing user"""
-    try:
-        user = current_user
-        if not user.is_reseller and not user.is_admin:
-            return jsonify({'success': False, 'error': 'Unauthorized'}), 403
-        
-        # Check activation limit for resellers
-        if user.is_reseller:
-            used = user.activations_used or 0
-            limit = user.activation_limit or 10
-            if used >= limit:
-                return jsonify({
-                    'success': False, 
-                    'error': f'Activation limit reached ({used}/{limit})'
-                }), 403
-        
-        data = request.get_json()
-        email = data.get('email', '').strip().lower()
-        license_type = data.get('license_type', '12hr')
-        
-        # Check which mode we're in based on provided fields
-        full_name = data.get('full_name', '').strip()
-        country = data.get('country', '')
-        
-        # Reseller durations and device limits
-        durations = {
-            '12hr': 1,
-            '3_months': 90,
-            '6_months': 180,
-            '1_year': 365
-        }
-        device_limits = {
-            '12hr': 1,
-            '3_months': 10,
-            '6_months': 20,
-            '1_year': 45
-        }
-        days = durations.get(license_type, 90)
-        device_limit = device_limits.get(license_type, 1)
-        
-        import random
-        import string
-        
-        # Check if user already exists
-        existing_user = User.query.filter_by(email=email).first()
-        
-        if existing_user:
-            # ========== OPTION 1: NORMAL ACTIVATION (Email only) ==========
-            # Only requires email, no full_name or country needed
+                # ==================== DIRECT ACTIVATION (RESELLERS) ====================
+    @app.route('/api/reseller/activate', methods=['POST'])
+    @api_login_required
+    def reseller_activate_license():
+        """Activate license - supports both: create new user OR activate existing user"""
+        try:
+            user = current_user
+            if not user.is_reseller and not user.is_admin:
+                return jsonify({'success': False, 'error': 'Unauthorized'}), 403
             
-            # Check if this user is already activated by another reseller
-            if existing_user.activated_by and existing_user.activated_by != user.id and not user.is_admin:
-                return jsonify({
-                    'success': False, 
-                    'error': f'User {email} is already managed by another reseller',
-                    'code': 'ALREADY_ASSIGNED'
-                }), 403
-            
-            # Update existing user's license
-            existing_user.license_type = license_type
-            existing_user.license_expiry_date = datetime.utcnow() + timedelta(days=days)
-            existing_user.device_limit = device_limit
-            existing_user.license_status = 'active'
-            existing_user.license_valid = True
-            
-            # Set activated_by if not already set
-            if not existing_user.activated_by:
-                existing_user.activated_by = user.id
-            
-            # DO NOT change existing user's password - they keep their own password
-            # existing_user.set_password(temp_password)  # REMOVED - keep their password
-            
-            db.session.commit()
-            
-            # Increment activation count for reseller
+            # Check activation limit for resellers
             if user.is_reseller:
-                user.activations_used = (user.activations_used or 0) + 1
+                used = user.activations_used or 0
+                limit = user.activation_limit or 10
+                if used >= limit:
+                    return jsonify({
+                        'success': False, 
+                        'error': f'Activation limit reached ({used}/{limit})'
+                    }), 403
+            
+            data = request.get_json()
+            email = data.get('email', '').strip().lower()
+            license_type = data.get('license_type', '12hr')
+            
+            # Check which mode we're in based on provided fields
+            full_name = data.get('full_name', '').strip()
+            country = data.get('country', '')
+            
+            # Reseller durations and device limits
+            durations = {
+                '12hr': 1,
+                '3_months': 90,
+                '6_months': 180,
+                '1_year': 365
+            }
+            device_limits = {
+                '12hr': 1,
+                '3_months': 10,
+                '6_months': 20,
+                '1_year': 45
+            }
+            days = durations.get(license_type, 90)
+            device_limit = device_limits.get(license_type, 1)
+            
+            import random
+            import string
+            
+            # Check if user already exists
+            existing_user = User.query.filter_by(email=email).first()
+            
+            if existing_user:
+                # ========== OPTION 1: NORMAL ACTIVATION (Email only) ==========
+                # Check if this user is already activated by another reseller
+                if existing_user.activated_by and existing_user.activated_by != user.id and not user.is_admin:
+                    return jsonify({
+                        'success': False, 
+                        'error': f'User {email} is already managed by another reseller',
+                        'code': 'ALREADY_ASSIGNED'
+                    }), 403
+                
+                # Update existing user's license
+                existing_user.license_type = license_type
+                existing_user.license_expiry_date = datetime.utcnow() + timedelta(days=days)
+                existing_user.device_limit = device_limit
+                existing_user.license_status = 'active'
+                existing_user.license_valid = True
+                
+                # Set activated_by if not already set
+                if not existing_user.activated_by:
+                    existing_user.activated_by = user.id
+                
                 db.session.commit()
-            
-            log_system_action(user.id, 'reseller_activate_existing', 
-                            f'Activated {license_type} ({days}d) for existing user {email}')
-            
-            # Send email notification to user about license activation
-            send_license_activation_email(email, existing_user.username, license_type, days)
-            
-            return jsonify({
-                'success': True,
-                'message': f'License activated for existing user {email}',
-                'activation_type': 'existing_user',
-                'client': {
-                    'username': existing_user.username,
-                    'email': existing_user.email,
-                    'admission_number': existing_user.admission_number,
-                    'license_type': license_type,
-                    'days': days,
-                    'device_limit': device_limit,
-                    'already_registered': True
-                }
-            })
-        
-        else:
-            # ========== OPTION 2: DIRECT REGISTRATION (Full name, email, country) ==========
-            # Requires: full_name, email, country
-            if not full_name:
+                
+                # Increment activation count for reseller
+                if user.is_reseller:
+                    user.activations_used = (user.activations_used or 0) + 1
+                    db.session.commit()
+                
+                log_system_action(user.id, 'reseller_activate_existing', 
+                                f'Activated {license_type} ({days}d) for existing user {email}')
+                
+                # Send email notification to user about license activation
+                send_license_activation_email(email, existing_user.username, license_type, days)
+                
                 return jsonify({
-                    'success': False, 
-                    'error': 'Full name required for direct registration',
-                    'required_fields': ['full_name', 'email', 'country']
-                }), 400
+                    'success': True,
+                    'message': f'License activated for existing user {email}',
+                    'activation_type': 'existing_user',
+                    'client': {
+                        'username': existing_user.username,
+                        'email': existing_user.email,
+                        'admission_number': existing_user.admission_number,
+                        'license_type': license_type,
+                        'days': days,
+                        'device_limit': device_limit,
+                        'already_registered': True
+                    }
+                })
             
-            if not country:
+            else:
+                # ========== OPTION 2: DIRECT REGISTRATION (Full name, email, country) ==========
+                if not full_name:
+                    return jsonify({
+                        'success': False, 
+                        'error': 'Full name required for direct registration',
+                        'required_fields': ['full_name', 'email', 'country']
+                    }), 400
+                
+                if not country:
+                    return jsonify({
+                        'success': False, 
+                        'error': 'Country required for direct registration',
+                        'required_fields': ['full_name', 'email', 'country']
+                    }), 400
+                
+                # Generate username from full name
+                username = full_name.lower().replace(' ', '.')
+                base = username
+                counter = 1
+                while User.query.filter_by(username=username).first():
+                    username = f"{base}{counter}"
+                    counter += 1
+                
+                admission_number = get_next_admission_number()
+                
+                # Generate strong password
+                temp_password = ''.join(random.choices(string.ascii_letters + string.digits + "!@#$%", k=12))
+                
+                new_user = User(
+                    username=username,
+                    email=email,
+                    country=country,
+                    admission_number=admission_number,
+                    credits=0,
+                    device_limit=device_limit,
+                    license_type=license_type,
+                    license_expiry_date=datetime.utcnow() + timedelta(days=days),
+                    license_status='active',
+                    license_valid=True,
+                    activated_by=current_user.id
+                )
+                new_user.set_password(temp_password)
+                db.session.add(new_user)
+                
+                # Increment activation count
+                if current_user.is_reseller:
+                    current_user.activations_used = (current_user.activations_used or 0) + 1
+                
+                db.session.commit()
+                
+                # Send email with credentials and license info
+                send_welcome_email_with_credentials(email, username, temp_password, license_type, days, admission_number)
+                
+                log_system_action(current_user.id, 'reseller_activate_new', 
+                                f'Created and activated {license_type} ({days}d) for new user {email}')
+                
                 return jsonify({
-                    'success': False, 
-                    'error': 'Country required for direct registration',
-                    'required_fields': ['full_name', 'email', 'country']
-                }), 400
-            
-            # Generate username from full name
-            username = full_name.lower().replace(' ', '.')
-            base = username
-            counter = 1
-            while User.query.filter_by(username=username).first():
-                username = f"{base}{counter}"
-                counter += 1
-            
-            admission_number = get_next_admission_number()
-            
-            # Generate strong password
-            temp_password = ''.join(random.choices(string.ascii_letters + string.digits + "!@#$%", k=12))
-            
-            new_user = User(
-                username=username,
-                email=email,
-                country=country,
-                admission_number=admission_number,
-                credits=0,
-                device_limit=device_limit,
-                license_type=license_type,
-                license_expiry_date=datetime.utcnow() + timedelta(days=days),
-                license_status='active',
-                license_valid=True,
-                activated_by=current_user.id
-            )
-            new_user.set_password(temp_password)
-            db.session.add(new_user)
-            
-            # Increment activation count
-            if current_user.is_reseller:
-                current_user.activations_used = (current_user.activations_used or 0) + 1
-            
-            db.session.commit()
-            
-            # Send email with credentials and license info
-            send_welcome_email_with_credentials(email, username, temp_password, license_type, days, admission_number)
-            
-            log_system_action(current_user.id, 'reseller_activate_new', 
-                            f'Created and activated {license_type} ({days}d) for new user {email}')
-            
-            return jsonify({
-                'success': True,
-                'message': f'New user created and license activated for {email}. Credentials sent to email.',
-                'activation_type': 'new_user',
-                'temp_password': temp_password,  # Only for display in response (email also sent)
-                'client': {
-                    'username': username,
-                    'email': email,
-                    'admission_number': admission_number,
-                    'country': country,
-                    'license_type': license_type,
-                    'days': days,
-                    'device_limit': device_limit,
-                    'already_registered': False
-                }
-            })
-            
-    except Exception as e:
-        db.session.rollback()
-        print(f"Error in reseller_activate_license: {e}")
-        traceback.print_exc()
-        return jsonify({'success': False, 'error': str(e)}), 500
-
+                    'success': True,
+                    'message': f'New user created and license activated for {email}. Credentials sent to email.',
+                    'activation_type': 'new_user',
+                    'temp_password': temp_password,
+                    'client': {
+                        'username': username,
+                        'email': email,
+                        'admission_number': admission_number,
+                        'country': country,
+                        'license_type': license_type,
+                        'days': days,
+                        'device_limit': device_limit,
+                        'already_registered': False
+                    }
+                })
+                
+        except Exception as e:
+            db.session.rollback()
+            print(f"Error in reseller_activate_license: {e}")
+            traceback.print_exc()
+            return jsonify({'success': False, 'error': str(e)}), 500
+    
 
 
             
