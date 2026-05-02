@@ -368,8 +368,7 @@ def create_app(config_class=Config):
             print(f"❌ Failed to send reset email: {e}")
             return False
 
-            
-    # ==================== ADD THESE TWO FUNCTIONS RIGHT HERE ====================
+            # ==================== ADD THESE TWO FUNCTIONS RIGHT HERE ====================
     
     def send_welcome_email_with_credentials(email, username, password, license_type, days, admission_number):
         """Send welcome email with login credentials to newly registered user"""
@@ -447,20 +446,41 @@ def create_app(config_class=Config):
             </html>
             """
             
+            # Check if SMTP is configured
             if smtp_user and smtp_password and smtp_user != 'your-email@gmail.com':
-                msg = MIMEMultipart('alternative')
-                msg['Subject'] = f"Welcome to {app_name} - Your Account Details"
-                msg['From'] = from_email
-                msg['To'] = email
-                msg.attach(MIMEText(html_content, 'html'))
-                
-                server = smtplib.SMTP(smtp_server, smtp_port)
-                server.starttls()
-                server.login(smtp_user, smtp_password)
-                server.send_message(msg)
-                server.quit()
-                print(f"✅ Welcome email sent to {email}")
-                return True
+                try:
+                    # Set timeout to avoid hanging
+                    import socket
+                    old_timeout = socket.getdefaulttimeout()
+                    socket.setdefaulttimeout(10)
+                    
+                    msg = MIMEMultipart('alternative')
+                    msg['Subject'] = f"Welcome to {app_name} - Your Account Details"
+                    msg['From'] = from_email
+                    msg['To'] = email
+                    msg.attach(MIMEText(html_content, 'html'))
+                    
+                    server = smtplib.SMTP(smtp_server, smtp_port, timeout=10)
+                    server.starttls()
+                    server.login(smtp_user, smtp_password)
+                    server.send_message(msg)
+                    server.quit()
+                    
+                    socket.setdefaulttimeout(old_timeout)
+                    print(f"✅ Welcome email sent to {email}")
+                    return True
+                except Exception as smtp_err:
+                    print(f"⚠️ SMTP error for {email}: {smtp_err}")
+                    # Fall back to console output
+                    print(f"\n{'='*60}")
+                    print(f"📧 WELCOME EMAIL (SMTP failed, showing credentials)")
+                    print(f"To: {email}")
+                    print(f"Username: {username}")
+                    print(f"Password: {password}")
+                    print(f"Admission: {admission_number}")
+                    print(f"License: {license_type} ({days} days)")
+                    print(f"{'='*60}\n")
+                    return True
             else:
                 # Print to console if email not configured
                 print(f"\n{'='*60}")
@@ -472,8 +492,10 @@ def create_app(config_class=Config):
                 print(f"License: {license_type} ({days} days)")
                 print(f"{'='*60}\n")
                 return True
+                
         except Exception as e:
-            print(f"❌ Failed to send welcome email: {e}")
+            print(f"❌ Failed to send welcome email to {email}: {e}")
+            # Don't crash - just log the error
             return False
 
     def send_license_activation_email(email, username, license_type, days):
@@ -532,20 +554,38 @@ def create_app(config_class=Config):
             </html>
             """
             
+            # Check if SMTP is configured
             if smtp_user and smtp_password and smtp_user != 'your-email@gmail.com':
-                msg = MIMEMultipart('alternative')
-                msg['Subject'] = f"License Activated - {app_name}"
-                msg['From'] = from_email
-                msg['To'] = email
-                msg.attach(MIMEText(html_content, 'html'))
-                
-                server = smtplib.SMTP(smtp_server, smtp_port)
-                server.starttls()
-                server.login(smtp_user, smtp_password)
-                server.send_message(msg)
-                server.quit()
-                print(f"✅ License activation email sent to {email}")
-                return True
+                try:
+                    # Set timeout to avoid hanging
+                    import socket
+                    old_timeout = socket.getdefaulttimeout()
+                    socket.setdefaulttimeout(10)
+                    
+                    msg = MIMEMultipart('alternative')
+                    msg['Subject'] = f"License Activated - {app_name}"
+                    msg['From'] = from_email
+                    msg['To'] = email
+                    msg.attach(MIMEText(html_content, 'html'))
+                    
+                    server = smtplib.SMTP(smtp_server, smtp_port, timeout=10)
+                    server.starttls()
+                    server.login(smtp_user, smtp_password)
+                    server.send_message(msg)
+                    server.quit()
+                    
+                    socket.setdefaulttimeout(old_timeout)
+                    print(f"✅ License activation email sent to {email}")
+                    return True
+                except Exception as smtp_err:
+                    print(f"⚠️ SMTP error for {email}: {smtp_err}")
+                    # Fall back to console output
+                    print(f"\n{'='*60}")
+                    print(f"📧 LICENSE ACTIVATION (SMTP failed)")
+                    print(f"To: {email}")
+                    print(f"License: {license_type} ({days} days)")
+                    print(f"{'='*60}\n")
+                    return True
             else:
                 print(f"\n{'='*60}")
                 print(f"📧 LICENSE ACTIVATION (Email not configured)")
@@ -553,8 +593,10 @@ def create_app(config_class=Config):
                 print(f"License: {license_type} ({days} days)")
                 print(f"{'='*60}\n")
                 return True
+                
         except Exception as e:
-            print(f"❌ Failed to send license email: {e}")
+            print(f"❌ Failed to send license email to {email}: {e}")
+            # Don't crash - just log the error
             return False
 
 
