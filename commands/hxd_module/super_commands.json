@@ -83,13 +83,10 @@
           "com.transsnet.store.xml",
           "privapp-permissions-google-product.xml",
           "privapp-permissions-meta.xml",
-          "split-permissions-google.xml",
           "/product/priv-app/Wellbeing",
           "AndroidPlatformServicesGo.odex",
           "AndroidPlatformServicesGo.vdex",
           "/product/priv-app/GmsCoreGo/m/independent/AndroidPlatformServicesGo.apk",
-          "GooglePartnerSetup.odex",
-          "GooglePartnerSetup.vdex",
           "/product/priv-app/MetaServices",
           "/product/priv-app/PalmStore",
           "/vendor/etc/init/hw/init",
@@ -127,7 +124,6 @@
           "/system_ext/priv-app/TranResolver",
           "/product/priv-app/WellbeingPrebuilt",
           "/product/priv-app/GmsCoreGo/m/independent/AndroidPlatformServicesGo.apkw",
-          "/product/priv-app/GooglePartnerSetu",
           "/product/priv-app/ImsServiceEntitlement"
         ]
       }
