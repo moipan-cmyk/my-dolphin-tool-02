@@ -21,7 +21,7 @@ from flask_limiter.util import get_remote_address
 from database import db, User, Device, UserSession, DeviceHistory, CreditTransaction, SystemLog, CommandUsage, LoginAttempt
 from database import check_command_limit, increment_command_count, check_login_limit, log_login_attempt
 from database import db, User, Device, UserSession, DeviceHistory, CreditTransaction, SystemLog, CommandUsage, LoginAttempt, SamsungOrder, ServerStatus
-
+from sqlalchemy import func
 
 # ==================== CONSTANTS ====================
 SESSION_DURATION_HOURS = 12       # Hardware binding: 12 hours
@@ -3321,7 +3321,7 @@ def create_app(config_class=Config):
             traceback.print_exc()
             return jsonify({'error': f'Internal server error: {str(e)}'}), 500
 
-        # ==================== ADMIN SAMSUNG FRP ENDPOINTS ====================
+     # ==================== ADMIN SAMSUNG FRP ENDPOINTS ====================
     
     @app.route('/api/admin/samsung/orders', methods=['GET'])
     @login_required
@@ -3330,43 +3330,53 @@ def create_app(config_class=Config):
         if not current_user.is_admin:
             return jsonify({'error': 'Unauthorized'}), 403
         
-        status_filter = request.args.get('status', 'pending')
-        page = int(request.args.get('page', 1))
-        limit = int(request.args.get('limit', 20))
-        offset = (page - 1) * limit
-        
-        from database import SamsungOrder
-        query = SamsungOrder.query
-        if status_filter != 'all':
-            query = query.filter_by(status=status_filter)
-        
-        total = query.count()
-        orders = query.order_by(SamsungOrder.created_at.desc()).offset(offset).limit(limit).all()
-        
-        orders_data = [order.to_dict() for order in orders]
-        
-        # Get summary stats
-        pending_count = SamsungOrder.query.filter_by(status='pending').count()
-        processing_count = SamsungOrder.query.filter_by(status='processing').count()
-        completed_count = SamsungOrder.query.filter_by(status='completed').count()
-        failed_count = SamsungOrder.query.filter_by(status='failed').count()
-        total_credits_earned = db.session.query(func.sum(SamsungOrder.credits_cost)).filter(SamsungOrder.status == 'completed').scalar() or 0
-        
-        return jsonify({
-            'success': True,
-            'orders': orders_data,
-            'total': total,
-            'page': page,
-            'limit': limit,
-            'stats': {
-                'pending': pending_count,
-                'processing': processing_count,
-                'completed': completed_count,
-                'failed': failed_count,
-                'total_credits_earned': total_credits_earned
-            }
-        }), 200
-    
+        try:
+            from sqlalchemy import func
+            from database import SamsungOrder, db as database_db
+            
+            status_filter = request.args.get('status', 'pending')
+            page = int(request.args.get('page', 1))
+            limit = int(request.args.get('limit', 20))
+            offset = (page - 1) * limit
+            
+            query = SamsungOrder.query
+            if status_filter != 'all':
+                query = query.filter_by(status=status_filter)
+            
+            total = query.count()
+            orders = query.order_by(SamsungOrder.created_at.desc()).offset(offset).limit(limit).all()
+            
+            orders_data = [order.to_dict() for order in orders]
+            
+            pending_count = SamsungOrder.query.filter_by(status='pending').count()
+            processing_count = SamsungOrder.query.filter_by(status='processing').count()
+            completed_count = SamsungOrder.query.filter_by(status='completed').count()
+            failed_count = SamsungOrder.query.filter_by(status='failed').count()
+            
+            total_credits_earned = database_db.session.query(func.sum(SamsungOrder.credits_cost)).filter(SamsungOrder.status == 'completed').scalar() or 0
+            
+            return jsonify({
+                'success': True,
+                'orders': orders_data,
+                'total': total,
+                'page': page,
+                'limit': limit,
+                'stats': {
+                    'pending': pending_count,
+                    'processing': processing_count,
+                    'completed': completed_count,
+                    'failed': failed_count,
+                    'total_credits_earned': total_credits_earned
+                }
+            }), 200
+            
+        except Exception as e:
+            print(f"Error in admin_samsung_orders: {e}")
+            import traceback
+            traceback.print_exc()
+            return jsonify({'error': str(e), 'success': False}), 500
+
+
     
     @app.route('/api/admin/samsung/order/<int:order_id>/process', methods=['POST'])
     @login_required
