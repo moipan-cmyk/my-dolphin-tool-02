@@ -20,11 +20,24 @@ from flask_limiter.util import get_remote_address
 # Add these to your imports at the top
 from database import db, User, Device, UserSession, DeviceHistory, CreditTransaction, SystemLog, CommandUsage, LoginAttempt
 from database import check_command_limit, increment_command_count, check_login_limit, log_login_attempt
+from database import db, User, Device, UserSession, DeviceHistory, CreditTransaction, SystemLog, CommandUsage, LoginAttempt, SamsungOrder, ServerStatus
+
 
 # ==================== CONSTANTS ====================
 SESSION_DURATION_HOURS = 12       # Hardware binding: 12 hours
 SESSION_INACTIVITY_MINUTES = 30   # Inactivity timeout: 30 minutes
 DEVICE_RESET_COST = 2
+
+# ==================== SAMSUNG FRP CONSTANTS ====================
+SAMSUNG_FRP_PRICES = {
+    '13': 25,
+    '14': 25,
+    '15': 50,
+    '16': 80
+}
+
+# Samsung FRP server URL (for external service)
+SAMSUNG_FRP_SERVER_URL = os.environ.get('SAMSUNG_FRP_SERVER_URL', 'https://samsung-frp-api.example.com')
 
 BASE_DIR = os.path.dirname(os.path.abspath(__file__))
 if BASE_DIR not in sys.path:
@@ -368,6 +381,8 @@ def create_app(config_class=Config):
             print(f"❌ Failed to send reset email: {e}")
             return False
 
+            
+
             # ==================== ADD THESE TWO FUNCTIONS RIGHT HERE ====================
     
     def send_welcome_email_with_credentials(email, username, password, license_type, days, admission_number):
@@ -599,7 +614,53 @@ def create_app(config_class=Config):
             # Don't crash - just log the error
             return False
 
-
+     # ==================== SAMSUNG FRP HELPER FUNCTIONS ====================
+    
+    def generate_order_id():
+        """Generate unique Samsung FRP order ID"""
+        import random
+        import string
+        timestamp = datetime.utcnow().strftime('%Y%m%d%H%M%S')
+        random_str = ''.join(random.choices(string.ascii_uppercase + string.digits, k=6))
+        return f"SAM-{timestamp}-{random_str}"
+    
+    def check_samsung_frp_server():
+        """Check if Samsung FRP external server is online"""
+        try:
+            from database import ServerStatus
+            import requests
+            
+            # Check if manual override is set
+            server_status = ServerStatus.query.filter_by(server_name='samsung_frp_server').first()
+            
+            if server_status and server_status.manual_override:
+                return server_status.is_online
+            
+            # Auto-check the actual server
+            response = requests.get(f"{SAMSUNG_FRP_SERVER_URL}/health", timeout=5)
+            is_online = response.status_code == 200
+            
+            # Update database record
+            if not server_status:
+                server_status = ServerStatus(server_name='samsung_frp_server')
+                db.session.add(server_status)
+            
+            server_status.is_online = is_online
+            server_status.last_check = datetime.utcnow()
+            server_status.response_time = int(response.elapsed.total_seconds() * 1000) if is_online else 0
+            db.session.commit()
+            
+            return is_online
+        except Exception as e:
+            # Server is offline or error
+            from database import ServerStatus
+            server_status = ServerStatus.query.filter_by(server_name='samsung_frp_server').first()
+            if server_status and not server_status.manual_override:
+                server_status.is_online = False
+                server_status.last_check = datetime.utcnow()
+                server_status.error_message = str(e)
+                db.session.commit()
+            return False
 
 
                     ######backup################################################################
