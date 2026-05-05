@@ -3607,7 +3607,7 @@ def create_app(config_class=Config):
                 'pricing': SAMSUNG_FRP_PRICES
             }), 200
         except Exception as e:
-            return jsonify({'success': False', 'error': str(e)}), 500
+            return jsonify({'success': False, 'error': str(e)}), 500
 
 
     # ==================== ADMIN SAMSUNG FRP SERVER CONTROL ENDPOINTS ====================
