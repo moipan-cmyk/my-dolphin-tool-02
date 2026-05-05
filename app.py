@@ -3321,7 +3321,7 @@ def create_app(config_class=Config):
             traceback.print_exc()
             return jsonify({'error': f'Internal server error: {str(e)}'}), 500
 
-     # ==================== ADMIN SAMSUNG FRP ENDPOINTS ====================
+                # ==================== ADMIN SAMSUNG FRP ENDPOINTS ====================
     
     @app.route('/api/admin/samsung/orders', methods=['GET'])
     @login_required
@@ -3332,7 +3332,7 @@ def create_app(config_class=Config):
         
         try:
             from sqlalchemy import func
-            from database import SamsungOrder, db as database_db
+            from database import SamsungOrder
             
             status_filter = request.args.get('status', 'pending')
             page = int(request.args.get('page', 1))
@@ -3353,7 +3353,8 @@ def create_app(config_class=Config):
             completed_count = SamsungOrder.query.filter_by(status='completed').count()
             failed_count = SamsungOrder.query.filter_by(status='failed').count()
             
-            total_credits_earned = database_db.session.query(func.sum(SamsungOrder.credits_cost)).filter(SamsungOrder.status == 'completed').scalar() or 0
+            # Use the global db object (already imported at top of file)
+            total_credits_earned = db.session.query(func.sum(SamsungOrder.credits_cost)).filter(SamsungOrder.status == 'completed').scalar() or 0
             
             return jsonify({
                 'success': True,
@@ -3375,8 +3376,7 @@ def create_app(config_class=Config):
             import traceback
             traceback.print_exc()
             return jsonify({'error': str(e), 'success': False}), 500
-
-
+    
     
     @app.route('/api/admin/samsung/order/<int:order_id>/process', methods=['POST'])
     @login_required
@@ -3407,11 +3407,9 @@ def create_app(config_class=Config):
             
             db.session.commit()
             
-            # Log action
             log_system_action(current_user.id, 'process_samsung_order', 
                              f'Processed order {order.order_id} - Status: {status}')
             
-            # If failed, consider refund (optional)
             if status == 'failed':
                 print(f"⚠️ Order {order.order_id} failed. Consider refunding {order.credits_cost} credits to user {order.user_id}")
             
@@ -3423,6 +3421,8 @@ def create_app(config_class=Config):
             
         except Exception as e:
             db.session.rollback()
+            print(f"Error in admin_process_samsung_order: {e}")
+            traceback.print_exc()
             return jsonify({'error': str(e)}), 500
     
     
@@ -3442,7 +3442,6 @@ def create_app(config_class=Config):
             if order.status != 'failed':
                 return jsonify({'error': 'Can only refund failed orders'}), 400
             
-            # Refund credits
             user = User.query.get(order.user_id)
             if user:
                 user.credits = (user.credits or 0) + order.credits_cost
@@ -3471,9 +3470,45 @@ def create_app(config_class=Config):
             
         except Exception as e:
             db.session.rollback()
+            print(f"Error in admin_refund_samsung_order: {e}")
+            traceback.print_exc()
             return jsonify({'error': str(e)}), 500
-
-
+    
+    
+    # ========== DEBUG ENDPOINT ==========
+    @app.route('/api/admin/samsung/debug', methods=['GET'])
+    @login_required
+    def admin_samsung_debug():
+        """Debug endpoint to check Samsung orders"""
+        if not current_user.is_admin:
+            return jsonify({'error': 'Unauthorized'}), 403
+        
+        try:
+            from database import SamsungOrder
+            from sqlalchemy import inspect
+            
+            inspector = inspect(db.engine)
+            tables = inspector.get_table_names()
+            
+            count = SamsungOrder.query.count()
+            first_order = SamsungOrder.query.first()
+            first_order_data = first_order.to_dict() if first_order else None
+            
+            return jsonify({
+                'success': True,
+                'tables': tables,
+                'samsung_orders_table_exists': 'samsung_orders' in tables,
+                'order_count': count,
+                'first_order': first_order_data
+            })
+        except Exception as e:
+            import traceback
+            return jsonify({
+                'success': False,
+                'error': str(e),
+                'traceback': traceback.format_exc()
+            }), 500
+            
     # ==================== SAMSUNG FRP USER API ENDPOINTS ====================
     
     @app.route('/api/samsung/frp/order', methods=['POST'])
