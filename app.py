@@ -3259,6 +3259,519 @@ def create_app(config_class=Config):
             print(f"Error in get_command: {e}")
             traceback.print_exc()
             return jsonify({'error': f'Internal server error: {str(e)}'}), 500
+
+        # ==================== ADMIN SAMSUNG FRP ENDPOINTS ====================
+    
+    @app.route('/api/admin/samsung/orders', methods=['GET'])
+    @login_required
+    def admin_samsung_orders():
+        """Admin: Get all Samsung FRP orders"""
+        if not current_user.is_admin:
+            return jsonify({'error': 'Unauthorized'}), 403
+        
+        status_filter = request.args.get('status', 'pending')
+        page = int(request.args.get('page', 1))
+        limit = int(request.args.get('limit', 20))
+        offset = (page - 1) * limit
+        
+        from database import SamsungOrder
+        query = SamsungOrder.query
+        if status_filter != 'all':
+            query = query.filter_by(status=status_filter)
+        
+        total = query.count()
+        orders = query.order_by(SamsungOrder.created_at.desc()).offset(offset).limit(limit).all()
+        
+        orders_data = [order.to_dict() for order in orders]
+        
+        # Get summary stats
+        pending_count = SamsungOrder.query.filter_by(status='pending').count()
+        processing_count = SamsungOrder.query.filter_by(status='processing').count()
+        completed_count = SamsungOrder.query.filter_by(status='completed').count()
+        failed_count = SamsungOrder.query.filter_by(status='failed').count()
+        total_credits_earned = db.session.query(func.sum(SamsungOrder.credits_cost)).filter(SamsungOrder.status == 'completed').scalar() or 0
+        
+        return jsonify({
+            'success': True,
+            'orders': orders_data,
+            'total': total,
+            'page': page,
+            'limit': limit,
+            'stats': {
+                'pending': pending_count,
+                'processing': processing_count,
+                'completed': completed_count,
+                'failed': failed_count,
+                'total_credits_earned': total_credits_earned
+            }
+        }), 200
+    
+    
+    @app.route('/api/admin/samsung/order/<int:order_id>/process', methods=['POST'])
+    @login_required
+    def admin_process_samsung_order(order_id):
+        """Admin: Process a Samsung FRP order"""
+        if not current_user.is_admin:
+            return jsonify({'error': 'Unauthorized'}), 403
+        
+        try:
+            data = request.get_json()
+            status = data.get('status', 'completed')
+            result_code = data.get('result_code', 'SUCCESS')
+            result_message = data.get('result_message', '')
+            admin_notes = data.get('admin_notes', '')
+            
+            from database import SamsungOrder
+            order = SamsungOrder.query.get(order_id)
+            if not order:
+                return jsonify({'error': 'Order not found'}), 404
+            
+            # Update order
+            order.status = status
+            order.processed_by = current_user.id
+            order.processed_at = datetime.utcnow()
+            order.result_code = result_code
+            order.result_message = result_message
+            order.admin_notes = admin_notes
+            
+            db.session.commit()
+            
+            # Log action
+            log_system_action(current_user.id, 'process_samsung_order', 
+                             f'Processed order {order.order_id} - Status: {status}')
+            
+            # If failed, consider refund (optional)
+            if status == 'failed':
+                print(f"⚠️ Order {order.order_id} failed. Consider refunding {order.credits_cost} credits to user {order.user_id}")
+            
+            return jsonify({
+                'success': True,
+                'message': f'Order {order.order_id} marked as {status}',
+                'order': order.to_dict()
+            }), 200
+            
+        except Exception as e:
+            db.session.rollback()
+            return jsonify({'error': str(e)}), 500
+    
+    
+    @app.route('/api/admin/samsung/order/<int:order_id>/refund', methods=['POST'])
+    @login_required
+    def admin_refund_samsung_order(order_id):
+        """Admin: Refund credits for failed order"""
+        if not current_user.is_admin:
+            return jsonify({'error': 'Unauthorized'}), 403
+        
+        try:
+            from database import SamsungOrder, CreditTransaction, User
+            order = SamsungOrder.query.get(order_id)
+            if not order:
+                return jsonify({'error': 'Order not found'}), 404
+            
+            if order.status != 'failed':
+                return jsonify({'error': 'Can only refund failed orders'}), 400
+            
+            # Refund credits
+            user = User.query.get(order.user_id)
+            if user:
+                user.credits = (user.credits or 0) + order.credits_cost
+                
+                transaction = CreditTransaction(
+                    user_id=user.id,
+                    amount=order.credits_cost,
+                    transaction_type='refund',
+                    description=f'Refund for failed Samsung FRP order {order.order_id}'
+                )
+                db.session.add(transaction)
+                
+                order.admin_notes = (order.admin_notes or '') + f'\nRefunded {order.credits_cost} credits by {current_user.username}'
+                db.session.commit()
+                
+                log_system_action(current_user.id, 'refund_samsung_order', 
+                                 f'Refunded {order.credits_cost} credits for order {order.order_id}')
+                
+                return jsonify({
+                    'success': True,
+                    'message': f'Refunded {order.credits_cost} credits to user',
+                    'credits_refunded': order.credits_cost
+                }), 200
+            
+            return jsonify({'error': 'User not found'}), 404
+            
+        except Exception as e:
+            db.session.rollback()
+            return jsonify({'error': str(e)}), 500
+
+
+    # ==================== SAMSUNG FRP USER API ENDPOINTS ====================
+    
+    @app.route('/api/samsung/frp/order', methods=['POST'])
+    @api_login_required
+    def samsung_frp_create_order():
+        """Create Samsung FRP order"""
+        try:
+            # Check maintenance mode
+            if is_maintenance_mode():
+                return jsonify({
+                    'success': False,
+                    'error': 'Server under maintenance',
+                    'code': 'MAINTENANCE_MODE'
+                }), 503
+            
+            user = current_user
+            
+            # Check if user is banned
+            if user.is_banned:
+                return jsonify({
+                    'success': False,
+                    'error': 'Account is banned',
+                    'code': 'ACCOUNT_BANNED'
+                }), 403
+            
+            # Check license validity
+            if not user.is_license_valid():
+                return jsonify({
+                    'success': False,
+                    'error': 'License has expired',
+                    'code': 'LICENSE_EXPIRED'
+                }), 403
+            
+            # Get request data
+            data = request.get_json()
+            if not data:
+                return jsonify({'success': False, 'error': 'No JSON data'}), 400
+            
+            imei = data.get('imei', '').strip()
+            android_version = str(data.get('android_version', '')).strip()
+            
+            # Validate IMEI
+            if not imei:
+                return jsonify({'success': False, 'error': 'IMEI/Serial required'}), 400
+            
+            # Validate Android version
+            if android_version not in SAMSUNG_FRP_PRICES:
+                return jsonify({
+                    'success': False,
+                    'error': f'Invalid Android version. Supported: 13, 14, 15, 16'
+                }), 400
+            
+            # Get price
+            credits_cost = SAMSUNG_FRP_PRICES[android_version]
+            
+            # Check user credits
+            user_credits = user.credits or 0
+            if user_credits < credits_cost:
+                return jsonify({
+                    'success': False,
+                    'error': f'Insufficient credits. Need {credits_cost} credits, you have {user_credits}',
+                    'code': 'INSUFFICIENT_CREDITS',
+                    'credits_needed': credits_cost,
+                    'credits_available': user_credits
+                }), 403
+            
+            # Check server status
+            server_online = check_samsung_frp_server()
+            
+            if not server_online:
+                return jsonify({
+                    'success': False,
+                    'error': 'Samsung FRP service is currently offline. Please try again later.',
+                    'code': 'SERVER_OFFLINE',
+                    'server_status': 'offline'
+                }), 503
+            
+            # Create order
+            order_id = generate_order_id()
+            
+            order_data = {
+                'imei': imei,
+                'android_version': android_version,
+                'credits_cost': credits_cost,
+                'user_agent': request.headers.get('User-Agent'),
+                'ip_address': get_real_ip()
+            }
+            
+            from database import SamsungOrder
+            order = SamsungOrder(
+                order_id=order_id,
+                user_id=user.id,
+                imei=imei,
+                android_version=android_version,
+                credits_cost=credits_cost,
+                status='pending',
+                order_data=json.dumps(order_data)
+            )
+            db.session.add(order)
+            
+            # Deduct credits
+            user.credits = user_credits - credits_cost
+            
+            # Create transaction record
+            from database import CreditTransaction
+            transaction = CreditTransaction(
+                user_id=user.id,
+                amount=-credits_cost,
+                transaction_type='samsung_frp_order',
+                description=f'Samsung FRP order: {order_id} (Android {android_version})'
+            )
+            db.session.add(transaction)
+            
+            # Increment command counter
+            command_count = increment_command_count(user.id)
+            
+            db.session.commit()
+            
+            # Log action
+            log_system_action(user.id, 'samsung_frp_order', 
+                             f'Created order {order_id} for Android {android_version} (Cost: {credits_cost} credits)')
+            
+            # Print notification
+            print(f"\n{'='*60}")
+            print(f"📱 NEW SAMSUNG FRP ORDER")
+            print(f"Order ID: {order_id}")
+            print(f"User: {user.username} ({user.email})")
+            print(f"IMEI: {imei}")
+            print(f"Android Version: {android_version}")
+            print(f"Credits: {credits_cost}")
+            print(f"{'='*60}\n")
+            
+            return jsonify({
+                'success': True,
+                'order_id': order_id,
+                'status': 'pending',
+                'credits_deducted': credits_cost,
+                'credits_remaining': user.credits,
+                'android_version': android_version,
+                'message': f'Order created successfully. Admin will process it shortly.',
+                'commands_used_today': command_count
+            }), 200
+            
+        except Exception as e:
+            db.session.rollback()
+            print(f"Error creating Samsung FRP order: {e}")
+            traceback.print_exc()
+            return jsonify({'success': False, 'error': str(e)}), 500
+    
+    
+    @app.route('/api/samsung/frp/order-status/<order_id>', methods=['GET'])
+    @api_login_required
+    def samsung_frp_order_status(order_id):
+        """Check status of a Samsung FRP order"""
+        try:
+            user = current_user
+            from database import SamsungOrder
+            order = SamsungOrder.query.filter_by(order_id=order_id).first()
+            
+            if not order:
+                return jsonify({'success': False, 'error': 'Order not found'}), 404
+            
+            if order.user_id != user.id and not user.is_admin:
+                return jsonify({'success': False, 'error': 'Unauthorized'}), 403
+            
+            return jsonify({
+                'success': True,
+                'order_id': order.order_id,
+                'status': order.status,
+                'android_version': order.android_version,
+                'imei': order.imei,
+                'credits_cost': order.credits_cost,
+                'created_at': order.created_at.isoformat() if order.created_at else None,
+                'processed_at': order.processed_at.isoformat() if order.processed_at else None,
+                'result_code': order.result_code,
+                'result_message': order.result_message,
+                'admin_notes': order.admin_notes
+            }), 200
+            
+        except Exception as e:
+            return jsonify({'success': False, 'error': str(e)}), 500
+    
+    
+    @app.route('/api/samsung/frp/server-status', methods=['GET'])
+    def samsung_frp_server_status():
+        """Get Samsung FRP server status (public endpoint)"""
+        try:
+            from database import ServerStatus
+            
+            server_status = ServerStatus.query.filter_by(server_name='samsung_frp_server').first()
+            
+            if server_status and server_status.manual_override:
+                server_online = server_status.is_online
+            else:
+                server_online = check_samsung_frp_server()
+            
+            return jsonify({
+                'success': True,
+                'server_online': server_online,
+                'service_name': 'Samsung FRP Service',
+                'supported_versions': ['13', '14', '15', '16'],
+                'pricing': SAMSUNG_FRP_PRICES
+            }), 200
+        except Exception as e:
+            return jsonify({'success': False', 'error': str(e)}), 500
+
+
+    # ==================== ADMIN SAMSUNG FRP SERVER CONTROL ENDPOINTS ====================
+    
+    @app.route('/api/admin/samsung/server/toggle', methods=['POST'])
+    @login_required
+    def admin_toggle_samsung_server():
+        """Admin: Manually toggle Samsung FRP server ON/OFF"""
+        if not current_user.is_admin:
+            return jsonify({'error': 'Unauthorized'}), 403
+        
+        try:
+            data = request.get_json()
+            is_online = data.get('is_online', False)
+            
+            from database import ServerStatus
+            server_status = ServerStatus.query.filter_by(server_name='samsung_frp_server').first()
+            if not server_status:
+                server_status = ServerStatus(server_name='samsung_frp_server')
+                db.session.add(server_status)
+            
+            server_status.is_online = is_online
+            server_status.manual_override = True
+            server_status.last_check = datetime.utcnow()
+            server_status.error_message = f"Manually set to {'ONLINE' if is_online else 'OFFLINE'} by admin {current_user.username}"
+            
+            db.session.commit()
+            
+            status_text = "ONLINE" if is_online else "OFFLINE"
+            log_system_action(current_user.id, 'toggle_samsung_server', 
+                             f'Set Samsung FRP server to {status_text}')
+            
+            return jsonify({
+                'success': True,
+                'message': f'Samsung FRP server set to {status_text}',
+                'server_online': is_online,
+                'manual_override': True
+            }), 200
+            
+        except Exception as e:
+            db.session.rollback()
+            return jsonify({'error': str(e)}), 500
+    
+    
+    @app.route('/api/admin/samsung/server/auto', methods=['POST'])
+    @login_required
+    def admin_samsung_auto_check():
+        """Admin: Disable manual override and auto-check real server status"""
+        if not current_user.is_admin:
+            return jsonify({'error': 'Unauthorized'}), 403
+        
+        try:
+            from database import ServerStatus
+            server_status = ServerStatus.query.filter_by(server_name='samsung_frp_server').first()
+            
+            if not server_status:
+                server_status = ServerStatus(server_name='samsung_frp_server')
+                db.session.add(server_status)
+            
+            # Disable manual override
+            server_status.manual_override = False
+            
+            # Perform auto-check
+            try:
+                SAMSUNG_FRP_SERVER_URL = os.environ.get('SAMSUNG_FRP_SERVER_URL', 'https://samsung-frp-api.example.com')
+                response = requests.get(f"{SAMSUNG_FRP_SERVER_URL}/health", timeout=5)
+                is_online = response.status_code == 200
+                server_status.is_online = is_online
+                server_status.response_time = int(response.elapsed.total_seconds() * 1000) if is_online else 0
+                server_status.error_message = f"Auto-check: Server is {'ONLINE' if is_online else 'OFFLINE'}"
+            except Exception as e:
+                server_status.is_online = False
+                server_status.error_message = f"Auto-check failed: {str(e)}"
+            
+            server_status.last_check = datetime.utcnow()
+            db.session.commit()
+            
+            status_text = "ONLINE" if server_status.is_online else "OFFLINE"
+            log_system_action(current_user.id, 'samsung_auto_check', 
+                             f'Auto-check performed: Server is {status_text}')
+            
+            return jsonify({
+                'success': True,
+                'message': f'Auto-check completed. Server is {status_text}',
+                'server_online': server_status.is_online,
+                'manual_override': False,
+                'response_time': server_status.response_time,
+                'error_message': server_status.error_message
+            }), 200
+            
+        except Exception as e:
+            db.session.rollback()
+            return jsonify({'error': str(e)}), 500
+    
+    
+    @app.route('/api/admin/samsung/server/status', methods=['GET'])
+    @login_required
+    def admin_samsung_server_status():
+        """Admin: Get detailed Samsung FRP server status"""
+        if not current_user.is_admin:
+            return jsonify({'error': 'Unauthorized'}), 403
+        
+        try:
+            from database import ServerStatus
+            server_status = ServerStatus.query.filter_by(server_name='samsung_frp_server').first()
+            
+            if not server_status:
+                return jsonify({
+                    'success': True,
+                    'server_online': False,
+                    'manual_override': False,
+                    'message': 'Server status not initialized'
+                }), 200
+            
+            return jsonify({
+                'success': True,
+                'server_online': server_status.is_online,
+                'manual_override': server_status.manual_override,
+                'last_check': server_status.last_check.isoformat() if server_status.last_check else None,
+                'response_time': server_status.response_time,
+                'error_message': server_status.error_message,
+                'pricing': SAMSUNG_FRP_PRICES,
+                'supported_versions': ['13', '14', '15', '16']
+            }), 200
+            
+        except Exception as e:
+            return jsonify({'error': str(e)}), 500
+    
+    
+    @app.route('/api/admin/samsung/server/reset', methods=['POST'])
+    @login_required
+    def admin_reset_samsung_server():
+        """Admin: Reset server status to default"""
+        if not current_user.is_admin:
+            return jsonify({'error': 'Unauthorized'}), 403
+        
+        try:
+            from database import ServerStatus
+            server_status = ServerStatus.query.filter_by(server_name='samsung_frp_server').first()
+            
+            if server_status:
+                server_status.is_online = False
+                server_status.manual_override = False
+                server_status.response_time = 0
+                server_status.error_message = f"Reset to default by admin {current_user.username}"
+                server_status.last_check = datetime.utcnow()
+            else:
+                server_status = ServerStatus(server_name='samsung_frp_server', is_online=False, manual_override=False)
+                db.session.add(server_status)
+            
+            db.session.commit()
+            
+            log_system_action(current_user.id, 'reset_samsung_server', 'Reset Samsung FRP server to default')
+            
+            return jsonify({
+                'success': True,
+                'message': 'Server status reset to default',
+                'server_online': False,
+                'manual_override': False
+            }), 200
+            
+        except Exception as e:
+            db.session.rollback()
+            return jsonify({'error': str(e)}), 500
             
             
     # ==================== VERSION CHECK ENDPOINT ====================
