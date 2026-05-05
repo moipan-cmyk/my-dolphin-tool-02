@@ -181,6 +181,22 @@ textarea{resize:vertical;min-height:80px;font-family:var(--mono);font-size:12px}
 </head>
 <body>
 
+<!-- Modals -->
+<div id="changePasswordModal" class="modal-overlay"><div class="modal-box"><div class="modal-title">🔐 Change Password</div><div style="color:var(--text3);margin-bottom:14px;">Update your admin password</div>
+<form id="changePasswordForm"><div class="form-group" style="margin-bottom:12px;"><label>Current Password</label><input type="password" id="current-password" required></div>
+<div class="form-group" style="margin-bottom:12px;"><label>New Password</label><input type="password" id="new-password" required></div>
+<div class="form-group" style="margin-bottom:16px;"><label>Confirm</label><input type="password" id="confirm-new-password" required></div>
+<div id="cp-success" class="notice notice-success"></div><div id="cp-error" class="notice notice-error"></div>
+<div style="display:flex;gap:12px;justify-content:flex-end;"><button type="button" onclick="closeModal('changePasswordModal')" class="btn btn-ghost">Cancel</button><button type="submit" class="btn btn-primary">Update</button></div></form>
+<button class="modal-close" onclick="closeModal('changePasswordModal')">✕</button></div></div>
+
+<div id="changeUserPasswordModal" class="modal-overlay"><div class="modal-box"><div class="modal-title">🔐 Change User Password</div><div style="color:var(--text3);margin-bottom:14px;">Changing password for <span id="target-username">—</span></div>
+<form id="changeUserPasswordForm"><input type="hidden" id="target-email"><div class="form-group" style="margin-bottom:12px;"><label>New Password</label><input type="password" id="new-user-password" required></div>
+<div class="form-group" style="margin-bottom:16px;"><label>Confirm</label><input type="password" id="confirm-user-password" required></div>
+<div id="cup-success" class="notice notice-success"></div><div id="cup-error" class="notice notice-error"></div>
+<div style="display:flex;gap:12px;justify-content:flex-end;"><button type="button" onclick="closeModal('changeUserPasswordModal')" class="btn btn-ghost">Cancel</button><button type="submit" class="btn btn-primary">Save</button></div></form>
+<button class="modal-close" onclick="closeModal('changeUserPasswordModal')">✕</button></div></div>
+
 <!-- Sidebar -->
 <aside class="sidebar" id="sidebar">
   <div class="sidebar-brand">
@@ -199,34 +215,17 @@ textarea{resize:vertical;min-height:80px;font-family:var(--mono);font-size:12px}
 
   <nav class="sidebar-nav">
     <div class="nav-section">Management</div>
-    <button class="nav-item active" onclick="switchTab('users-tab', this)">
-      <span class="nav-icon">👥</span> Users
-    </button>
-    <button class="nav-item" onclick="switchTab('resellers-tab', this)">
-      <span class="nav-icon">🏪</span> Resellers
-    </button>
-    <button class="nav-item" onclick="switchTab('credits-tab', this)">
-      <span class="nav-icon">💎</span> Credits
-    </button>
-
+    <button class="nav-item active" onclick="switchTab('users-tab', this)"><span class="nav-icon">👥</span> Users</button>
+    <button class="nav-item" onclick="switchTab('resellers-tab', this)"><span class="nav-icon">🏪</span> Resellers</button>
+    <button class="nav-item" onclick="switchTab('credits-tab', this)"><span class="nav-icon">💎</span> Credits</button>
     <div class="nav-section">Licensing</div>
-    <button class="nav-item" onclick="switchTab('license-tab', this)">
-      <span class="nav-icon">🎫</span> Licenses
-    </button>
-
+    <button class="nav-item" onclick="switchTab('license-tab', this)"><span class="nav-icon">🎫</span> Licenses</button>
+    <button class="nav-item" onclick="switchTab('samsung-tab', this)"><span class="nav-icon">📱</span> Samsung FRP</button>
     <div class="nav-section">OTP Store</div>
-    <button class="nav-item" onclick="switchTab('otp-tab', this)">
-      <span class="nav-icon">🔑</span> OTP Management
-      <span class="nav-badge" id="nav-otp-badge" style="display:none">0</span>
-    </button>
-
+    <button class="nav-item" onclick="switchTab('otp-tab', this)"><span class="nav-icon">🔑</span> OTP Management<span class="nav-badge" id="nav-otp-badge" style="display:none">0</span></button>
     <div class="nav-section">System</div>
-    <button class="nav-item" onclick="switchTab('rate-limits-tab', this)">
-      <span class="nav-icon">⏱️</span> Rate Limits
-    </button>
-    <button class="nav-item" onclick="switchTab('logs-tab', this)">
-      <span class="nav-icon">📋</span> System Logs
-    </button>
+    <button class="nav-item" onclick="switchTab('rate-limits-tab', this)"><span class="nav-icon">⏱️</span> Rate Limits</button>
+    <button class="nav-item" onclick="switchTab('logs-tab', this)"><span class="nav-icon">📋</span> System Logs</button>
   </nav>
 
   <div class="sidebar-footer">
@@ -242,16 +241,10 @@ textarea{resize:vertical;min-height:80px;font-family:var(--mono);font-size:12px}
   <div class="topbar">
     <div style="display:flex;align-items:center;gap:8px;">
       <button class="icon-btn mobile-toggle" onclick="openSidebar()" style="display:none;">☰</button>
-      <div>
-        <div class="page-title" id="pageTitle">User Management</div>
-        <div class="page-sub">admin@dolphin · <span id="admin-email">...</span></div>
-      </div>
+      <div><div class="page-title" id="pageTitle">User Management</div><div class="page-sub" id="pageSub">admin@dolphin · <span id="admin-email">...</span></div></div>
     </div>
     <div class="topbar-right">
-      <button class="maint-btn" id="maintenanceBtn" onclick="toggleMaintenance()">
-        <span class="maint-dot" id="maintDot"></span>
-        <span id="maintenanceStatus">...</span>
-      </button>
+      <button class="maint-btn" id="maintenanceBtn" onclick="toggleMaintenance()"><span class="maint-dot" id="maintDot"></span><span id="maintenanceStatus">...</span></button>
     </div>
   </div>
 
@@ -271,43 +264,22 @@ textarea{resize:vertical;min-height:80px;font-family:var(--mono);font-size:12px}
       <div class="panel">
         <div class="panel-header"><div class="panel-title"><span class="panel-title-icon">👥</span> User Management</div></div>
         <div class="controls-row">
-          <div class="filter-chips">
-            <button class="chip active" onclick="filterUsers('all', this)">All</button>
-            <button class="chip" onclick="filterUsers('regular', this)">Regular</button>
-            <button class="chip" onclick="filterUsers('resellers', this)">Resellers</button>
-            <button class="chip" onclick="filterUsers('banned', this)">Banned</button>
-          </div>
+          <div class="filter-chips"><button class="chip active" onclick="filterUsers('all', this)">All</button><button class="chip" onclick="filterUsers('regular', this)">Regular</button><button class="chip" onclick="filterUsers('resellers', this)">Resellers</button><button class="chip" onclick="filterUsers('banned', this)">Banned</button></div>
           <div class="search-input"><span class="search-icon">🔍</span><input type="text" id="user-search" placeholder="Search users…"></div>
           <button onclick="searchUsers()" class="btn btn-ghost btn-sm">Search</button>
           <button onclick="userSearch='';document.getElementById('user-search').value='';loadUsers();" class="btn btn-ghost btn-sm">Clear</button>
         </div>
         <div id="users-list"><p style="color:var(--text3);padding:20px;text-align:center;">Loading…</p></div>
-        <div class="pagination">
-          <div class="page-info" id="user-page-info">—</div>
-          <div class="page-btns">
-            <button class="page-btn" id="userPrev" disabled>←</button>
-            <button class="page-btn" id="userNext" disabled>→</button>
-          </div>
-        </div>
+        <div class="pagination"><div class="page-info" id="user-page-info">—</div><div class="page-btns"><button class="page-btn" id="userPrev" disabled>←</button><button class="page-btn" id="userNext" disabled>→</button></div></div>
       </div>
     </div>
 
     <!-- TAB: RESELLERS -->
     <div id="resellers-tab" class="tab-content">
-      <div class="panel">
-        <div class="panel-header"><div class="panel-title"><span class="panel-title-icon">🏪</span> Reseller Management</div></div>
-        <div class="controls-row">
-          <div class="search-input"><span class="search-icon">🔍</span><input type="text" id="reseller-search" placeholder="Search resellers…"></div>
-          <button onclick="searchResellers()" class="btn btn-ghost btn-sm">Search</button>
-        </div>
+      <div class="panel"><div class="panel-header"><div class="panel-title"><span class="panel-title-icon">🏪</span> Reseller Management</div></div>
+        <div class="controls-row"><div class="search-input"><span class="search-icon">🔍</span><input type="text" id="reseller-search" placeholder="Search resellers…"></div><button onclick="searchResellers()" class="btn btn-ghost btn-sm">Search</button></div>
         <div id="resellers-list"><p style="color:var(--text3);padding:20px;text-align:center;">Loading…</p></div>
-        <div class="pagination">
-          <div class="page-info" id="reseller-page-info">—</div>
-          <div class="page-btns">
-            <button class="page-btn" id="resellerPrev" disabled>←</button>
-            <button class="page-btn" id="resellerNext" disabled>→</button>
-          </div>
-        </div>
+        <div class="pagination"><div class="page-info" id="reseller-page-info">—</div><div class="page-btns"><button class="page-btn" id="resellerPrev" disabled>←</button><button class="page-btn" id="resellerNext" disabled>→</button></div></div>
       </div>
     </div>
 
@@ -316,8 +288,7 @@ textarea{resize:vertical;min-height:80px;font-family:var(--mono);font-size:12px}
       <div class="panel">
         <div class="panel-header"><div class="panel-title"><span class="panel-title-icon">💎</span> Credit Management</div></div>
         <div class="credit-summary"><div><div class="credit-summary-label">System-wide Credits</div><div class="credit-summary-val" id="total-credits-amount">0</div></div><div style="font-size:32px;opacity:.3;">💎</div></div>
-        <div id="credit-success" class="notice notice-success"></div>
-        <div id="credit-error" class="notice notice-error"></div>
+        <div id="credit-success" class="notice notice-success"></div><div id="credit-error" class="notice notice-error"></div>
         <div class="section-header"><span class="section-header-title">Add Credits</span><div class="section-header-line"></div></div>
         <form id="addCreditForm"><div class="form-row"><div class="form-group" style="flex:2;"><label>User Email or Admission No.</label><input type="text" id="credit-user" placeholder="user@example.com" required></div><div class="form-group" style="flex:1;max-width:120px;"><label>Amount</label><input type="number" id="credit-amount" value="50" required></div><button type="submit" class="btn btn-success" style="align-self:flex-end;">Add Credits</button></div></form>
         <div class="section-header"><span class="section-header-title">Remove Credits</span><div class="section-header-line"></div></div>
@@ -329,8 +300,7 @@ textarea{resize:vertical;min-height:80px;font-family:var(--mono);font-size:12px}
     <div id="license-tab" class="tab-content">
       <div class="panel">
         <div class="panel-header"><div class="panel-title"><span class="panel-title-icon">🎫</span> License Management</div></div>
-        <div id="license-success" class="notice notice-success"></div>
-        <div id="license-error" class="notice notice-error"></div>
+        <div id="license-success" class="notice notice-success"></div><div id="license-error" class="notice notice-error"></div>
         <div class="section-header"><span class="section-header-title">Standard License</span><div class="section-header-line"></div></div>
         <form id="licenseForm"><div class="form-row"><div class="form-group" style="flex:2;"><label>Email</label><input type="email" id="user-email" placeholder="user@example.com" required></div><div class="form-group" style="flex:1;"><label>License Tier</label><select id="license-type" required><option value="">— Select —</option><option value="Fair">Fair · 90 days</option><option value="Good">Good · 180 days</option><option value="Excellent">Excellent · 365 days</option></select></div><button type="submit" class="btn btn-primary" style="align-self:flex-end;">Activate</button></div></form>
         <div class="section-header"><span class="section-header-title">Custom License</span><div class="section-header-line"></div></div>
@@ -340,89 +310,71 @@ textarea{resize:vertical;min-height:80px;font-family:var(--mono);font-size:12px}
       </div>
     </div>
 
-    <!-- TAB: OTP MANAGEMENT (NEW) -->
+    <!-- TAB: SAMSUNG FRP -->
+    <div id="samsung-tab" class="tab-content">
+      <div class="panel">
+        <div class="panel-header"><div class="panel-title"><span class="panel-title-icon">📱</span> Samsung FRP Management</div></div>
+        <div id="samsung-frp-success" class="notice notice-success"></div><div id="samsung-frp-error" class="notice notice-error"></div>
+
+        <div class="section-header"><span class="section-header-title">Server Control</span><div class="section-header-line"></div></div>
+        <div id="samsung-server-status" style="background:var(--surface2);border:1px solid var(--border);border-radius:var(--r-sm);padding:14px;margin-bottom:16px;">
+          <div style="display:flex;align-items:center;gap:12px;flex-wrap:wrap;">
+            <span>📡 Server Status:</span>
+            <span id="samsung-server-online" class="badge badge-warn">Checking...</span>
+            <span id="samsung-server-mode" style="color:var(--text3);font-size:11px;"></span>
+          </div>
+          <div style="display:flex;gap:8px;margin-top:12px;flex-wrap:wrap;">
+            <button onclick="setSamsungServer(true)" class="btn btn-success btn-sm">🟢 Set ONLINE</button>
+            <button onclick="setSamsungServer(false)" class="btn btn-danger btn-sm">🔴 Set OFFLINE</button>
+            <button onclick="autoCheckSamsungServer()" class="btn btn-info btn-sm">🔄 Auto-Check</button>
+            <button onclick="resetSamsungServer()" class="btn btn-warning btn-sm">⟳ Reset to Default</button>
+          </div>
+        </div>
+
+        <div class="section-header"><span class="section-header-title">Pricing Configuration</span><div class="section-header-line"></div></div>
+        <div style="background:var(--surface2);border:1px solid var(--border);border-radius:var(--r-sm);padding:12px;margin-bottom:16px;">
+          <div style="display:grid;grid-template-columns:repeat(4,1fr);gap:10px;">
+            <div>Android 13: <strong id="price-13" style="color:var(--green);">25</strong> credits</div>
+            <div>Android 14: <strong id="price-14" style="color:var(--green);">25</strong> credits</div>
+            <div>Android 15: <strong id="price-15" style="color:var(--amber);">50</strong> credits</div>
+            <div>Android 16: <strong id="price-16" style="color:var(--red);">80</strong> credits</div>
+          </div>
+        </div>
+
+        <div class="section-header"><span class="section-header-title">Pending Orders</span><div class="section-header-line"></div></div>
+        <div class="controls-row">
+          <div class="filter-chips">
+            <button class="chip active" onclick="filterSamsungOrders('pending', this)">Pending</button>
+            <button class="chip" onclick="filterSamsungOrders('processing', this)">Processing</button>
+            <button class="chip" onclick="filterSamsungOrders('completed', this)">Completed</button>
+            <button class="chip" onclick="filterSamsungOrders('failed', this)">Failed</button>
+            <button class="chip" onclick="filterSamsungOrders('all', this)">All</button>
+          </div>
+          <button onclick="loadSamsungOrders()" class="btn btn-ghost btn-sm">🔄 Refresh</button>
+        </div>
+        <div id="samsung-orders-list"><p style="color:var(--text3);padding:20px;text-align:center;">Loading orders...</p></div>
+        <div class="pagination"><div class="page-info" id="samsung-order-page-info">—</div><div class="page-btns"><button class="page-btn" id="samsungOrderPrev" disabled>←</button><button class="page-btn" id="samsungOrderNext" disabled>→</button></div></div>
+      </div>
+    </div>
+
+    <!-- TAB: OTP MANAGEMENT -->
     <div id="otp-tab" class="tab-content">
       <div class="panel">
         <div class="panel-header"><div class="panel-title"><span class="panel-title-icon">🔑</span> OTP Management</div></div>
-
-        <div id="otp-success" class="notice notice-success"></div>
-        <div id="otp-error" class="notice notice-error"></div>
-
-        <!-- OTP Stats -->
+        <div id="otp-success" class="notice notice-success"></div><div id="otp-error" class="notice notice-error"></div>
         <div class="section-header"><span class="section-header-title">OTP Inventory</span><div class="section-header-line"></div></div>
         <div id="otp-stats-container" class="otp-summary-row"><p style="color:var(--text3);padding:12px;">Loading stats…</p></div>
-
         <div class="section-header"><span class="section-header-title">Add OTP Codes</span><div class="section-header-line"></div></div>
-        <form id="addOtpForm">
-          <div class="form-row">
-            <div class="form-group" style="flex:1;">
-              <label>OTP Type</label>
-              <select id="otp-type" required>
-                <option value="">— Select Type —</option>
-                <option value="oppo_flash">OPPO Flash OTP (20 credits)</option>
-                <option value="tecno_anticrack">Tecno/Itel/Infinix AntiCrack (10 credits)</option>
-                <option value="tecno_anticrack_p7">Tecno/Itel/Infinix AntiCrack P7 (12 credits)</option>
-                <option value="tecno_auth_mtk">Tecno/Itel/Infinix Auth Flash MTK (9 credits)</option>
-                <option value="infinix_auth_mtk">Infinix Auth Flash MTK (8 credits)</option>
-                <option value="tecno_auth_spd">Tecno/Itel/Infinix Auth Flash SPD (13 credits)</option>
-                <option value="tecno_cpid">Tecno/Itel/Infinix CPID (20 credits)</option>
-                <option value="realme_mtk">Realme MTK OTP (5 credits)</option>
-                <option value="oneplus">OnePlus OTP (6 credits)</option>
-              </select>
-            </div>
-          </div>
-          <div class="form-group" style="margin-bottom:8px;">
-            <label>OTP Codes (one per line, or comma-separated)</label>
-            <textarea id="otp-codes" rows="6" placeholder="Paste OTP codes here...&#10;One per line or comma-separated" required></textarea>
-          </div>
-          <div class="form-group" style="margin-bottom:12px;">
-            <label>Notes (batch info, supplier, etc.)</label>
-            <input type="text" id="otp-notes" placeholder="Batch from supplier X">
-          </div>
-          <button type="submit" class="btn btn-primary">➕ Add OTP Codes</button>
-        </form>
-
-        <div class="section-header">
-          <span class="section-header-title">OTP List & Filter</span>
-          <div class="section-header-line"></div>
-        </div>
-        <div class="controls-row">
-          <div class="form-group" style="max-width:200px;">
-            <label>Filter by Type</label>
-            <select id="otp-filter-type" onchange="loadOtpList()">
-              <option value="">All Types</option>
-              <option value="oppo_flash">OPPO Flash</option>
-              <option value="tecno_anticrack">Tecno AntiCrack</option>
-              <option value="tecno_anticrack_p7">Tecno AntiCrack P7</option>
-              <option value="tecno_auth_mtk">Tecno Auth MTK</option>
-              <option value="infinix_auth_mtk">Infinix Auth MTK</option>
-              <option value="tecno_auth_spd">Tecno Auth SPD</option>
-              <option value="tecno_cpid">Tecno CPID</option>
-              <option value="realme_mtk">Realme MTK</option>
-              <option value="oneplus">OnePlus</option>
-            </select>
-          </div>
-          <div class="form-group" style="max-width:150px;">
-            <label>Status</label>
-            <select id="otp-filter-status" onchange="loadOtpList()">
-              <option value="all">All</option>
-              <option value="available">Available</option>
-              <option value="used">Used</option>
-            </select>
-          </div>
-          <button onclick="loadOtpList()" class="btn btn-ghost btn-sm" style="align-self:flex-end;">Refresh</button>
-        </div>
-        <div id="otp-list"><p style="color:var(--text3);padding:20px;text-align:center;">Loading OTPs…</p></div>
-        <div class="pagination">
-          <div class="page-info" id="otp-page-info">—</div>
-          <div class="page-btns">
-            <button class="page-btn" id="otpPrev" disabled>←</button>
-            <button class="page-btn" id="otpNext" disabled>→</button>
-          </div>
-        </div>
-
+        <form id="addOtpForm"><div class="form-row"><div class="form-group" style="flex:1;"><label>OTP Type</label><select id="otp-type" required><option value="">— Select —</option><option value="oppo_flash">OPPO Flash OTP (20 credits)</option><option value="tecno_anticrack">Tecno/Itel/Infinix AntiCrack (10 credits)</option><option value="tecno_anticrack_p7">Tecno AntiCrack P7 (12 credits)</option><option value="tecno_auth_mtk">Tecno Auth MTK (9 credits)</option><option value="infinix_auth_mtk">Infinix Auth MTK (8 credits)</option><option value="tecno_auth_spd">Tecno Auth SPD (13 credits)</option><option value="tecno_cpid">Tecno CPID (20 credits)</option><option value="realme_mtk">Realme MTK OTP (5 credits)</option><option value="oneplus">OnePlus OTP (6 credits)</option></select></div></div>
+        <div class="form-group"><label>OTP Codes (one per line or comma-separated)</label><textarea id="otp-codes" rows="5" placeholder="Paste OTP codes here..." required></textarea></div>
+        <div class="form-group"><label>Notes</label><input type="text" id="otp-notes" placeholder="Batch info"></div>
+        <button type="submit" class="btn btn-primary">➕ Add OTP Codes</button></form>
+        <div class="section-header"><span class="section-header-title">OTP List & Filter</span><div class="section-header-line"></div></div>
+        <div class="controls-row"><div class="form-group" style="max-width:200px;"><label>Type</label><select id="otp-filter-type" onchange="loadOtpList()"><option value="">All Types</option><option value="oppo_flash">OPPO Flash</option><option value="tecno_anticrack">Tecno AntiCrack</option><option value="tecno_anticrack_p7">Tecno AntiCrack P7</option><option value="tecno_auth_mtk">Tecno Auth MTK</option><option value="infinix_auth_mtk">Infinix Auth MTK</option><option value="tecno_auth_spd">Tecno Auth SPD</option><option value="tecno_cpid">Tecno CPID</option><option value="realme_mtk">Realme MTK</option><option value="oneplus">OnePlus</option></select></div><div class="form-group" style="max-width:150px;"><label>Status</label><select id="otp-filter-status" onchange="loadOtpList()"><option value="all">All</option><option value="available">Available</option><option value="used">Used</option></select></div><button onclick="loadOtpList()" class="btn btn-ghost btn-sm">Refresh</button></div>
+        <div id="otp-list"><p style="color:var(--text3);padding:20px;text-align:center;">Loading...</p></div>
+        <div class="pagination"><div class="page-info" id="otp-page-info">—</div><div class="page-btns"><button class="page-btn" id="otpPrev" disabled>←</button><button class="page-btn" id="otpNext" disabled>→</button></div></div>
         <div class="section-header"><span class="section-header-title">Recent OTP Usage</span><div class="section-header-line"></div></div>
-        <div id="otp-used-history"><p style="color:var(--text3);padding:20px;text-align:center;">Loading history…</p></div>
+        <div id="otp-used-history"><p style="color:var(--text3);padding:12px;">Loading history...</p></div>
       </div>
     </div>
 
@@ -430,16 +382,15 @@ textarea{resize:vertical;min-height:80px;font-family:var(--mono);font-size:12px}
     <div id="rate-limits-tab" class="tab-content">
       <div class="panel">
         <div class="panel-header"><div class="panel-title"><span class="panel-title-icon">⏱️</span> Rate Limit Control</div></div>
-        <div id="rate-limit-success" class="notice notice-success"></div>
-        <div id="rate-limit-error" class="notice notice-error"></div>
+        <div id="rate-limit-success" class="notice notice-success"></div><div id="rate-limit-error" class="notice notice-error"></div>
         <div class="section-header"><span class="section-header-title">Check User Limits</span><div class="section-header-line"></div></div>
         <div class="form-row"><div class="form-group"><label>User ID</label><input type="number" id="check-user-id" placeholder="123"></div><div class="form-group"><label>Username</label><input type="text" id="check-username" placeholder="john_doe"></div><div class="form-group"><label>Email</label><input type="email" id="check-email" placeholder="user@example.com"></div><button onclick="checkUserLimits()" class="btn btn-info" style="align-self:flex-end;">Check</button></div>
         <div style="background:var(--surface2);border:1px solid var(--border);border-radius:var(--r-sm);padding:14px;margin-top:8px;display:none;" id="user-limits-result"><pre id="limits-data" style="font-family:var(--mono);font-size:11.5px;color:var(--text2);white-space:pre-wrap;line-height:1.6;"></pre></div>
-        <div class="section-header"><span class="section-header-title">Reset Command Limit · 100/day</span><div class="section-header-line"></div></div>
+        <div class="section-header"><span class="section-header-title">Reset Command Limit</span><div class="section-header-line"></div></div>
         <div class="form-row"><div class="form-group"><label>User ID</label><input type="number" id="reset-cmd-user-id" placeholder="123"></div><div class="form-group"><label>Username</label><input type="text" id="reset-cmd-username" placeholder="john_doe"></div><div class="form-group"><label>Email</label><input type="email" id="reset-cmd-email" placeholder="user@example.com"></div><button onclick="resetCommandLimit()" class="btn btn-warning" style="align-self:flex-end;">Reset User</button></div>
-        <button onclick="resetAllCommandLimits()" class="btn btn-danger" style="margin-top:4px;">⚠ Reset ALL Users Today</button>
-        <div class="section-header"><span class="section-header-title">Reset Login Attempts · 10/hour</span><div class="section-header-line"></div></div>
-        <div class="form-row"><div class="form-group" style="flex:2;"><label>Identifier (email / username / IP)</label><input type="text" id="reset-login-identifier" placeholder="Enter email, username, or IP"></div><button onclick="resetLoginAttempts()" class="btn btn-info" style="align-self:flex-end;">Unblock User</button></div>
+        <button onclick="resetAllCommandLimits()" class="btn btn-danger" style="margin-top:4px;">⚠️ Reset ALL Users Today</button>
+        <div class="section-header"><span class="section-header-title">Reset Login Attempts</span><div class="section-header-line"></div></div>
+        <div class="form-row"><div class="form-group" style="flex:2;"><label>Identifier (email/username/IP)</label><input type="text" id="reset-login-identifier" placeholder="Enter email, username, or IP"></div><button onclick="resetLoginAttempts()" class="btn btn-info">Unblock User</button></div>
       </div>
     </div>
 
@@ -447,26 +398,15 @@ textarea{resize:vertical;min-height:80px;font-family:var(--mono);font-size:12px}
     <div id="logs-tab" class="tab-content">
       <div class="panel">
         <div class="panel-header"><div class="panel-title"><span class="panel-title-icon">📋</span> System Logs</div></div>
-        <div class="controls-row">
-          <div class="filter-chips">
-            <button class="chip active" onclick="filterLogs('all', this)">All</button>
-            <button class="chip" onclick="filterLogs('login', this)">🔐 Auth</button>
-            <button class="chip" onclick="filterLogs('credit', this)">💎 Credit</button>
-            <button class="chip" onclick="filterLogs('license', this)">🎫 License</button>
-            <button class="chip" onclick="filterLogs('device', this)">📱 Device</button>
-          </div>
-          <div class="search-input" style="position:relative;"><span class="search-icon">🔍</span><input type="text" id="log-search" placeholder="Search logs…"></div>
-          <button onclick="searchLogs()" class="btn btn-ghost btn-sm">Search</button>
-          <button onclick="clearLogSearch()" class="btn btn-ghost btn-sm">Clear</button>
-        </div>
-        <div id="system-logs" style="max-height:520px;overflow-y:auto;border:1px solid var(--border);border-radius:var(--r-sm);"><p style="color:var(--text3);padding:20px;text-align:center;">Loading logs…</p></div>
+        <div class="controls-row"><div class="filter-chips"><button class="chip active" onclick="filterLogs('all', this)">All</button><button class="chip" onclick="filterLogs('login', this)">🔐 Auth</button><button class="chip" onclick="filterLogs('credit', this)">💎 Credit</button><button class="chip" onclick="filterLogs('license', this)">🎫 License</button><button class="chip" onclick="filterLogs('device', this)">📱 Device</button></div><div class="search-input"><span class="search-icon">🔍</span><input type="text" id="log-search" placeholder="Search logs…"></div><button onclick="searchLogs()" class="btn btn-ghost btn-sm">Search</button><button onclick="clearLogSearch()" class="btn btn-ghost btn-sm">Clear</button></div>
+        <div id="system-logs" style="max-height:520px;overflow-y:auto;border:1px solid var(--border);border-radius:var(--r-sm);"><p style="color:var(--text3);padding:20px;text-align:center;">Loading logs...</p></div>
       </div>
     </div>
   </div>
 </main>
 
 <script>
-let userFilter='all',userSearch='',userPage=1,resellerSearch='',resellerPage=1,allLogs=[],logFilter='all',logSearch='',otpPage=1;
+let userFilter='all',userSearch='',userPage=1,resellerSearch='',resellerPage=1,allLogs=[],logFilter='all',logSearch='',otpPage=1,samsungOrderStatus='pending',samsungOrderPage=1;
 const PP=10;
 
 const pageTitles={
@@ -474,6 +414,7 @@ const pageTitles={
   'resellers-tab':['Reseller Management','Manage reseller accounts and commissions'],
   'credits-tab':['Credit Management','Add or remove user credits'],
   'license-tab':['License Management','Activate, assign, and remove licenses'],
+  'samsung-tab':['Samsung FRP','Manage Samsung FRP orders and server status'],
   'otp-tab':['OTP Management','Upload and manage OTP codes'],
   'rate-limits-tab':['Rate Limit Control','Reset login and command limits'],
   'logs-tab':['System Logs','View all system activity and events']
@@ -486,9 +427,11 @@ function switchTab(id,btn){
   if(btn)btn.classList.add('active');
   const[t,s]=pageTitles[id]||['Dashboard',''];
   document.getElementById('pageTitle').textContent=t;
+  document.getElementById('pageSub').innerHTML=`admin@dolphin · <span id="admin-email">${document.getElementById('admin-email')?.innerText||'...'}</span>`;
   if(id==='users-tab')loadUsers();
   if(id==='resellers-tab')loadResellers();
   if(id==='credits-tab')loadCredits();
+  if(id==='samsung-tab'){loadSamsungServerStatus();loadSamsungOrders();}
   if(id==='otp-tab'){loadOtpStats();loadOtpList();loadOtpHistory();}
   if(id==='logs-tab')loadLogs();
   closeSidebar();
@@ -516,8 +459,6 @@ function filterUsers(f,btn){userFilter=f;userPage=1;document.querySelectorAll('#
 function searchUsers(){userSearch=document.getElementById('user-search').value;userPage=1;loadUsers()}
 function searchResellers(){resellerSearch=document.getElementById('reseller-search').value;resellerPage=1;loadResellers()}
 
-function addCreditUser(email){document.getElementById('credit-user').value=email;switchTab('credits-tab',document.querySelector('[onclick*="credits-tab"]'))}
-
 async function loadUsers(){
   document.getElementById('users-list').innerHTML='<p style="color:var(--text3);padding:20px;text-align:center;">Loading…</p>';
   try{
@@ -528,20 +469,11 @@ async function loadUsers(){
     d.users.forEach(u=>{
       const tags=(u.is_admin?'<span class="tag tag-admin">Admin</span> ':'')+(u.is_reseller?'<span class="tag tag-reseller">Reseller</span>':'');
       const sb=u.is_banned?'<span class="badge badge-banned">Banned</span>':'<span class="badge badge-active">Active</span>';
-      if(!u.is_admin){
-        h+=`<tr><td class="mono-cell">${u.id}</td><td><span style="font-weight:600;color:var(--text);">${esc(u.username)}</span> ${tags}</td><td class="mono-cell" style="font-size:11.5px;">${esc(u.email)}</td><td>${u.license_type||'None'}</td><td class="mono-cell">${u.credits||0}</td><td>${sb}</td>
-        <td><div class="action-btns">
-        <button class="btn btn-sm btn-success" onclick="addCreditUser('${u.email}')">💎+</button>
-        <button class="btn btn-sm btn-danger" onclick="removeCreditsQuick('${u.email}')">💎−</button>
-        <button class="btn btn-sm ${u.is_banned?'btn-success':'btn-warning'}" onclick="toggleBan(${u.id},${u.is_banned})">${u.is_banned?'🔓':'🔒'}</button>
-        <button class="btn btn-sm btn-ghost" onclick="changeUserPassword('${u.email}','${u.username}')">🔑</button>
-        ${!u.is_reseller?`<button class="btn btn-sm btn-info" onclick="makeReseller(${u.id},'${u.username}')">👑</button>`:`<button class="btn btn-sm btn-ghost" onclick="removeReseller(${u.id},'${u.username}')">✕R</button>`}
-        ${u.license_type&&u.license_type!=='None'?`<button class="btn btn-sm btn-danger" onclick="removeLicense('${u.email}')">🗑</button>`:''}
-        <button class="btn btn-sm btn-info" onclick="checkUserLimitsById(${u.id})">⏱</button>
-        </div></td></tr>`;
-      }else{
-        h+=`<tr><td class="mono-cell">${u.id}</td><td><span style="font-weight:600;color:var(--text);">${esc(u.username)}</span> ${tags}</td><td class="mono-cell" style="font-size:11.5px;">${esc(u.email)}</td><td>${u.license_type||'None'}</td><td class="mono-cell">${u.credits||0}</td><td>${sb}</td><td><span class="badge badge-admin">Protected</span></td></tr>`;
-      }
+      h+=`<tr><td class="mono-cell">${u.id}</td><td><span style="font-weight:600;color:var(--text);">${esc(u.username)}</span> ${tags}</td><td class="mono-cell" style="font-size:11.5px;">${esc(u.email)}</td><td>${u.license_type||'None'}</td><td class="mono-cell">${u.credits||0}</td><td>${sb}</td>
+      <td><div class="action-btns"><button class="btn btn-sm btn-success" onclick="addCreditUser('${u.email}')">💎+</button><button class="btn btn-sm btn-danger" onclick="removeCreditsQuick('${u.email}')">💎−</button><button class="btn btn-sm ${u.is_banned?'btn-success':'btn-warning'}" onclick="toggleBan(${u.id},${u.is_banned})">${u.is_banned?'🔓':'🔒'}</button><button class="btn btn-sm btn-ghost" onclick="changeUserPassword('${u.email}','${u.username}')">🔑</button>
+      ${!u.is_reseller?`<button class="btn btn-sm btn-info" onclick="makeReseller(${u.id},'${u.username}')">👑</button>`:`<button class="btn btn-sm btn-ghost" onclick="removeReseller(${u.id},'${u.username}')">✕R</button>`}
+      ${u.license_type&&u.license_type!=='None'?`<button class="btn btn-sm btn-danger" onclick="removeLicense('${u.email}')">🗑</button>`:''}
+      <button class="btn btn-sm btn-info" onclick="checkUserLimitsById(${u.id})">⏱</button></div></td></tr>`;
     });
     h+='</tbody></table></div>';document.getElementById('users-list').innerHTML=h;updateUserPagination(d.total);
   }catch(e){document.getElementById('users-list').innerHTML='<p style="color:var(--red);padding:20px;text-align:center;">Error loading users.</p>'}
@@ -558,12 +490,7 @@ async function loadResellers(){
     let h='<div class="table-wrap"><table><thead><tr><th>ID</th><th>Username</th><th>Email</th><th>Commission</th><th>Clients</th><th>Credits</th><th>Status</th><th>Actions</th></tr></thead><tbody>';
     d.resellers.forEach(r=>{
       h+=`<tr><td class="mono-cell">${r.id}</td><td style="font-weight:600;color:var(--text);">${esc(r.username)}</td><td class="mono-cell" style="font-size:11.5px;">${esc(r.email)}</td><td><span class="badge badge-warn">${r.commission_rate||15}%</span></td><td class="mono-cell">${r.client_count||0}</td><td class="mono-cell">${r.credits||0}</td><td>${r.is_banned?'<span class="badge badge-banned">Banned</span>':'<span class="badge badge-active">Active</span>'}</td>
-      <td><div class="action-btns">
-      <button class="btn btn-sm btn-success" onclick="addCreditUser('${r.email}')">💎</button>
-      <button class="btn btn-sm btn-warning" onclick="editCommission(${r.id},'${r.username}',${r.commission_rate||15})">%</button>
-      <button class="btn btn-sm ${r.is_banned?'btn-success':'btn-danger'}" onclick="toggleBan(${r.id},${r.is_banned})">${r.is_banned?'🔓':'🔒'}</button>
-      <button class="btn btn-sm btn-ghost" onclick="removeReseller(${r.id},'${r.username}')">✕</button>
-      </div></td></tr>`;
+      <td><div class="action-btns"><button class="btn btn-sm btn-success" onclick="addCreditUser('${r.email}')">💎</button><button class="btn btn-sm btn-warning" onclick="editCommission(${r.id},'${r.username}',${r.commission_rate||15})">%</button><button class="btn btn-sm ${r.is_banned?'btn-success':'btn-danger'}" onclick="toggleBan(${r.id},${r.is_banned})">${r.is_banned?'🔓':'🔒'}</button><button class="btn btn-sm btn-ghost" onclick="removeReseller(${r.id},'${r.username}')">✕</button></div></td></tr>`;
     });
     h+='</tbody></table></div>';
     const tp=Math.max(1,Math.ceil(d.total/PP));
@@ -577,10 +504,116 @@ async function loadResellers(){
 
 async function loadCredits(){try{const r=await fetch('/api/admin/credit-stats');const d=await r.json();if(d.success)document.getElementById('total-credits-amount').textContent=(d.total_credits||0).toLocaleString()}catch(e){}}
 
+// ── SAMSUNG FRP FUNCTIONS ──
+async function loadSamsungServerStatus(){
+  try{
+    const r=await fetch('/api/admin/samsung/server/status');
+    const d=await r.json();
+    if(d.success){
+      const onlineSpan=document.getElementById('samsung-server-online');
+      const modeSpan=document.getElementById('samsung-server-mode');
+      if(d.server_online){onlineSpan.className='badge badge-success';onlineSpan.innerHTML='🟢 ONLINE';onlineSpan.style.color='var(--green)';}
+      else{onlineSpan.className='badge badge-danger';onlineSpan.innerHTML='🔴 OFFLINE';onlineSpan.style.color='var(--red)';}
+      if(d.manual_override)modeSpan.textContent='(Manual Override)';
+      else modeSpan.textContent='(Auto)';
+      document.getElementById('price-13').textContent=d.pricing?.['13']||25;
+      document.getElementById('price-14').textContent=d.pricing?.['14']||25;
+      document.getElementById('price-15').textContent=d.pricing?.['15']||50;
+      document.getElementById('price-16').textContent=d.pricing?.['16']||80;
+    }
+  }catch(e){console.error(e)}
+}
+
+async function setSamsungServer(isOnline){
+  try{
+    const r=await fetch('/api/admin/samsung/server/toggle',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({is_online:isOnline})});
+    const d=await r.json();
+    if(d.success){showSamsungNotice(true,d.message);loadSamsungServerStatus();}
+    else showSamsungNotice(false,d.error);
+  }catch(e){showSamsungNotice(false,'Network error')}
+}
+
+async function autoCheckSamsungServer(){
+  try{
+    const r=await fetch('/api/admin/samsung/server/auto',{method:'POST'});
+    const d=await r.json();
+    if(d.success){showSamsungNotice(true,d.message);loadSamsungServerStatus();}
+    else showSamsungNotice(false,d.error);
+  }catch(e){showSamsungNotice(false,'Network error')}
+}
+
+async function resetSamsungServer(){
+  if(!confirm('Reset server status to default (OFFLINE)?'))return;
+  try{
+    const r=await fetch('/api/admin/samsung/server/reset',{method:'POST'});
+    const d=await r.json();
+    if(d.success){showSamsungNotice(true,d.message);loadSamsungServerStatus();}
+    else showSamsungNotice(false,d.error);
+  }catch(e){showSamsungNotice(false,'Network error')}
+}
+
+function filterSamsungOrders(status,btn){
+  samsungOrderStatus=status;
+  samsungOrderPage=1;
+  document.querySelectorAll('#samsung-tab .chip').forEach(b=>b.classList.remove('active'));
+  if(btn)btn.classList.add('active');
+  loadSamsungOrders();
+}
+
+async function loadSamsungOrders(){
+  document.getElementById('samsung-orders-list').innerHTML='<p style="color:var(--text3);padding:20px;text-align:center;">Loading orders...</p>';
+  try{
+    const r=await fetch(`/api/admin/samsung/orders?status=${samsungOrderStatus}&page=${samsungOrderPage}&limit=${PP}`);
+    const d=await r.json();
+    if(!d.orders||!d.orders.length){document.getElementById('samsung-orders-list').innerHTML='<p style="color:var(--text3);padding:20px;text-align:center;">No orders found.</p>';return}
+    let h='<div class="table-wrap"><table><thead><tr><th>Order ID</th><th>User</th><th>IMEI</th><th>Android</th><th>Credits</th><th>Status</th><th>Created</th><th>Actions</th></tr></thead><tbody>';
+    d.orders.forEach(o=>{
+      const statusClass=o.status==='pending'?'badge-warn':o.status==='completed'?'badge-success':o.status==='failed'?'badge-danger':'badge-info';
+      h+=`<tr><td class="mono-cell">${o.order_id}</td><td>${esc(o.username||'?')}</td><td class="mono-cell">${o.imei}</td><td>${o.android_version}</td><td class="mono-cell">${o.credits_cost}</td><td><span class="badge ${statusClass}">${o.status}</span></td><td class="mono-cell" style="font-size:10px;">${o.created_at?.substring(0,16)||'—'}</td>
+      <td><div class="action-btns">${o.status==='pending'?`<button class="btn btn-sm btn-success" onclick="processSamsungOrder(${o.id},'completed')">✅ Complete</button><button class="btn btn-sm btn-danger" onclick="processSamsungOrder(${o.id},'failed')">❌ Fail</button>`:''}
+      ${o.status==='failed'?`<button class="btn btn-sm btn-info" onclick="refundSamsungOrder(${o.id})">💰 Refund</button>`:''}
+      </div></td></tr>`;
+    });
+    h+='</tbody></table></div>';
+    document.getElementById('samsung-orders-list').innerHTML=h;
+    const tp=Math.max(1,Math.ceil(d.total/PP));
+    document.getElementById('samsung-order-page-info').textContent=`Page ${samsungOrderPage} of ${tp} · ${d.total} orders`;
+    document.getElementById('samsungOrderPrev').disabled=samsungOrderPage===1;
+    document.getElementById('samsungOrderNext').disabled=samsungOrderPage>=tp;
+    document.getElementById('samsungOrderPrev').onclick=()=>{if(samsungOrderPage>1){samsungOrderPage--;loadSamsungOrders()}};
+    document.getElementById('samsungOrderNext').onclick=()=>{if(samsungOrderPage<tp){samsungOrderPage++;loadSamsungOrders()}};
+    if(d.stats){
+      document.getElementById('pending-count').textContent=d.stats.pending||0;
+      document.getElementById('completed-count').textContent=d.stats.completed||0;
+    }
+  }catch(e){document.getElementById('samsung-orders-list').innerHTML='<p style="color:var(--red);padding:20px;">Error loading orders</p>'}
+}
+
+async function processSamsungOrder(orderId,status){
+  if(!confirm(`Mark order #${orderId} as ${status.toUpperCase()}?`))return;
+  try{
+    const r=await fetch(`/api/admin/samsung/order/${orderId}/process`,{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({status})});
+    const d=await r.json();
+    if(d.success){showSamsungNotice(true,d.message);loadSamsungOrders();}
+    else showSamsungNotice(false,d.error);
+  }catch(e){showSamsungNotice(false,'Network error')}
+}
+
+async function refundSamsungOrder(orderId){
+  if(!confirm(`Refund credits for order #${orderId}?`))return;
+  try{
+    const r=await fetch(`/api/admin/samsung/order/${orderId}/refund`,{method:'POST'});
+    const d=await r.json();
+    if(d.success){showSamsungNotice(true,d.message);loadSamsungOrders();loadCredits();}
+    else showSamsungNotice(false,d.error);
+  }catch(e){showSamsungNotice(false,'Network error')}
+}
+
+function showSamsungNotice(success,msg){const el=document.getElementById(success?'samsung-frp-success':'samsung-frp-error');el.textContent=(success?'✅ ':'❌ ')+msg;el.style.display='block';setTimeout(()=>el.style.display='none',4000)}
+
 // ── OTP FUNCTIONS ──
 async function loadOtpStats(){
-  try{
-    const r=await fetch('/api/admin/otps/stats');const d=await r.json();
+  try{const r=await fetch('/api/admin/otps/stats');const d=await r.json();
     if(!d.success)return;
     let h='';
     for(const[k,v]of Object.entries(d.stats||{})){
@@ -600,7 +633,7 @@ async function loadOtpList(){
     const r=await fetch(`/api/admin/otps/list?type=${type}&status=${status}&page=${otpPage}&limit=30`);
     const d=await r.json();
     if(!d.otps||!d.otps.length){document.getElementById('otp-list').innerHTML='<p style="color:var(--text3);padding:12px;">No OTPs found.</p>';return}
-    let h='<div class="table-wrap"><table><thead><tr><th>ID</th><th>Code</th><th>Type</th><th>Cost</th><th>Status</th><th>Used By</th><th>Date</th><th>Action</th></tr></thead><tbody>';
+    let h='<div class="table-wrap">\n<table><thead><tr><th>ID</th><th>Code</th><th>Type</th><th>Cost</th><th>Status</th><th>Used By</th><th>Date</th><th>Action</th></tr></thead><tbody>';
     d.otps.forEach(o=>{
       const sb=o.is_used?'<span class="badge badge-used">Used</span>':'<span class="badge badge-available">Available</span>';
       h+=`<tr><td class="mono-cell">${o.id}</td><td class="mono-cell">${o.otp_code}</td><td>${o.otp_name}</td><td class="mono-cell">${o.credits_cost} cr</td><td>${sb}</td><td class="mono-cell">${o.used_by_username||'—'}</td><td class="mono-cell" style="font-size:10px;">${o.used_at||o.created_at||'—'}</td>
@@ -631,7 +664,6 @@ async function deleteOtp(id){if(!confirm('Delete OTP #'+id+'?'))return;try{const
 
 function showOT(id,msg){const el=document.getElementById(id);el.textContent=(id.includes('success')?'✅ ':'❌ ')+msg;el.style.display='block';setTimeout(()=>el.style.display='none',4000)}
 
-// OTP Add Form
 document.getElementById('addOtpForm').addEventListener('submit',async e=>{
   e.preventDefault();
   const type=document.getElementById('otp-type').value;
@@ -680,7 +712,7 @@ function displayLogs(){
   if(logSearch)logs=logs.filter(l=>(l.username||'').toLowerCase().includes(logSearch)||(l.message||'').toLowerCase().includes(logSearch));
   if(!logs.length){document.getElementById('system-logs').innerHTML='<p style="color:var(--text3);padding:20px;text-align:center;">No logs found.</p>';return}
   const iconMap=t=>{if(t.includes('login')||t.includes('logout'))return'🔐';if(t.includes('credit'))return'💎';if(t.includes('license'))return'🎫';if(t.includes('device')||t.includes('hwid'))return'📱';if(t.includes('error'))return'❌';if(t.includes('reseller'))return'🏪';if(t.includes('otp'))return'🔑';return'📝'};
-  let h='';logs.slice(0,200).forEach(l=>{const d=new Date(l.created);const time=isNaN(d)?'—':d.toLocaleDateString()+' '+d.toLocaleTimeString([],{hour:'2-digit',minute:'2-digit',second:'2-digit'});const t=(l.type||'').toLowerCase();const msg=(l.message||'').replace(/\[.*?\]\s*/,'').substring(0,160);h+=`<div class="log-entry"><span class="log-time">${time}</span><span class="log-icon">${iconMap(t)}</span><span class="log-user">${esc(l.username||'System')}</span><span class="log-msg">${esc(msg)}</span></div>`});
+  let h='';logs.slice(0,200).forEach(l=>{const d=new Date(l.created);const time=isNaN(d)?'—':d.toLocaleDateString()+' '+d.toLocaleTimeString([],{hour:'2-digit',minute:'2-digit',second:'2-digit'});const t=(l.type||'').toLowerCase();const msg=(l.message||'').replace(/\[.*?\]\s*/,'').substring(0,160);h+=`<div class="log-entry" style="padding:8px 12px;border-bottom:1px solid var(--border);display:flex;align-items:center;gap:12px;flex-wrap:wrap;"><span class="log-time" style="color:var(--text3);font-size:10px;font-family:var(--mono);">${time}</span><span class="log-icon">${iconMap(t)}</span><span class="log-user" style="color:var(--accent2);font-weight:600;">${esc(l.username||'System')}</span><span class="log-msg" style="color:var(--text2);flex:1;">${esc(msg)}</span></div>`});
   document.getElementById('system-logs').innerHTML=h;
 }
 
@@ -689,6 +721,7 @@ async function toggleBan(id,isBanned){if(!confirm(`${isBanned?'Unban':'Ban'} thi
 async function makeReseller(id,name){const c=prompt(`Commission rate for ${name} (%):`,'15');if(!c)return;const l=prompt(`Activation limit:`,'10');if(!l)return;try{const r=await fetch(`/api/admin/make-reseller/${id}`,{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({commission_rate:parseInt(c),activation_limit:parseInt(l)})});const d=await r.json();alert(d.message||d.error);loadUsers();loadResellers()}catch(e){alert('Network error')}}
 async function removeReseller(id,name){if(!confirm(`Remove reseller from ${name}?`))return;try{const r=await fetch(`/api/admin/remove-reseller/${id}`,{method:'POST'});const d=await r.json();alert(d.message||d.error);loadUsers();loadResellers()}catch(e){alert('Network error')}}
 async function editCommission(id,name,cur){const c=prompt(`Commission for ${name} (%):`,cur);if(!c)return;try{const r=await fetch(`/api/admin/update-reseller-commission/${id}`,{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({commission_rate:parseInt(c)})});const d=await r.json();alert(d.message||d.error);loadResellers()}catch(e){alert('Network error')}}
+function addCreditUser(email){document.getElementById('credit-user').value=email;switchTab('credits-tab',document.querySelector('[onclick*="credits-tab"]'))}
 async function removeCreditsQuick(email){const a=prompt('Amount to remove:','10');if(!a)return;const r=await fetch('/api/admin/remove-credits',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({user:email,amount:parseInt(a)})});const d=await r.json();alert(d.message||d.error);loadUsers();loadCredits()}
 async function removeLicense(email){if(!confirm(`Remove license from ${email}?`))return;const r=await fetch('/api/admin/remove-license',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({email})});const d=await r.json();alert(d.message||d.error);loadUsers()}
 function changeUserPassword(email,username){document.getElementById('target-email').value=email;document.getElementById('target-username').textContent=username;openModal('changeUserPasswordModal')}
@@ -714,7 +747,6 @@ function esc(s){if(!s)return'';return String(s).replace(/[&<>"]/g,c=>({'&':'&amp
 // Init
 loadAdmin();loadDashboardStats();loadUsers();loadResellers();loadCredits();loadLogs();checkMaintenance();setInterval(checkMaintenance,30000);
 
-// Close modals on ESC or overlay click
 window.addEventListener('click',e=>{if(e.target.classList.contains('modal-overlay'))document.querySelectorAll('.modal-overlay.open').forEach(m=>m.classList.remove('open'))});
 document.addEventListener('keydown',e=>{if(e.key==='Escape')document.querySelectorAll('.modal-overlay.open').forEach(m=>m.classList.remove('open'))});
 </script>
