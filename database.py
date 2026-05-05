@@ -53,13 +53,16 @@ class User(UserMixin, db.Model):
     suspended_until = db.Column(db.DateTime, nullable=True)
     failed_login_count = db.Column(db.Integer, default=0)
 
+    # Relationships
     activator = db.relationship('User', remote_side=[id], backref='activated_clients', foreign_keys=[activated_by])
     devices = db.relationship('Device', backref='user', lazy='dynamic', cascade='all, delete-orphan')
     device_history = db.relationship('DeviceHistory', backref='user', lazy='dynamic', cascade='all, delete-orphan')
     sessions = db.relationship('UserSession', backref='user', lazy='dynamic', cascade='all, delete-orphan')
     command_usage = db.relationship('CommandUsage', backref='user', lazy='dynamic', cascade='all, delete-orphan')
     login_attempts = db.relationship('LoginAttempt', backref='user', lazy='dynamic', cascade='all, delete-orphan')
-    samsung_orders = db.relationship('SamsungOrder', backref='user', lazy='dynamic', cascade='all, delete-orphan')
+    
+    # Samsung FRP - relationship is defined in SamsungOrder model with backref
+    # No need to define here - it's automatically added via backref in SamsungOrder.user
 
     __table_args__ = (
         db.CheckConstraint("license_type IN ('None', 'Fair', 'Good', 'Excellent', 'Trial', 'Custom', '12hr', '24hr', '2day', '3day', '7day')", name='check_license_type'),
@@ -531,8 +534,10 @@ class SamsungOrder(db.Model):
     created_at = db.Column(db.DateTime, default=datetime.utcnow, index=True)
     updated_at = db.Column(db.DateTime, default=datetime.utcnow, onupdate=datetime.utcnow)
     
+    # Relationships with explicit foreign keys to avoid ambiguity
+    # This adds 'samsung_orders' backref to User model automatically
     user = db.relationship('User', foreign_keys=[user_id], backref='samsung_orders')
-    processor = db.relationship('User', foreign_keys=[processed_by])
+    processor = db.relationship('User', foreign_keys=[processed_by], backref='processed_samsung_orders')
     
     __table_args__ = (
         db.CheckConstraint("android_version IN ('13', '14', '15', '16')", name='check_android_version'),
@@ -541,6 +546,8 @@ class SamsungOrder(db.Model):
         db.Index('idx_samsung_orders_user_status', 'user_id', 'status'),
         db.Index('idx_samsung_orders_created', 'created_at'),
         db.Index('idx_samsung_orders_imei', 'imei'),
+        db.Index('idx_samsung_orders_order_id', 'order_id'),
+        db.Index('idx_samsung_orders_status', 'status'),
     )
 
     def to_dict(self):
@@ -560,6 +567,7 @@ class SamsungOrder(db.Model):
             'created_at': self.created_at.isoformat() if self.created_at else None,
             'processed_at': self.processed_at.isoformat() if self.processed_at else None,
             'updated_at': self.updated_at.isoformat() if self.updated_at else None,
+            'processor_name': self.processor.username if self.processor else None,
         }
 
     def __repr__(self):
