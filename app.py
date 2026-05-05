@@ -30,8 +30,8 @@ DEVICE_RESET_COST = 2
 
 # ==================== SAMSUNG FRP CONSTANTS ====================
 SAMSUNG_FRP_PRICES = {
-    '13': 25,
-    '14': 25,
+    '13': 30,
+    '14': 30,
     '15': 50,
     '16': 80
 }
@@ -4164,7 +4164,8 @@ def create_app(config_class=Config):
                     ALTER TABLE credit_transactions ADD CONSTRAINT check_transaction_type 
                     CHECK (transaction_type IN (
                         'admin_add','admin_deduct','purchase','usage','refund','commission',
-                        'device_reset','pc_change','device_registration','credit_used','hwid_reset','otp_purchase'
+                        'device_reset','pc_change','device_registration','credit_used','hwid_reset',
+                        'otp_purchase','samsung_frp_order'
                     ))
                 """))
                 db.session.commit()
