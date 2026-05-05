@@ -181,7 +181,7 @@ textarea{resize:vertical;min-height:80px;font-family:var(--mono);font-size:12px}
 </head>
 <body>
 
-<!-- Modals -->
+<!-- Modals (same as before) -->
 <div id="changePasswordModal" class="modal-overlay"><div class="modal-box"><div class="modal-title">🔐 Change Password</div><div style="color:var(--text3);margin-bottom:14px;">Update your admin password</div>
 <form id="changePasswordForm"><div class="form-group" style="margin-bottom:12px;"><label>Current Password</label><input type="password" id="current-password" required></div>
 <div class="form-group" style="margin-bottom:12px;"><label>New Password</label><input type="password" id="new-password" required></div>
@@ -259,7 +259,7 @@ textarea{resize:vertical;min-height:80px;font-family:var(--mono);font-size:12px}
       <div class="stat-card" style="--card-accent:var(--amber)"><div class="stat-icon">📱</div><div class="stat-val" id="total-devices">0</div><div class="stat-label">Devices</div></div>
     </div>
 
-    <!-- TAB: USERS -->
+    <!-- TAB: USERS (same as before - omitted for brevity, keep your existing) -->
     <div id="users-tab" class="tab-content active">
       <div class="panel">
         <div class="panel-header"><div class="panel-title"><span class="panel-title-icon">👥</span> User Management</div></div>
@@ -274,7 +274,7 @@ textarea{resize:vertical;min-height:80px;font-family:var(--mono);font-size:12px}
       </div>
     </div>
 
-    <!-- TAB: RESELLERS -->
+    <!-- TAB: RESELLERS (same as before - omitted for brevity) -->
     <div id="resellers-tab" class="tab-content">
       <div class="panel"><div class="panel-header"><div class="panel-title"><span class="panel-title-icon">🏪</span> Reseller Management</div></div>
         <div class="controls-row"><div class="search-input"><span class="search-icon">🔍</span><input type="text" id="reseller-search" placeholder="Search resellers…"></div><button onclick="searchResellers()" class="btn btn-ghost btn-sm">Search</button></div>
@@ -283,7 +283,7 @@ textarea{resize:vertical;min-height:80px;font-family:var(--mono);font-size:12px}
       </div>
     </div>
 
-    <!-- TAB: CREDITS -->
+    <!-- TAB: CREDITS (same as before) -->
     <div id="credits-tab" class="tab-content">
       <div class="panel">
         <div class="panel-header"><div class="panel-title"><span class="panel-title-icon">💎</span> Credit Management</div></div>
@@ -296,7 +296,7 @@ textarea{resize:vertical;min-height:80px;font-family:var(--mono);font-size:12px}
       </div>
     </div>
 
-    <!-- TAB: LICENSE -->
+    <!-- TAB: LICENSE (same as before) -->
     <div id="license-tab" class="tab-content">
       <div class="panel">
         <div class="panel-header"><div class="panel-title"><span class="panel-title-icon">🎫</span> License Management</div></div>
@@ -310,7 +310,7 @@ textarea{resize:vertical;min-height:80px;font-family:var(--mono);font-size:12px}
       </div>
     </div>
 
-    <!-- TAB: SAMSUNG FRP - FIXED VERSION -->
+    <!-- TAB: SAMSUNG FRP - COMPLETE REBUILD WITH SEARCH -->
     <div id="samsung-tab" class="tab-content">
       <div class="panel">
         <div class="panel-header"><div class="panel-title"><span class="panel-title-icon">📱</span> Samsung FRP Management</div></div>
@@ -343,6 +343,8 @@ textarea{resize:vertical;min-height:80px;font-family:var(--mono);font-size:12px}
         </div>
 
         <div class="section-header"><span class="section-header-title">Orders</span><div class="section-header-line"></div></div>
+        
+        <!-- Controls Row with Search -->
         <div class="controls-row">
           <div class="filter-chips">
             <button class="chip" onclick="filterSamsungOrders('pending', this)">Pending</button>
@@ -351,8 +353,15 @@ textarea{resize:vertical;min-height:80px;font-family:var(--mono);font-size:12px}
             <button class="chip" onclick="filterSamsungOrders('failed', this)">Failed</button>
             <button class="chip active" onclick="filterSamsungOrders('all', this)">All</button>
           </div>
+          <div class="search-input">
+            <span class="search-icon">🔍</span>
+            <input type="text" id="samsung-order-search" placeholder="Search by Order ID, IMEI, or User...">
+          </div>
+          <button onclick="searchSamsungOrders()" class="btn btn-ghost btn-sm">Search</button>
+          <button onclick="clearSamsungSearch()" class="btn btn-ghost btn-sm">Clear</button>
           <button onclick="loadSamsungOrders()" class="btn btn-ghost btn-sm">🔄 Refresh</button>
         </div>
+        
         <div id="samsung-orders-list"><p style="color:var(--text3);padding:20px;text-align:center;">Loading orders...</p></div>
         <div class="pagination"><div class="page-info" id="samsung-order-page-info">—</div><div class="page-btns">
           <button class="page-btn" id="samsungOrderPrev" disabled>←</button>
@@ -361,7 +370,7 @@ textarea{resize:vertical;min-height:80px;font-family:var(--mono);font-size:12px}
       </div>
     </div>
 
-    <!-- TAB: OTP MANAGEMENT -->
+    <!-- TAB: OTP MANAGEMENT (same as before) -->
     <div id="otp-tab" class="tab-content">
       <div class="panel">
         <div class="panel-header"><div class="panel-title"><span class="panel-title-icon">🔑</span> OTP Management</div></div>
@@ -382,7 +391,7 @@ textarea{resize:vertical;min-height:80px;font-family:var(--mono);font-size:12px}
       </div>
     </div>
 
-    <!-- TAB: RATE LIMITS -->
+    <!-- TAB: RATE LIMITS (same as before) -->
     <div id="rate-limits-tab" class="tab-content">
       <div class="panel">
         <div class="panel-header"><div class="panel-title"><span class="panel-title-icon">⏱️</span> Rate Limit Control</div></div>
@@ -398,7 +407,7 @@ textarea{resize:vertical;min-height:80px;font-family:var(--mono);font-size:12px}
       </div>
     </div>
 
-    <!-- TAB: LOGS -->
+    <!-- TAB: LOGS (same as before) -->
     <div id="logs-tab" class="tab-content">
       <div class="panel">
         <div class="panel-header"><div class="panel-title"><span class="panel-title-icon">📋</span> System Logs</div></div>
@@ -410,7 +419,8 @@ textarea{resize:vertical;min-height:80px;font-family:var(--mono);font-size:12px}
 </main>
 
 <script>
-let userFilter='all',userSearch='',userPage=1,resellerSearch='',resellerPage=1,allLogs=[],logFilter='all',logSearch='',otpPage=1,samsungOrderStatus='all',samsungOrderPage=1;
+let userFilter='all',userSearch='',userPage=1,resellerSearch='',resellerPage=1,allLogs=[],logFilter='all',logSearch='',otpPage=1;
+let samsungOrderStatus='all',samsungOrderPage=1,samsungOrderSearch='',allSamsungOrders=[];
 const PP=10;
 
 const pageTitles={
@@ -469,7 +479,7 @@ async function loadUsers(){
     const r=await fetch(`/api/admin/users?filter=${userFilter}&search=${encodeURIComponent(userSearch)}&page=${userPage}&limit=${PP}`);
     const d=await r.json();
     if(!d.users||!d.users.length){document.getElementById('users-list').innerHTML='<p style="color:var(--text3);padding:20px;text-align:center;">No users found.</p>';updateUserPagination(0);return}
-    let h='<div class="table-wrap"><tr><thead><tr><th>ID</th><th>User</th><th>Email</th><th>License</th><th>Credits</th><th>Status</th><th>Actions</th><tr></thead><tbody>';
+    let h='<div class="table-wrap"><table><thead><tr><th>ID</th><th>User</th><th>Email</th><th>License</th><th>Credits</th><th>Status</th><th>Actions</th></tr></thead><tbody>';
     d.users.forEach(u=>{
       const tags=(u.is_admin?'<span class="tag tag-admin">Admin</span> ':'')+(u.is_reseller?'<span class="tag tag-reseller">Reseller</span>':'');
       const sb=u.is_banned?'<span class="badge badge-banned">Banned</span>':'<span class="badge badge-active">Active</span>';
@@ -494,7 +504,7 @@ async function loadResellers(){
     let h='<div class="table-wrap"><table><thead><tr><th>ID</th><th>Username</th><th>Email</th><th>Commission</th><th>Clients</th><th>Credits</th><th>Status</th><th>Actions</th></tr></thead><tbody>';
     d.resellers.forEach(r=>{
       h+=`<tr><td class="mono-cell">${r.id}</td><td style="font-weight:600;color:var(--text);">${esc(r.username)}</td><td class="mono-cell" style="font-size:11.5px;">${esc(r.email)}</td><td><span class="badge badge-warn">${r.commission_rate||15}%</span></td><td class="mono-cell">${r.client_count||0}</td><td class="mono-cell">${r.credits||0}</td><td>${r.is_banned?'<span class="badge badge-banned">Banned</span>':'<span class="badge badge-active">Active</span>'}</td>
-      <td><div class="action-btns"><button class="btn btn-sm btn-success" onclick="addCreditUser('${r.email}')">💎</button><button class="btn btn-sm btn-warning" onclick="editCommission(${r.id},'${r.username}',${r.commission_rate||15})">%</button><button class="btn btn-sm ${r.is_banned?'btn-success':'btn-danger'}" onclick="toggleBan(${r.id},${r.is_banned})">${r.is_banned?'🔓':'🔒'}</button><button class="btn btn-sm btn-ghost" onclick="removeReseller(${r.id},'${r.username}')">✕</button></div></tr>`;
+      <td><div class="action-btns"><button class="btn btn-sm btn-success" onclick="addCreditUser('${r.email}')">💎</button><button class="btn btn-sm btn-warning" onclick="editCommission(${r.id},'${r.username}',${r.commission_rate||15})">%</button><button class="btn btn-sm ${r.is_banned?'btn-success':'btn-danger'}" onclick="toggleBan(${r.id},${r.is_banned})">${r.is_banned?'🔓':'🔒'}</button><button class="btn btn-sm btn-ghost" onclick="removeReseller(${r.id},'${r.username}')">✕</button></div></td></tr>`;
     });
     h+='</tbody></table></div>';
     const tp=Math.max(1,Math.ceil(d.total/PP));
@@ -508,7 +518,7 @@ async function loadResellers(){
 
 async function loadCredits(){try{const r=await fetch('/api/admin/credit-stats');const d=await r.json();if(d.success)document.getElementById('total-credits-amount').textContent=(d.total_credits||0).toLocaleString()}catch(e){}}
 
-// ============ FIXED SAMSUNG FRP FUNCTIONS ============
+// ============ SAMSUNG FRP FUNCTIONS WITH SEARCH ============
 async function loadSamsungServerStatus(){
   try{
     const r=await fetch('/api/admin/samsung/server/status');
@@ -590,12 +600,25 @@ function filterSamsungOrders(status,btn){
   loadSamsungOrders();
 }
 
+function searchSamsungOrders(){
+  samsungOrderSearch=document.getElementById('samsung-order-search').value.toLowerCase();
+  samsungOrderPage=1;
+  loadSamsungOrders();
+}
+
+function clearSamsungSearch(){
+  document.getElementById('samsung-order-search').value='';
+  samsungOrderSearch='';
+  samsungOrderPage=1;
+  loadSamsungOrders();
+}
+
 async function loadSamsungOrders(){
   const container = document.getElementById('samsung-orders-list');
   container.innerHTML='<p style="color:var(--text3);padding:20px;text-align:center;">Loading orders...</p>';
   
   try{
-    const url = `/api/admin/samsung/orders?status=${samsungOrderStatus}&page=${samsungOrderPage}&limit=${PP}`;
+    const url = `/api/admin/samsung/orders?status=${samsungOrderStatus}&page=${samsungOrderPage}&limit=50`;
     const r = await fetch(url);
     const d = await r.json();
     
@@ -604,9 +627,28 @@ async function loadSamsungOrders(){
       return;
     }
     
-    if(!d.orders || d.orders.length === 0){
+    // Store all orders for search
+    allSamsungOrders = d.orders || [];
+    
+    // Apply client-side search
+    let filteredOrders = allSamsungOrders;
+    if(samsungOrderSearch){
+      filteredOrders = allSamsungOrders.filter(o => 
+        (o.order_id && o.order_id.toLowerCase().includes(samsungOrderSearch)) ||
+        (o.imei && o.imei.toLowerCase().includes(samsungOrderSearch)) ||
+        (o.username && o.username.toLowerCase().includes(samsungOrderSearch)) ||
+        (o.user_email && o.user_email.toLowerCase().includes(samsungOrderSearch))
+      );
+    }
+    
+    // Paginate filtered results
+    const total = filteredOrders.length;
+    const start = (samsungOrderPage - 1) * PP;
+    const paginatedOrders = filteredOrders.slice(start, start + PP);
+    
+    if(paginatedOrders.length === 0){
       container.innerHTML = '<p style="color:var(--text3);padding:20px;text-align:center;">No orders found.</p>';
-      document.getElementById('samsung-order-page-info').textContent = 'Page 0 of 0 · 0 orders';
+      document.getElementById('samsung-order-page-info').textContent = `Page 0 of 0 · 0 orders`;
       document.getElementById('samsungOrderPrev').disabled = true;
       document.getElementById('samsungOrderNext').disabled = true;
       return;
@@ -614,9 +656,9 @@ async function loadSamsungOrders(){
     
     let h='<div class="table-wrap"><table><thead><tr>';
     h+='<th>Order ID</th><th>User</th><th>IMEI</th><th>Android</th><th>Credits</th><th>Status</th><th>Created</th><th>Actions</th>';
-    h+='</thead><tbody>';
+    h+='</tr></thead><tbody>';
     
-    d.orders.forEach(o=>{
+    paginatedOrders.forEach(o=>{
       let statusClass = 'badge-warn';
       if(o.status === 'completed') statusClass = 'badge-success';
       else if(o.status === 'failed') statusClass = 'badge-danger';
@@ -637,7 +679,15 @@ async function loadSamsungOrders(){
         h+=`<button class="btn btn-sm btn-danger" onclick="processSamsungOrder(${o.id},'failed')">❌ Fail</button>`;
       }
       if(o.status === 'failed'){
-        h+=`<button class="btn btn-sm btn-info" onclick="refundSamsungOrder(${o.id})">💰 Refund</button>`;
+        h+=`<button class="btn btn-sm btn-warning" onclick="refundSamsungOrder(${o.id})">💰 Refund</button>`;
+        h+=`<button class="btn btn-sm btn-info" onclick="processSamsungOrder(${o.id},'completed')">🔄 Retry & Complete</button>`;
+      }
+      if(o.status === 'processing'){
+        h+=`<button class="btn btn-sm btn-success" onclick="processSamsungOrder(${o.id},'completed')">✅ Complete</button>`;
+        h+=`<button class="btn btn-sm btn-danger" onclick="processSamsungOrder(${o.id},'failed')">❌ Fail</button>`;
+      }
+      if(o.status === 'completed'){
+        h+=`<span class="badge badge-success">✓ Completed</span>`;
       }
       
       h+=`</div></td></tr>`;
@@ -646,8 +696,8 @@ async function loadSamsungOrders(){
     h+='</tbody></table></div>';
     container.innerHTML = h;
     
-    const totalPages = Math.max(1, Math.ceil(d.total / PP));
-    document.getElementById('samsung-order-page-info').textContent = `Page ${samsungOrderPage} of ${totalPages} · ${d.total} orders`;
+    const totalPages = Math.max(1, Math.ceil(total / PP));
+    document.getElementById('samsung-order-page-info').textContent = `Page ${samsungOrderPage} of ${totalPages} · ${total} orders ${samsungOrderSearch ? '(filtered)' : ''}`;
     document.getElementById('samsungOrderPrev').disabled = samsungOrderPage === 1;
     document.getElementById('samsungOrderNext').disabled = samsungOrderPage >= totalPages;
     
@@ -676,35 +726,37 @@ async function processSamsungOrder(orderId, status){
     const r = await fetch(`/api/admin/samsung/order/${orderId}/process`,{
       method:'POST',
       headers:{'Content-Type':'application/json'},
-      body:JSON.stringify({status})
+      body:JSON.stringify({status: status})
     });
     const d = await r.json();
     if(d.success){
-      showSamsungNotice(true, d.message);
-      loadSamsungOrders();
-      loadCredits();
+      showSamsungNotice(true, d.message || `Order #${orderId} marked as ${status}`);
+      await loadSamsungOrders();
+      await loadDashboardStats();
+      await loadCredits();
     } else {
-      showSamsungNotice(false, d.error);
+      showSamsungNotice(false, d.error || 'Failed to process order');
     }
   } catch(e){
-    showSamsungNotice(false, 'Network error');
+    showSamsungNotice(false, 'Network error: ' + e.message);
   }
 }
 
 async function refundSamsungOrder(orderId){
-  if(!confirm(`Refund credits for order #${orderId}?`)) return;
+  if(!confirm(`Refund credits for order #${orderId}? Credits will be returned to the user.`)) return;
   try{
     const r = await fetch(`/api/admin/samsung/order/${orderId}/refund`,{method:'POST'});
     const d = await r.json();
     if(d.success){
-      showSamsungNotice(true, d.message);
-      loadSamsungOrders();
-      loadCredits();
+      showSamsungNotice(true, d.message || `Refunded ${d.credits_refunded || 'credits'} for order #${orderId}`);
+      await loadSamsungOrders();
+      await loadDashboardStats();
+      await loadCredits();
     } else {
-      showSamsungNotice(false, d.error);
+      showSamsungNotice(false, d.error || 'Failed to refund order');
     }
   } catch(e){
-    showSamsungNotice(false, 'Network error');
+    showSamsungNotice(false, 'Network error: ' + e.message);
   }
 }
 
@@ -715,7 +767,7 @@ function showSamsungNotice(success, msg){
   setTimeout(() => el.style.display = 'none', 4000);
 }
 
-// ── OTP FUNCTIONS ── (keep your existing ones)
+// ── OTP FUNCTIONS (keep your existing ones) ──
 async function loadOtpStats(){
   try{const r=await fetch('/api/admin/otps/stats');const d=await r.json();
     if(!d.success)return;
@@ -737,7 +789,7 @@ async function loadOtpList(){
     const r=await fetch(`/api/admin/otps/list?type=${type}&status=${status}&page=${otpPage}&limit=30`);
     const d=await r.json();
     if(!d.otps||!d.otps.length){document.getElementById('otp-list').innerHTML='<p style="color:var(--text3);padding:12px;">No OTPs found.</p>';return}
-    let h='<div class="table-wrap">\n<table><thead><tr><th>ID</th><th>Code</th><th>Type</th><th>Cost</th><th>Status</th><th>Used By</th><th>Date</th><th>Action</th></tr></thead><tbody>';
+    let h='<div class="table-wrap">\n<table><thead></tr><th>ID</th><th>Code</th><th>Type</th><th>Cost</th><th>Status</th><th>Used By</th><th>Date</th><th>Action</th></tr></thead><tbody>';
     d.otps.forEach(o=>{
       const sb=o.is_used?'<span class="badge badge-used">Used</span>':'<span class="badge badge-available">Available</span>';
       h+=`<tr><td class="mono-cell">${o.id}</td><td class="mono-cell">${o.otp_code}</td><td>${o.otp_name}</td><td class="mono-cell">${o.credits_cost} cr</td><td>${sb}</td><td class="mono-cell">${o.used_by_username||'—'}</td><td class="mono-cell" style="font-size:10px;">${o.used_at||o.created_at||'—'}</td>
@@ -783,7 +835,7 @@ document.getElementById('addOtpForm').addEventListener('submit',async e=>{
   }catch(e){showOT('otp-error','Network error')}
 });
 
-// ── RATE LIMITS ── (keep your existing functions)
+// ── RATE LIMITS (keep your existing functions) ──
 async function checkUserLimits(){
   const userId=document.getElementById('check-user-id').value;const username=document.getElementById('check-username').value;const email=document.getElementById('check-email').value;
   let url='';if(userId){url=`/api/admin/user-limits/${userId}`}else if(username||email){
@@ -806,7 +858,7 @@ async function resetLoginAttempts(){
 function showRLSuccess(msg){const el=document.getElementById('rate-limit-success');el.textContent='✅ '+msg;el.style.display='block';setTimeout(()=>el.style.display='none',4000)}
 function showRLError(msg){const el=document.getElementById('rate-limit-error');el.textContent='❌ '+msg;el.style.display='block';setTimeout(()=>el.style.display='none',4000)}
 
-// ── LOGS ── (keep your existing functions)
+// ── LOGS (keep your existing functions) ──
 function filterLogs(f,btn){logFilter=f;document.querySelectorAll('#logs-tab .chip').forEach(b=>b.classList.remove('active'));if(btn)btn.classList.add('active');displayLogs()}
 function searchLogs(){logSearch=document.getElementById('log-search').value.toLowerCase();displayLogs()}
 function clearLogSearch(){document.getElementById('log-search').value='';logSearch='';displayLogs()}
