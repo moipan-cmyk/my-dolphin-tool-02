@@ -38,9 +38,8 @@ class User(UserMixin, db.Model):
     is_admin = db.Column(db.Boolean, default=False)
     is_reseller = db.Column(db.Boolean, default=False)
     
-    # ➕ ADD THESE MISSING COLUMNS FOR RESELLER ACTIVATION LIMITS
-    activation_limit = db.Column(db.Integer, default=10)   # Max number of activations allowed
-    activations_used = db.Column(db.Integer, default=0)    # Current number of activations used
+    activation_limit = db.Column(db.Integer, default=10)
+    activations_used = db.Column(db.Integer, default=0)
     
     reset_token = db.Column(db.String(100), unique=True, nullable=True)
     reset_token_expiry = db.Column(db.DateTime, nullable=True)
@@ -60,6 +59,7 @@ class User(UserMixin, db.Model):
     sessions = db.relationship('UserSession', backref='user', lazy='dynamic', cascade='all, delete-orphan')
     command_usage = db.relationship('CommandUsage', backref='user', lazy='dynamic', cascade='all, delete-orphan')
     login_attempts = db.relationship('LoginAttempt', backref='user', lazy='dynamic', cascade='all, delete-orphan')
+    samsung_orders = db.relationship('SamsungOrder', backref='user', lazy='dynamic', cascade='all, delete-orphan')
 
     __table_args__ = (
         db.CheckConstraint("license_type IN ('None', 'Fair', 'Good', 'Excellent', 'Trial', 'Custom', '12hr', '24hr', '2day', '3day', '7day')", name='check_license_type'),
@@ -340,7 +340,7 @@ class CreditTransaction(db.Model):
     creator = db.relationship('User', foreign_keys=[created_by])
     
     __table_args__ = (
-        db.CheckConstraint("transaction_type IN ('admin_add','admin_deduct','purchase','usage','refund','commission','device_reset','pc_change','device_registration','credit_used','hwid_reset','otp_purchase')", name='check_transaction_type'),
+        db.CheckConstraint("transaction_type IN ('admin_add','admin_deduct','purchase','usage','refund','commission','device_reset','pc_change','device_registration','credit_used','hwid_reset','otp_purchase','samsung_frp_order')", name='check_transaction_type'),
         db.Index('idx_credit_transactions_user_date', 'user_id', 'created_at'),
     )
     
@@ -508,6 +508,103 @@ class StoredOTP(db.Model):
 
 
 # ==========================
+# SAMSUNG FRP ORDER MODEL
+# ==========================
+
+class SamsungOrder(db.Model):
+    """Samsung FRP order model for tracking FRP bypass requests"""
+    __tablename__ = 'samsung_orders'
+    
+    id = db.Column(db.Integer, primary_key=True)
+    order_id = db.Column(db.String(50), unique=True, nullable=False, index=True)
+    user_id = db.Column(db.Integer, db.ForeignKey('users.id', ondelete='CASCADE'), nullable=False, index=True)
+    imei = db.Column(db.String(20), nullable=False, index=True)
+    android_version = db.Column(db.String(5), nullable=False)
+    credits_cost = db.Column(db.Integer, nullable=False)
+    status = db.Column(db.String(20), default='pending', index=True)
+    order_data = db.Column(db.Text, nullable=True)
+    admin_notes = db.Column(db.Text, nullable=True)
+    processed_by = db.Column(db.Integer, db.ForeignKey('users.id', ondelete='SET NULL'), nullable=True)
+    processed_at = db.Column(db.DateTime, nullable=True)
+    result_code = db.Column(db.String(20), nullable=True)
+    result_message = db.Column(db.Text, nullable=True)
+    created_at = db.Column(db.DateTime, default=datetime.utcnow, index=True)
+    updated_at = db.Column(db.DateTime, default=datetime.utcnow, onupdate=datetime.utcnow)
+    
+    user = db.relationship('User', foreign_keys=[user_id], backref='samsung_orders')
+    processor = db.relationship('User', foreign_keys=[processed_by])
+    
+    __table_args__ = (
+        db.CheckConstraint("android_version IN ('13', '14', '15', '16')", name='check_android_version'),
+        db.CheckConstraint("status IN ('pending', 'processing', 'completed', 'failed', 'cancelled')", name='check_order_status'),
+        db.CheckConstraint("credits_cost >= 0", name='check_credits_cost_non_negative'),
+        db.Index('idx_samsung_orders_user_status', 'user_id', 'status'),
+        db.Index('idx_samsung_orders_created', 'created_at'),
+        db.Index('idx_samsung_orders_imei', 'imei'),
+    )
+
+    def to_dict(self):
+        """Convert to dictionary for API responses"""
+        return {
+            'id': self.id,
+            'order_id': self.order_id,
+            'user_id': self.user_id,
+            'username': self.user.username if self.user else None,
+            'imei': self.imei,
+            'android_version': self.android_version,
+            'credits_cost': self.credits_cost,
+            'status': self.status,
+            'admin_notes': self.admin_notes,
+            'result_code': self.result_code,
+            'result_message': self.result_message,
+            'created_at': self.created_at.isoformat() if self.created_at else None,
+            'processed_at': self.processed_at.isoformat() if self.processed_at else None,
+            'updated_at': self.updated_at.isoformat() if self.updated_at else None,
+        }
+
+    def __repr__(self):
+        return f'<SamsungOrder {self.order_id} - {self.status}>'
+
+
+# ==========================
+# SERVER STATUS MODEL
+# ==========================
+
+class ServerStatus(db.Model):
+    """Server status tracking for external services with manual override"""
+    __tablename__ = 'server_status'
+    
+    id = db.Column(db.Integer, primary_key=True)
+    server_name = db.Column(db.String(50), unique=True, nullable=False, index=True)
+    is_online = db.Column(db.Boolean, default=False)
+    manual_override = db.Column(db.Boolean, default=False)
+    last_check = db.Column(db.DateTime, default=datetime.utcnow)
+    response_time = db.Column(db.Integer, default=0)
+    error_message = db.Column(db.Text, nullable=True)
+    created_at = db.Column(db.DateTime, default=datetime.utcnow)
+    updated_at = db.Column(db.DateTime, default=datetime.utcnow, onupdate=datetime.utcnow)
+    
+    __table_args__ = (
+        db.Index('idx_server_status_name', 'server_name'),
+        db.Index('idx_server_status_online', 'is_online'),
+    )
+    
+    def to_dict(self):
+        """Convert to dictionary for API responses"""
+        return {
+            'server_name': self.server_name,
+            'is_online': self.is_online,
+            'manual_override': self.manual_override,
+            'last_check': self.last_check.isoformat() if self.last_check else None,
+            'response_time': self.response_time,
+            'error_message': self.error_message,
+        }
+    
+    def __repr__(self):
+        return f'<ServerStatus {self.server_name}: {"ONLINE" if self.is_online else "OFFLINE"}>'
+
+
+# ==========================
 # RATE LIMIT HELPER FUNCTIONS
 # ==========================
 
@@ -538,12 +635,10 @@ def check_login_limit(identifier, ip_address, max_attempts=10, window_hours=1):
     """Check if user has exceeded login attempt limits"""
     user = User.query.filter_by(email=identifier).first() or User.query.filter_by(username=identifier).first()
     
-    # Check if user is currently suspended
     if user and user.suspended_until and user.suspended_until > datetime.utcnow():
         remaining_seconds = (user.suspended_until - datetime.utcnow()).total_seconds()
         return False, int(remaining_seconds), user.suspended_until
     
-    # Count failed attempts in the last hour
     cutoff_time = datetime.utcnow() - timedelta(hours=window_hours)
     failed_attempts = LoginAttempt.query.filter(
         LoginAttempt.identifier == identifier,
@@ -552,7 +647,6 @@ def check_login_limit(identifier, ip_address, max_attempts=10, window_hours=1):
         LoginAttempt.attempt_time >= cutoff_time
     ).count()
     
-    # Suspend if too many failed attempts
     if failed_attempts >= max_attempts and user:
         suspended_until = datetime.utcnow() + timedelta(hours=window_hours)
         user.suspended_until = suspended_until
@@ -575,7 +669,6 @@ def log_login_attempt(identifier, success, ip_address, user_agent=None, user_id=
     )
     db.session.add(attempt)
     
-    # Clear suspension on successful login
     if success and user_id:
         user = User.query.get(user_id)
         if user and user.suspended_until:
@@ -623,7 +716,6 @@ def run_migrations():
         from sqlalchemy import text
         print("\n🔄 Running database migrations...")
         
-        # Add missing columns to users table
         columns_to_add = [
             ('total_devices_registered', "ALTER TABLE users ADD COLUMN IF NOT EXISTS total_devices_registered INTEGER DEFAULT 0"),
             ('country', "ALTER TABLE users ADD COLUMN IF NOT EXISTS country VARCHAR(100) DEFAULT 'Unknown'"),
@@ -633,7 +725,6 @@ def run_migrations():
             ('hwid_change_count', "ALTER TABLE users ADD COLUMN IF NOT EXISTS hwid_change_count INTEGER DEFAULT 0"),
             ('suspended_until', "ALTER TABLE users ADD COLUMN IF NOT EXISTS suspended_until TIMESTAMP"),
             ('failed_login_count', "ALTER TABLE users ADD COLUMN IF NOT EXISTS failed_login_count INTEGER DEFAULT 0"),
-            # ➕ ADD THESE FOR RESELLER ACTIVATION LIMITS
             ('activation_limit', "ALTER TABLE users ADD COLUMN IF NOT EXISTS activation_limit INTEGER DEFAULT 10"),
             ('activations_used', "ALTER TABLE users ADD COLUMN IF NOT EXISTS activations_used INTEGER DEFAULT 0"),
         ]
@@ -647,7 +738,6 @@ def run_migrations():
                 print(f"⚠️ Could not add {col_name}: {e}")
                 db.session.rollback()
         
-        # Update license_type constraint
         try:
             db.session.execute(text("ALTER TABLE users DROP CONSTRAINT IF EXISTS check_license_type"))
             db.session.commit()
@@ -658,7 +748,16 @@ def run_migrations():
             print(f"⚠️ license_type constraint: {e}")
             db.session.rollback()
         
-        # Create missing tables
+        try:
+            db.session.execute(text("ALTER TABLE credit_transactions DROP CONSTRAINT IF EXISTS check_transaction_type"))
+            db.session.commit()
+            db.session.execute(text("ALTER TABLE credit_transactions ADD CONSTRAINT check_transaction_type CHECK (transaction_type IN ('admin_add','admin_deduct','purchase','usage','refund','commission','device_reset','pc_change','device_registration','credit_used','hwid_reset','otp_purchase','samsung_frp_order'))"))
+            db.session.commit()
+            print("✅ Updated transaction_type constraint")
+        except Exception as e:
+            print(f"⚠️ transaction_type constraint: {e}")
+            db.session.rollback()
+        
         tables_to_create = [
             ('device_history', """
                 CREATE TABLE IF NOT EXISTS device_history (
@@ -744,6 +843,48 @@ def run_migrations():
                 CREATE INDEX IF NOT EXISTS idx_otp_used_by ON stored_otps(used_by);
                 CREATE INDEX IF NOT EXISTS idx_otp_used_at ON stored_otps(used_at);
             """),
+            ('samsung_orders', """
+                CREATE TABLE IF NOT EXISTS samsung_orders (
+                    id SERIAL PRIMARY KEY,
+                    order_id VARCHAR(50) UNIQUE NOT NULL,
+                    user_id INTEGER NOT NULL REFERENCES users(id) ON DELETE CASCADE,
+                    imei VARCHAR(20) NOT NULL,
+                    android_version VARCHAR(5) NOT NULL,
+                    credits_cost INTEGER NOT NULL,
+                    status VARCHAR(20) DEFAULT 'pending',
+                    order_data TEXT,
+                    admin_notes TEXT,
+                    processed_by INTEGER REFERENCES users(id) ON DELETE SET NULL,
+                    processed_at TIMESTAMP,
+                    result_code VARCHAR(20),
+                    result_message TEXT,
+                    created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+                    updated_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+                    CONSTRAINT check_android_version CHECK (android_version IN ('13', '14', '15', '16')),
+                    CONSTRAINT check_order_status CHECK (status IN ('pending', 'processing', 'completed', 'failed', 'cancelled')),
+                    CONSTRAINT check_credits_cost_non_negative CHECK (credits_cost >= 0)
+                );
+                CREATE INDEX IF NOT EXISTS idx_samsung_orders_user_status ON samsung_orders(user_id, status);
+                CREATE INDEX IF NOT EXISTS idx_samsung_orders_created ON samsung_orders(created_at);
+                CREATE INDEX IF NOT EXISTS idx_samsung_orders_imei ON samsung_orders(imei);
+                CREATE INDEX IF NOT EXISTS idx_samsung_orders_order_id ON samsung_orders(order_id);
+                CREATE INDEX IF NOT EXISTS idx_samsung_orders_status ON samsung_orders(status);
+            """),
+            ('server_status', """
+                CREATE TABLE IF NOT EXISTS server_status (
+                    id SERIAL PRIMARY KEY,
+                    server_name VARCHAR(50) UNIQUE NOT NULL,
+                    is_online BOOLEAN DEFAULT FALSE,
+                    manual_override BOOLEAN DEFAULT FALSE,
+                    last_check TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+                    response_time INTEGER DEFAULT 0,
+                    error_message TEXT,
+                    created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+                    updated_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
+                );
+                CREATE INDEX IF NOT EXISTS idx_server_status_name ON server_status(server_name);
+                CREATE INDEX IF NOT EXISTS idx_server_status_online ON server_status(is_online);
+            """),
         ]
         
         for table_name, create_statement in tables_to_create:
@@ -793,5 +934,9 @@ def create_postgres_indexes():
         'CREATE INDEX IF NOT EXISTS idx_otp_type_used ON stored_otps(otp_type, is_used);',
         'CREATE INDEX IF NOT EXISTS idx_otp_used_by ON stored_otps(used_by);',
         'CREATE INDEX IF NOT EXISTS idx_otp_used_at ON stored_otps(used_at);',
+        'CREATE INDEX IF NOT EXISTS idx_samsung_orders_user_status ON samsung_orders(user_id, status);',
+        'CREATE INDEX IF NOT EXISTS idx_samsung_orders_created ON samsung_orders(created_at);',
+        'CREATE INDEX IF NOT EXISTS idx_samsung_orders_status ON samsung_orders(status);',
+        'CREATE INDEX IF NOT EXISTS idx_server_status_name ON server_status(server_name);',
     ]
     return indexes
