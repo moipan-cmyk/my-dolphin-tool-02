@@ -328,7 +328,7 @@ def create_app(config_class=Config):
             print(f"📧 Reset email - Base URL: {base_url}")
 
             
-            reset_link = f"{base_url}/auth/reset-password/{reset_token}"
+            reset_link = f"{base_url}/reset-password/{reset_token}"
             
             html_content = f"""
             <!DOCTYPE html>
