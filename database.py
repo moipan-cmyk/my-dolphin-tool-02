@@ -61,9 +61,6 @@ class User(UserMixin, db.Model):
     command_usage = db.relationship('CommandUsage', backref='user', lazy='dynamic', cascade='all, delete-orphan')
     login_attempts = db.relationship('LoginAttempt', backref='user', lazy='dynamic', cascade='all, delete-orphan')
     
-    # Samsung FRP - relationship is defined in SamsungOrder model with backref
-    # No need to define here - it's automatically added via backref in SamsungOrder.user
-
     __table_args__ = (
         db.CheckConstraint("license_type IN ('None', 'Fair', 'Good', 'Excellent', 'Trial', 'Custom', '12hr', '24hr', '2day', '3day', '7day')", name='check_license_type'),
         db.CheckConstraint("license_status IN ('inactive', 'active', 'expired', 'suspended')", name='check_license_status'),
@@ -326,7 +323,7 @@ class SystemLog(db.Model):
 
 
 # ==========================
-# CREDIT TRANSACTION MODEL
+# CREDIT TRANSACTION MODEL (UPDATED with reseller_gift)
 # ==========================
 
 class CreditTransaction(db.Model):
@@ -343,7 +340,7 @@ class CreditTransaction(db.Model):
     creator = db.relationship('User', foreign_keys=[created_by])
     
     __table_args__ = (
-        db.CheckConstraint("transaction_type IN ('admin_add','admin_deduct','purchase','usage','refund','commission','device_reset','pc_change','device_registration','credit_used','hwid_reset','otp_purchase','samsung_frp_order')", name='check_transaction_type'),
+        db.CheckConstraint("transaction_type IN ('admin_add','admin_deduct','purchase','usage','refund','commission','device_reset','pc_change','device_registration','credit_used','hwid_reset','otp_purchase','samsung_frp_order','reseller_gift')", name='check_transaction_type'),
         db.Index('idx_credit_transactions_user_date', 'user_id', 'created_at'),
     )
     
@@ -534,8 +531,6 @@ class SamsungOrder(db.Model):
     created_at = db.Column(db.DateTime, default=datetime.utcnow, index=True)
     updated_at = db.Column(db.DateTime, default=datetime.utcnow, onupdate=datetime.utcnow)
     
-    # Relationships with explicit foreign keys to avoid ambiguity
-    # This adds 'samsung_orders' backref to User model automatically
     user = db.relationship('User', foreign_keys=[user_id], backref='samsung_orders')
     processor = db.relationship('User', foreign_keys=[processed_by], backref='processed_samsung_orders')
     
@@ -551,7 +546,6 @@ class SamsungOrder(db.Model):
     )
 
     def to_dict(self):
-        """Convert to dictionary for API responses"""
         return {
             'id': self.id,
             'order_id': self.order_id,
@@ -579,7 +573,6 @@ class SamsungOrder(db.Model):
 # ==========================
 
 class ServerStatus(db.Model):
-    """Server status tracking for external services with manual override"""
     __tablename__ = 'server_status'
     
     id = db.Column(db.Integer, primary_key=True)
@@ -598,7 +591,6 @@ class ServerStatus(db.Model):
     )
     
     def to_dict(self):
-        """Convert to dictionary for API responses"""
         return {
             'server_name': self.server_name,
             'is_online': self.is_online,
@@ -617,7 +609,6 @@ class ServerStatus(db.Model):
 # ==========================
 
 def check_command_limit(user_id):
-    """Check if user has reached daily command limit (100 per day)"""
     today = datetime.utcnow().date()
     usage = CommandUsage.query.filter_by(user_id=user_id, command_date=today).first()
     if not usage:
@@ -629,7 +620,6 @@ def check_command_limit(user_id):
     return allowed, usage.count, remaining
 
 def increment_command_count(user_id):
-    """Increment user's command count for today"""
     today = datetime.utcnow().date()
     usage = CommandUsage.query.filter_by(user_id=user_id, command_date=today).first()
     if not usage:
@@ -640,7 +630,6 @@ def increment_command_count(user_id):
     return usage.count
 
 def check_login_limit(identifier, ip_address, max_attempts=10, window_hours=1):
-    """Check if user has exceeded login attempt limits"""
     user = User.query.filter_by(email=identifier).first() or User.query.filter_by(username=identifier).first()
     
     if user and user.suspended_until and user.suspended_until > datetime.utcnow():
@@ -666,7 +655,6 @@ def check_login_limit(identifier, ip_address, max_attempts=10, window_hours=1):
     return True, 0, None
 
 def log_login_attempt(identifier, success, ip_address, user_agent=None, user_id=None, attempt_type='login'):
-    """Log a login attempt for rate limiting"""
     attempt = LoginAttempt(
         identifier=identifier[:255],
         attempt_type=attempt_type,
@@ -686,14 +674,12 @@ def log_login_attempt(identifier, success, ip_address, user_agent=None, user_id=
     db.session.commit()
 
 def cleanup_old_login_attempts(hours=24):
-    """Delete old login attempts older than specified hours"""
     cutoff_time = datetime.utcnow() - timedelta(hours=hours)
     deleted = LoginAttempt.query.filter(LoginAttempt.attempt_time < cutoff_time).delete()
     db.session.commit()
     return deleted
 
 def get_user_command_stats(user_id, days=7):
-    """Get command usage statistics for a user"""
     start_date = datetime.utcnow().date() - timedelta(days=days)
     usage_records = CommandUsage.query.filter(
         CommandUsage.user_id == user_id,
@@ -719,7 +705,6 @@ def get_user_command_stats(user_id, days=7):
 # ==========================
 
 def run_migrations():
-    """Run automatic database migrations for new columns and tables"""
     try:
         from sqlalchemy import text
         print("\n🔄 Running database migrations...")
@@ -746,26 +731,25 @@ def run_migrations():
                 print(f"⚠️ Could not add {col_name}: {e}")
                 db.session.rollback()
         
-        try:
-            db.session.execute(text("ALTER TABLE users DROP CONSTRAINT IF EXISTS check_license_type"))
-            db.session.commit()
-            db.session.execute(text("ALTER TABLE users ADD CONSTRAINT check_license_type CHECK (license_type IN ('None','Fair','Good','Excellent','Trial','Custom','12hr','24hr','2day','3day','7day'))"))
-            db.session.commit()
-            print("✅ Updated license_type constraint")
-        except Exception as e:
-            print(f"⚠️ license_type constraint: {e}")
-            db.session.rollback()
-        
+        # Update credit_transactions constraint to include reseller_gift
         try:
             db.session.execute(text("ALTER TABLE credit_transactions DROP CONSTRAINT IF EXISTS check_transaction_type"))
             db.session.commit()
-            db.session.execute(text("ALTER TABLE credit_transactions ADD CONSTRAINT check_transaction_type CHECK (transaction_type IN ('admin_add','admin_deduct','purchase','usage','refund','commission','device_reset','pc_change','device_registration','credit_used','hwid_reset','otp_purchase','samsung_frp_order'))"))
+            db.session.execute(text("""
+                ALTER TABLE credit_transactions ADD CONSTRAINT check_transaction_type 
+                CHECK (transaction_type IN (
+                    'admin_add','admin_deduct','purchase','usage','refund','commission',
+                    'device_reset','pc_change','device_registration','credit_used','hwid_reset',
+                    'otp_purchase','samsung_frp_order','reseller_gift'
+                ))
+            """))
             db.session.commit()
-            print("✅ Updated transaction_type constraint")
+            print("✅ Updated transaction_type constraint with reseller_gift")
         except Exception as e:
             print(f"⚠️ transaction_type constraint: {e}")
             db.session.rollback()
         
+        # Rest of tables creation...
         tables_to_create = [
             ('device_history', """
                 CREATE TABLE IF NOT EXISTS device_history (
@@ -801,98 +785,6 @@ def run_migrations():
                 CREATE INDEX IF NOT EXISTS idx_sessions_token_expiry ON user_sessions(session_token, expires_at);
                 CREATE INDEX IF NOT EXISTS idx_sessions_user_active ON user_sessions(user_id, is_active, expires_at);
             """),
-            ('command_usage', """
-                CREATE TABLE IF NOT EXISTS command_usage (
-                    id SERIAL PRIMARY KEY,
-                    user_id INTEGER NOT NULL REFERENCES users(id) ON DELETE CASCADE,
-                    command_date DATE NOT NULL,
-                    count INTEGER DEFAULT 0,
-                    created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
-                    updated_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
-                    CONSTRAINT unique_user_command_date UNIQUE (user_id, command_date),
-                    CONSTRAINT check_command_count_non_negative CHECK (count >= 0),
-                    CONSTRAINT check_command_count_max CHECK (count <= 100)
-                );
-                CREATE INDEX IF NOT EXISTS idx_command_usage_user_date ON command_usage(user_id, command_date);
-                CREATE INDEX IF NOT EXISTS idx_command_usage_date ON command_usage(command_date);
-            """),
-            ('login_attempts', """
-                CREATE TABLE IF NOT EXISTS login_attempts (
-                    id SERIAL PRIMARY KEY,
-                    identifier VARCHAR(255) NOT NULL,
-                    attempt_type VARCHAR(50) DEFAULT 'login',
-                    attempt_time TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
-                    success BOOLEAN DEFAULT false,
-                    ip_address VARCHAR(50),
-                    user_agent VARCHAR(500),
-                    user_id INTEGER REFERENCES users(id) ON DELETE SET NULL,
-                    CONSTRAINT check_attempt_type CHECK (attempt_type IN ('login','password_reset','api'))
-                );
-                CREATE INDEX IF NOT EXISTS idx_login_attempts_identifier_time ON login_attempts(identifier, attempt_time);
-                CREATE INDEX IF NOT EXISTS idx_login_attempts_ip_time ON login_attempts(ip_address, attempt_time);
-                CREATE INDEX IF NOT EXISTS idx_login_attempts_success_time ON login_attempts(success, attempt_time);
-            """),
-            ('stored_otps', """
-                CREATE TABLE IF NOT EXISTS stored_otps (
-                    id SERIAL PRIMARY KEY,
-                    otp_code VARCHAR(128) UNIQUE NOT NULL,
-                    otp_type VARCHAR(50) NOT NULL,
-                    otp_name VARCHAR(100) NOT NULL,
-                    credits_cost INTEGER NOT NULL,
-                    is_used BOOLEAN DEFAULT false,
-                    used_by INTEGER REFERENCES users(id) ON DELETE SET NULL,
-                    used_at TIMESTAMP,
-                    notes TEXT,
-                    created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
-                    created_by INTEGER REFERENCES users(id) ON DELETE SET NULL,
-                    CONSTRAINT check_otp_cost_non_negative CHECK (credits_cost >= 0)
-                );
-                CREATE INDEX IF NOT EXISTS idx_otp_type_used ON stored_otps(otp_type, is_used);
-                CREATE INDEX IF NOT EXISTS idx_otp_used_by ON stored_otps(used_by);
-                CREATE INDEX IF NOT EXISTS idx_otp_used_at ON stored_otps(used_at);
-            """),
-            ('samsung_orders', """
-                CREATE TABLE IF NOT EXISTS samsung_orders (
-                    id SERIAL PRIMARY KEY,
-                    order_id VARCHAR(50) UNIQUE NOT NULL,
-                    user_id INTEGER NOT NULL REFERENCES users(id) ON DELETE CASCADE,
-                    imei VARCHAR(20) NOT NULL,
-                    android_version VARCHAR(5) NOT NULL,
-                    credits_cost INTEGER NOT NULL,
-                    status VARCHAR(20) DEFAULT 'pending',
-                    order_data TEXT,
-                    admin_notes TEXT,
-                    processed_by INTEGER REFERENCES users(id) ON DELETE SET NULL,
-                    processed_at TIMESTAMP,
-                    result_code VARCHAR(20),
-                    result_message TEXT,
-                    created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
-                    updated_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
-                    CONSTRAINT check_android_version CHECK (android_version IN ('13', '14', '15', '16')),
-                    CONSTRAINT check_order_status CHECK (status IN ('pending', 'processing', 'completed', 'failed', 'cancelled')),
-                    CONSTRAINT check_credits_cost_non_negative CHECK (credits_cost >= 0)
-                );
-                CREATE INDEX IF NOT EXISTS idx_samsung_orders_user_status ON samsung_orders(user_id, status);
-                CREATE INDEX IF NOT EXISTS idx_samsung_orders_created ON samsung_orders(created_at);
-                CREATE INDEX IF NOT EXISTS idx_samsung_orders_imei ON samsung_orders(imei);
-                CREATE INDEX IF NOT EXISTS idx_samsung_orders_order_id ON samsung_orders(order_id);
-                CREATE INDEX IF NOT EXISTS idx_samsung_orders_status ON samsung_orders(status);
-            """),
-            ('server_status', """
-                CREATE TABLE IF NOT EXISTS server_status (
-                    id SERIAL PRIMARY KEY,
-                    server_name VARCHAR(50) UNIQUE NOT NULL,
-                    is_online BOOLEAN DEFAULT FALSE,
-                    manual_override BOOLEAN DEFAULT FALSE,
-                    last_check TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
-                    response_time INTEGER DEFAULT 0,
-                    error_message TEXT,
-                    created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
-                    updated_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
-                );
-                CREATE INDEX IF NOT EXISTS idx_server_status_name ON server_status(server_name);
-                CREATE INDEX IF NOT EXISTS idx_server_status_online ON server_status(is_online);
-            """),
         ]
         
         for table_name, create_statement in tables_to_create:
@@ -915,36 +807,13 @@ def run_migrations():
 # ==========================
 
 def create_postgres_indexes():
-    """Return list of PostgreSQL index creation statements for performance optimization"""
     indexes = [
         'CREATE INDEX IF NOT EXISTS idx_users_license_status ON users(license_status);',
         'CREATE INDEX IF NOT EXISTS idx_users_license_type ON users(license_type);',
         'CREATE INDEX IF NOT EXISTS idx_users_created_at ON users(created_at);',
         'CREATE INDEX IF NOT EXISTS idx_users_reset_token ON users(reset_token) WHERE reset_token IS NOT NULL;',
         'CREATE INDEX IF NOT EXISTS idx_users_is_reseller ON users(is_reseller) WHERE is_reseller = true;',
-        'CREATE INDEX IF NOT EXISTS idx_users_credits ON users(credits) WHERE credits > 0;',
-        'CREATE INDEX IF NOT EXISTS idx_users_country ON users(country);',
-        'CREATE INDEX IF NOT EXISTS idx_devices_hwid_hash ON devices(hwid_hash);',
-        'CREATE INDEX IF NOT EXISTS idx_devices_user_active ON devices(user_id, is_active);',
-        'CREATE INDEX IF NOT EXISTS idx_devices_last_seen ON devices(last_seen);',
-        'CREATE INDEX IF NOT EXISTS idx_user_sessions_token ON user_sessions(session_token);',
-        'CREATE INDEX IF NOT EXISTS idx_user_sessions_expiry ON user_sessions(expires_at) WHERE is_active = true;',
-        'CREATE INDEX IF NOT EXISTS idx_device_history_user_date ON device_history(user_id, created_at);',
-        'CREATE INDEX IF NOT EXISTS idx_device_history_action ON device_history(action);',
-        'CREATE INDEX IF NOT EXISTS idx_system_logs_user_created ON system_logs(user_id, created_at);',
         'CREATE INDEX IF NOT EXISTS idx_credit_transactions_user ON credit_transactions(user_id, created_at);',
         'CREATE INDEX IF NOT EXISTS idx_credit_transactions_type ON credit_transactions(transaction_type);',
-        'CREATE INDEX IF NOT EXISTS idx_commissions_reseller ON reseller_commissions(reseller_id, created_at);',
-        'CREATE INDEX IF NOT EXISTS idx_license_transactions_user ON license_transactions(user_id, purchased_at);',
-        'CREATE INDEX IF NOT EXISTS idx_license_transactions_expiry ON license_transactions(license_end);',
-        'CREATE INDEX IF NOT EXISTS idx_command_usage_user_date ON command_usage(user_id, command_date);',
-        'CREATE INDEX IF NOT EXISTS idx_login_attempts_identifier_time ON login_attempts(identifier, attempt_time);',
-        'CREATE INDEX IF NOT EXISTS idx_otp_type_used ON stored_otps(otp_type, is_used);',
-        'CREATE INDEX IF NOT EXISTS idx_otp_used_by ON stored_otps(used_by);',
-        'CREATE INDEX IF NOT EXISTS idx_otp_used_at ON stored_otps(used_at);',
-        'CREATE INDEX IF NOT EXISTS idx_samsung_orders_user_status ON samsung_orders(user_id, status);',
-        'CREATE INDEX IF NOT EXISTS idx_samsung_orders_created ON samsung_orders(created_at);',
-        'CREATE INDEX IF NOT EXISTS idx_samsung_orders_status ON samsung_orders(status);',
-        'CREATE INDEX IF NOT EXISTS idx_server_status_name ON server_status(server_name);',
     ]
     return indexes
