@@ -310,8 +310,8 @@ def create_app(config_class=Config):
         except Exception as e:
             print(f"Error logging device history: {e}")
             db.session.rollback()
-
-        def send_reset_email(email, reset_token):
+    
+    def send_reset_email(email, reset_token):
         """Send password reset email to user"""
         try:
             config = app.config
@@ -325,11 +325,10 @@ def create_app(config_class=Config):
             # ✅ Get correct BASE_URL from environment
             base_url = os.environ.get('BASE_URL') or config.get('BASE_URL') or 'https://my-dolphin-tool-02.onrender.com'
             
-            # IMPORTANT: Remove /auth from the path - your route is /reset-password not /auth/reset-password
-            reset_link = f"{base_url}/reset-password/{reset_token}"
-            
             print(f"📧 Reset email - Base URL: {base_url}")
-            print(f"📧 Reset link: {reset_link}")
+
+            
+            reset_link = f"{base_url}/auth/reset-password/{reset_token}"
             
             html_content = f"""
             <!DOCTYPE html>
@@ -353,9 +352,6 @@ def create_app(config_class=Config):
                     </div>
                     <p>This link will expire in 1 hour.</p>
                     <p>If you didn't request this, please ignore this email.</p>
-                    <hr>
-                    <p style="font-size: 12px; color: #666;">If the button doesn't work, copy and paste this link into your browser:</p>
-                    <p style="font-size: 12px; word-break: break-all;">{reset_link}</p>
                 </div>
             </body>
             </html>
@@ -383,8 +379,8 @@ def create_app(config_class=Config):
                 return True
         except Exception as e:
             print(f"❌ Failed to send reset email: {e}")
-            traceback.print_exc()
             return False
+
             
 
             # ==================== ADD THESE TWO FUNCTIONS RIGHT HERE ====================
