@@ -4327,9 +4327,10 @@ def create_app(config_class=Config):
         history = [{'id': p.id, 'type': p.otp_type, 'name': p.otp_name, 'cost': p.credits_cost, 'used_at': p.used_at.isoformat() if p.used_at else None} for p in purchases]
         return jsonify({'success': True, 'history': history, 'total': len(history), 'total_spent': sum(p.credits_cost for p in purchases)})
 
-    # ═══════════════════════════════════════════════════════════
-    #  AUTO-FIX: Ensure OTP constraint exists
-    # ═══════════════════════════════════════════════════════════
+
+ # ═══════════════════════════════════════════════════════════
+#  AUTO-FIX: Ensure OTP constraint exists
+# ═══════════════════════════════════════════════════════════
     @app.before_request
     def _ensure_otp_constraint():
         """Run once to fix credit_transactions constraint for OTP purchases"""
@@ -4347,14 +4348,14 @@ def create_app(config_class=Config):
                     CHECK (transaction_type IN (
                         'admin_add','admin_deduct','purchase','usage','refund','commission',
                         'device_reset','pc_change','device_registration','credit_used','hwid_reset',
-                        'otp_purchase','samsung_frp_order'
+                        'otp_purchase','samsung_frp_order','reseller_gift'
                     ))
                 """))
                 db.session.commit()
-                print("✅ OTP constraint auto-fixed")
+                print("✅ Credit transaction constraint updated with reseller_gift")
             except Exception as e:
                 db.session.rollback()
-                print(f"⚠️ OTP constraint already OK: {e}")
+                print(f"⚠️ Credit transaction constraint: {e}")
             app._otp_constraint_fixed = True
 
     return app
