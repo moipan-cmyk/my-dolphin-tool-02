@@ -78,6 +78,8 @@
   .btn-secondary { background: var(--slate-100); color: var(--slate-700); border: 1px solid var(--slate-200); }
   .btn-info { background: var(--blue-400); color: white; }
   .btn-info:hover { background: var(--blue-600); }
+  .btn-success { background: var(--teal-400); color: white; }
+  .btn-success:hover { background: var(--teal-600); }
   .btn-sm { padding: 6px 14px; font-size: 12px; }
   table { width: 100%; border-collapse: collapse; }
   th { padding: 10px 14px; text-align: left; font-size: 11px; font-weight: 700; text-transform: uppercase; color: var(--slate-400); background: var(--slate-50); border-bottom: 1px solid var(--slate-200); }
@@ -95,11 +97,14 @@
   .controls-row { display: flex; flex-wrap: wrap; gap: 10px; margin-bottom: 20px; align-items: center; }
   .search-input { flex: 1; min-width: 180px; max-width: 340px; position: relative; }
   .search-input input { padding-left: 36px; }
-  .search-input::before { content: "🔍"; position: absolute; left: 12px; top: 50%; transform: translateY(-50%); }
   .hint-box { background: var(--slate-50); border: 1px solid var(--slate-200); border-radius: var(--r-md); padding: 12px 16px; margin-top: 20px; font-size: 12.5px; color: var(--slate-500); display: flex; gap: 10px; }
-  .limit-info { background: var(--amber-50); border: 1px solid #fac775; border-radius: var(--r-md); padding: 12px 16px; margin-bottom: 16px; font-size: 13px; font-weight: 600; color: var(--amber-600); display: flex; justify-content: space-between; align-items: center; }
+  .limit-info { background: var(--amber-50); border: 1px solid #fac775; border-radius: var(--r-md); padding: 12px 16px; margin-bottom: 16px; font-size: 13px; font-weight: 600; color: var(--amber-600); display: flex; justify-content: space-between; align-items: center; flex-wrap: wrap; gap: 10px; }
   .password-display { background: var(--teal-50); border: 1px solid var(--teal-200); border-radius: var(--r-md); padding: 12px; margin-top: 16px; font-family: var(--mono); font-size: 13px; word-break: break-all; }
   .password-display strong { color: var(--teal-600); }
+  .credit-assign-box { background: linear-gradient(135deg, var(--teal-50), white); border: 2px solid var(--teal-200); border-radius: var(--r-lg); padding: 20px; margin-bottom: 20px; }
+  .credit-assign-box h4 { margin-bottom: 15px; color: var(--teal-800); }
+  .inline-form { display: flex; gap: 10px; align-items: flex-end; flex-wrap: wrap; }
+  .inline-form .form-group { flex: 1; min-width: 150px; }
   @media (max-width: 768px) { .main { margin-left: 0; } .content { padding: 20px 16px; } .form-grid { grid-template-columns: 1fr; } .method-tabs { flex-direction: column; } }
 </style>
 </head>
@@ -112,6 +117,8 @@
     <div class="nav-section-label">Main</div>
     <button class="nav-item active" onclick="switchTab('activate-tab', this)"><span class="icon">⚡</span> Activate Client</button>
     <button class="nav-item" onclick="switchTab('clients-tab', this)"><span class="icon">👥</span> My Clients</button>
+    <div class="nav-section-label">Wallet</div>
+    <button class="nav-item" onclick="switchTab('credits-tab', this)"><span class="icon">💰</span> Assign Credits</button>
   </nav>
   <div class="sidebar-footer">
     <div class="user-info">
@@ -131,7 +138,7 @@
       <div class="info-cell"><div class="info-label">Reseller</div><div class="info-val" id="resellerName">—</div></div>
       <div class="info-cell"><div class="info-label">Email</div><div class="info-val" id="resellerEmail">—</div></div>
       <div class="info-cell"><div class="info-label">Commission</div><div class="info-val" id="commissionRate">15%</div></div>
-      <div class="info-cell"><div class="info-label">Credits</div><div class="info-val" id="creditsBalance">0</div></div>
+      <div class="info-cell"><div class="info-label">Wallet Balance</div><div class="info-val" id="walletBalance">0</div></div>
       <div class="info-cell"><div class="info-label">Activations</div><div class="info-val" id="activationCount">0/10</div></div>
     </div>
 
@@ -145,15 +152,12 @@
     <!-- ACTIVATE TAB -->
     <div id="activate-tab" class="tab-content active">
       <div class="panel">
-        <div class="panel-title">
-          <span>⚡ License Activation</span>
-        </div>
+        <div class="panel-title"><span>⚡ License Activation</span></div>
         <div class="limit-info">
           <span>📊 Activations used: <span id="usedActivations">0</span> / <span id="maxActivations">10</span></span>
           <span>💰 Credits available: <span id="creditsAvailable">0</span></span>
         </div>
         
-        <!-- Method Selection Tabs -->
         <div class="method-tabs">
           <button class="method-tab active" onclick="switchMethod('new-user')">📝 New User Registration</button>
           <button class="method-tab" onclick="switchMethod('existing-user')">🔄 Activate Existing User</button>
@@ -163,77 +167,35 @@
         <div id="activateError" class="notice notice-error" style="display:none;"></div>
         <div id="activateInfo" class="notice notice-info" style="display:none;"></div>
 
-        <!-- Method 1: New User Registration (Create + Activate) -->
         <div id="new-user-method" class="method-content active">
           <form id="newUserForm">
             <div class="form-grid">
-              <div class="form-group">
-                <label>Full Name <span class="required">*</span></label>
-                <input type="text" id="newUserName" placeholder="John Doe" required>
+              <div class="form-group"><label>Full Name <span class="required">*</span></label><input type="text" id="newUserName" placeholder="John Doe" required></div>
+              <div class="form-group"><label>Email <span class="required">*</span></label><input type="email" id="newUserEmail" placeholder="client@example.com" required></div>
+              <div class="form-group"><label>Country <span class="required">*</span></label>
+                <select id="newUserCountry" required><option value="">Select Country</option><option>Kenya</option><option>Nigeria</option><option>South Africa</option><option>Ghana</option><option>Egypt</option><option>Morocco</option><option>USA</option><option>UK</option><option>Global</option></select>
               </div>
-              <div class="form-group">
-                <label>Email <span class="required">*</span></label>
-                <input type="email" id="newUserEmail" placeholder="client@example.com" required>
-              </div>
-              <div class="form-group">
-                <label>Country <span class="required">*</span></label>
-                <select id="newUserCountry" required>
-                  <option value="">Select Country</option>
-                  <option>Kenya</option><option>Nigeria</option><option>South Africa</option>
-                  <option>Ghana</option><option>Egypt</option><option>Morocco</option>
-                  <option>USA</option><option>UK</option><option>Global</option>
-                </select>
-              </div>
-              <div class="form-group">
-                <label>License Plan <span class="required">*</span></label>
-                <select id="newUserPlan" required>
-                  <option value="">— Select Plan —</option>
-                  <option value="12hr">12 Hours · 1 Device</option>
-                  <option value="3_months">3 Months · 10 Devices</option>
-                  <option value="6_months">6 Months · 20 Devices</option>
-                  <option value="1_year">1 Year · 45 Devices</option>
-                </select>
+              <div class="form-group"><label>License Plan <span class="required">*</span></label>
+                <select id="newUserPlan" required><option value="">— Select Plan —</option><option value="12hr">12 Hours · 1 Device</option><option value="3_months">3 Months · 10 Devices</option><option value="6_months">6 Months · 20 Devices</option><option value="1_year">1 Year · 45 Devices</option></select>
               </div>
             </div>
-            <div style="margin-top:20px;">
-              <button type="submit" class="btn btn-primary">✨ Create & Activate Account</button>
-            </div>
+            <div style="margin-top:20px;"><button type="submit" class="btn btn-primary">✨ Create & Activate Account</button></div>
           </form>
           <div id="newUserResult" class="password-display" style="display:none;"></div>
-          <div class="hint-box">
-            <span>📝</span>
-            <span>Creates a NEW user account with auto-generated password. Credentials will be sent to the user's email automatically.</span>
-          </div>
+          <div class="hint-box"><span>📝</span><span>Creates a NEW user account with auto-generated password. Credentials will be sent to the user's email automatically.</span></div>
         </div>
 
-        <!-- Method 2: Activate Existing User -->
         <div id="existing-user-method" class="method-content">
           <form id="existingUserForm">
             <div class="form-grid">
-              <div class="form-group full">
-                <label>User Email <span class="required">*</span></label>
-                <input type="email" id="existingUserEmail" placeholder="existing-client@example.com" required>
-                <small style="color: var(--slate-500);">User must already be registered</small>
-              </div>
-              <div class="form-group">
-                <label>License Plan <span class="required">*</span></label>
-                <select id="existingUserPlan" required>
-                  <option value="">— Select Plan —</option>
-                  <option value="12hr">12 Hours · 1 Device</option>
-                  <option value="3_months">3 Months · 10 Devices</option>
-                  <option value="6_months">6 Months · 20 Devices</option>
-                  <option value="1_year">1 Year · 45 Devices</option>
-                </select>
+              <div class="form-group full"><label>User Email <span class="required">*</span></label><input type="email" id="existingUserEmail" placeholder="existing-client@example.com" required><small style="color: var(--slate-500);">User must already be registered</small></div>
+              <div class="form-group"><label>License Plan <span class="required">*</span></label>
+                <select id="existingUserPlan" required><option value="">— Select Plan —</option><option value="12hr">12 Hours · 1 Device</option><option value="3_months">3 Months · 10 Devices</option><option value="6_months">6 Months · 20 Devices</option><option value="1_year">1 Year · 45 Devices</option></select>
               </div>
             </div>
-            <div style="margin-top:20px;">
-              <button type="submit" class="btn btn-info">🔄 Activate License</button>
-            </div>
+            <div style="margin-top:20px;"><button type="submit" class="btn btn-info">🔄 Activate License</button></div>
           </form>
-          <div class="hint-box">
-            <span>⚠️</span>
-            <span>For users who already have an account. Their existing password will NOT be changed. They will receive an email notification about the license activation.</span>
-          </div>
+          <div class="hint-box"><span>⚠️</span><span>For users who already have an account. Their existing password will NOT be changed. They will receive an email notification about the license activation.</span></div>
         </div>
       </div>
     </div>
@@ -246,8 +208,51 @@
           <div class="search-input"><input type="text" id="clientSearchInput" placeholder="Search by name, email or admission..."></div>
           <button class="btn btn-primary btn-sm" onclick="searchClients()">🔍 Search</button>
           <button class="btn btn-secondary btn-sm" onclick="clearSearch()">Clear</button>
+          <button class="btn btn-secondary btn-sm" onclick="refreshAllData()">🔄 Refresh</button>
         </div>
         <div id="clientsList"><p>Loading...</p></div>
+      </div>
+    </div>
+
+    <!-- ASSIGN CREDITS TAB -->
+    <div id="credits-tab" class="tab-content">
+      <div class="panel">
+        <div class="panel-title">💰 Assign Credits to Client</div>
+        
+        <div class="credit-assign-box">
+          <h4>💎 Transfer Credits from Your Wallet</h4>
+          <div class="limit-info" style="margin-bottom: 20px;">
+            <span>💰 Your Wallet Balance: <strong id="walletBalanceDisplay">0</strong> credits</span>
+          </div>
+          
+          <form id="assignCreditsForm">
+            <div class="form-grid">
+              <div class="form-group full">
+                <label>Client Email <span class="required">*</span></label>
+                <input type="email" id="assignClientEmail" placeholder="client@example.com" required>
+                <small>Select a client from your list or enter email address</small>
+              </div>
+              <div class="form-group">
+                <label>Amount (Credits) <span class="required">*</span></label>
+                <input type="number" id="assignAmount" min="1" step="1" placeholder="Enter amount" required>
+              </div>
+              <div class="form-group full">
+                <label>Reason (Optional)</label>
+                <input type="text" id="assignReason" placeholder="e.g., Bonus, Refund, Purchase">
+              </div>
+            </div>
+            <div style="margin-top:20px; display: flex; gap: 10px;">
+              <button type="submit" class="btn btn-success">💸 Transfer Credits</button>
+              <button type="button" class="btn btn-secondary" onclick="checkClientCredits()">🔍 Check Client Balance</button>
+            </div>
+          </form>
+          <div id="assignResult" style="margin-top: 15px;"></div>
+        </div>
+
+        <div class="hint-box">
+          <span>💡</span>
+          <span>Credits transferred will be deducted from your wallet and added to the client's account. Clients can use credits for FRP orders, OTP purchases, and other services.</span>
+        </div>
       </div>
     </div>
   </div>
@@ -269,18 +274,22 @@
     });
   }
 
-  function esc(s) { 
-    return String(s || '').replace(/[&<>]/g, c => ({'&':'&amp;','<':'&lt;','>':'&gt;'}[c])); 
-  }
+  function esc(s) { return String(s || '').replace(/[&<>]/g, c => ({'&':'&amp;','<':'&lt;','>':'&gt;'}[c])); }
   
   function switchTab(tabId, btn) {
     document.querySelectorAll('.tab-content').forEach(t => t.classList.remove('active'));
     document.getElementById(tabId).classList.add('active');
     document.querySelectorAll('.nav-item').forEach(b => b.classList.remove('active'));
     if (btn) btn.classList.add('active');
-    document.getElementById('pageTitle').innerText = tabId === 'activate-tab' ? 'Activate Client' : 'My Clients';
-    document.getElementById('pageSubtitle').innerText = tabId === 'activate-tab' ? 'Choose activation method below' : 'All clients registered under your account';
+    
+    const titles = { 'activate-tab': 'Activate Client', 'clients-tab': 'My Clients', 'credits-tab': 'Assign Credits' };
+    const subtitles = { 'activate-tab': 'Choose activation method below', 'clients-tab': 'All clients registered under your account', 'credits-tab': 'Transfer credits from your wallet to clients' };
+    
+    document.getElementById('pageTitle').innerText = titles[tabId] || 'Dashboard';
+    document.getElementById('pageSubtitle').innerText = subtitles[tabId] || '';
+    
     if (tabId === 'clients-tab') loadClients();
+    if (tabId === 'credits-tab') refreshWalletBalance();
   }
 
   function switchMethod(method) {
@@ -298,33 +307,48 @@
     hideNotices();
   }
 
+  async function refreshAllData() {
+    await loadDashboard();
+    await loadClients();
+    await refreshWalletBalance();
+  }
+
+  async function refreshWalletBalance() {
+    try {
+      const r = await fetch('/api/reseller/dashboard', { credentials: 'same-origin' });
+      const d = await r.json();
+      if (d.success) {
+        document.getElementById('walletBalanceDisplay').innerText = d.wallet_balance || d.credits || 0;
+      }
+    } catch(e) { console.error(e); }
+  }
+
   async function loadDashboard() {
     try {
       const r = await fetch('/api/reseller/dashboard', { credentials: 'same-origin' });
       const d = await r.json();
       if (!d.success) return;
+      
       document.getElementById('sidebarName').innerText = d.username || 'Reseller';
       document.getElementById('userAvatar').innerText = (d.username || 'R').charAt(0).toUpperCase();
       document.getElementById('resellerName').innerText = d.username || '—';
       document.getElementById('resellerEmail').innerText = d.email || '—';
       document.getElementById('commissionRate').innerText = (d.commission_rate || 15) + '%';
-      document.getElementById('creditsBalance').innerText = d.credits || 0;
+      document.getElementById('walletBalance').innerText = d.wallet_balance || d.credits || 0;
       document.getElementById('totalClients').innerText = d.total_clients || 0;
       document.getElementById('activeLicenses').innerText = d.active_clients || 0;
       document.getElementById('expiredClients').innerText = d.expired_clients || 0;
       document.getElementById('monthClients').innerText = d.this_month_clients || 0;
       
-      const r2 = await fetch('/api/user/profile', { credentials: 'same-origin' });
-      const d2 = await r2.json();
-      if (d2.success) {
-        const used = d2.activations_used || 0;
-        const limit = d2.activation_limit || 10;
-        document.getElementById('activationCount').innerText = `${used}/${limit}`;
-        document.getElementById('usedActivations').innerText = used;
-        document.getElementById('maxActivations').innerText = limit;
-        document.getElementById('resellerLimit').innerText = `${used}/${limit} activations`;
-        document.getElementById('creditsAvailable').innerText = d2.credits || 0;
-      }
+      const used = d.activations_used || 0;
+      const limit = d.activation_limit || 10;
+      document.getElementById('activationCount').innerText = `${used}/${limit}`;
+      document.getElementById('usedActivations').innerText = used;
+      document.getElementById('maxActivations').innerText = limit;
+      document.getElementById('resellerLimit').innerText = `${used}/${limit} activations`;
+      document.getElementById('creditsAvailable').innerText = d.wallet_balance || d.credits || 0;
+      document.getElementById('walletBalanceDisplay').innerText = d.wallet_balance || d.credits || 0;
+      
     } catch(e) { console.error(e); }
   }
 
@@ -339,12 +363,10 @@
           document.getElementById('clientsList').innerHTML = '<p>No clients found.</p>';
           return;
         }
-        let h = '<table><thead><tr><th>Admission</th><th>Client</th><th>Email</th><th>License</th><th>Expiry</th><th>Devices</th><th>Status</th></tr></thead><tbody>';
+        let h = '<table><thead><tr><th>Admission</th><th>Client</th><th>Email</th><th>License</th><th>Expiry</th><th>Devices</th><th>Credits</th><th>Status</th><th>Action</th></tr></thead><tbody>';
         d.clients.forEach(c => {
-          let badgeClass = 'badge-expired';
-          let badgeText = 'Expired';
-          if (c.is_banned) { badgeClass = 'badge-expired'; badgeText = 'Banned'; }
-          else if (c.is_active) { badgeClass = 'badge-active'; badgeText = 'Active'; }
+          let badgeClass = c.is_active ? 'badge-active' : 'badge-expired';
+          let badgeText = c.is_active ? 'Active' : (c.is_banned ? 'Banned' : 'Expired');
           h += `<tr>
             <td>${esc(c.admission_number)}</td>
             <td style="font-weight:600;">${esc(c.username)}</td>
@@ -352,7 +374,9 @@
             <td>${esc(c.license_type)}</td>
             <td>${c.license_expiry ? new Date(c.license_expiry).toLocaleDateString() : '—'}</td>
             <td>${c.device_limit || 1}</td>
+            <td><strong style="color: var(--teal-600);">${c.credits || 0}</strong></td>
             <td><span class="badge ${badgeClass}">${badgeText}</span></td>
+            <td><button class="btn btn-info btn-sm" onclick="quickAssignCredit('${esc(c.email)}', '${esc(c.username)}')">💸 Assign</button></td>
           </tr>`;
         });
         h += '</tbody></table>';
@@ -360,16 +384,32 @@
       } else {
         document.getElementById('clientsList').innerHTML = '<p>No clients yet.</p>';
       }
-    } catch(e) { 
-      console.error(e);
-      document.getElementById('clientsList').innerHTML = '<p>Error loading clients.</p>'; 
-    }
+    } catch(e) { console.error(e); document.getElementById('clientsList').innerHTML = '<p>Error loading clients.</p>'; }
   }
 
-  function searchClients() { loadClients(); }
-  function clearSearch() { 
-    document.getElementById('clientSearchInput').value = ''; 
-    loadClients(); 
+  function quickAssignCredit(email, username) {
+    switchTab('credits-tab', document.querySelector('.nav-item:nth-child(3)'));
+    document.getElementById('assignClientEmail').value = email;
+    document.getElementById('assignClientEmail').focus();
+    showNotice('activateInfo', `💰 Ready to assign credits to ${username}`, false);
+  }
+
+  async function checkClientCredits() {
+    const email = document.getElementById('assignClientEmail').value.trim();
+    if (!email) {
+      showNotice('activateError', '❌ Please enter client email');
+      return;
+    }
+    try {
+      const r = await fetch(`/api/reseller/client-credits/${encodeURIComponent(email)}`, { credentials: 'same-origin' });
+      const d = await r.json();
+      if (d.success) {
+        document.getElementById('assignResult').innerHTML = `<div class="notice notice-info" style="display:block;">💰 <strong>${esc(d.client.username)}</strong> has <strong>${d.client.credits}</strong> credits</div>`;
+        setTimeout(() => { document.getElementById('assignResult').innerHTML = ''; }, 3000);
+      } else {
+        showNotice('activateError', `❌ ${d.error}`);
+      }
+    } catch(e) { showNotice('activateError', '❌ Network error'); }
   }
 
   // New User Registration Form
@@ -397,43 +437,30 @@
         method: 'POST',
         credentials: 'same-origin',
         headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ 
-          full_name: name, 
-          email: email, 
-          country: country, 
-          license_type: plan 
-        })
+        body: JSON.stringify({ full_name: name, email: email, country: country, license_type: plan })
       });
       const d = await r.json();
       
       if (d.success) {
         const resultDiv = document.getElementById('newUserResult');
-        resultDiv.innerHTML = `
-          <strong>✅ Account Created Successfully!</strong><br>
+        resultDiv.innerHTML = `<strong>✅ Account Created Successfully!</strong><br>
           <strong>Username:</strong> ${esc(d.client.username)}<br>
           <strong>Email:</strong> ${esc(d.client.email)}<br>
           <strong>Admission Number:</strong> ${d.client.admission_number}<br>
           <strong>Password:</strong> <span style="color: var(--teal-600); font-weight: bold;">${d.temp_password}</span><br>
           <strong>License:</strong> ${d.client.license_type} (${d.client.days} days)<br>
-          <small>⚠️ Credentials have also been sent to the user's email. Please save this password now!</small>
-        `;
+          <small>⚠️ Credentials have also been sent to the user's email. Please save this password now!</small>`;
         resultDiv.style.display = 'block';
         showNotice('activateSuccess', `✅ ${d.message}`);
         document.getElementById('newUserForm').reset();
-        loadDashboard();
-        loadClients();
-        
-        // Auto hide password display after 30 seconds
+        await loadDashboard();
+        await loadClients();
         setTimeout(() => { resultDiv.style.display = 'none'; }, 30000);
       } else {
         showNotice('activateError', `❌ ${d.error || 'Failed to create account'}`);
       }
-    } catch(err) { 
-      showNotice('activateError', '❌ Network error. Please try again.'); 
-    } finally { 
-      btn.disabled = false; 
-      btn.innerHTML = originalText; 
-    }
+    } catch(err) { showNotice('activateError', '❌ Network error. Please try again.'); } 
+    finally { btn.disabled = false; btn.innerHTML = originalText; }
   });
 
   // Existing User Activation Form
@@ -459,34 +486,69 @@
         method: 'POST',
         credentials: 'same-origin',
         headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ 
-          email: email, 
-          license_type: plan 
-        })
+        body: JSON.stringify({ email: email, license_type: plan })
       });
       const d = await r.json();
       
       if (d.success) {
         showNotice('activateSuccess', `✅ ${d.message}`);
         document.getElementById('existingUserForm').reset();
-        loadDashboard();
-        loadClients();
+        await loadDashboard();
+        await loadClients();
       } else {
         let errorMsg = d.error || 'Failed to activate license';
-        if (d.code === 'USER_NOT_FOUND') {
-          errorMsg = 'User not found. Please ask the user to register first, or use "New User Registration" method.';
-        } else if (d.code === 'ALREADY_ASSIGNED') {
-          errorMsg = 'This user is already managed by another reseller.';
-        }
+        if (d.code === 'USER_NOT_FOUND') errorMsg = 'User not found. Please ask the user to register first.';
+        else if (d.code === 'ALREADY_ASSIGNED') errorMsg = 'This user is already managed by another reseller.';
         showNotice('activateError', `❌ ${errorMsg}`);
       }
-    } catch(err) { 
-      showNotice('activateError', '❌ Network error. Please try again.'); 
-    } finally { 
-      btn.disabled = false; 
-      btn.innerHTML = originalText; 
-    }
+    } catch(err) { showNotice('activateError', '❌ Network error. Please try again.'); } 
+    finally { btn.disabled = false; btn.innerHTML = originalText; }
   });
+
+  // Assign Credits Form
+  document.getElementById('assignCreditsForm').addEventListener('submit', async (e) => {
+    e.preventDefault();
+    
+    const email = document.getElementById('assignClientEmail').value.trim();
+    const amount = parseInt(document.getElementById('assignAmount').value);
+    const reason = document.getElementById('assignReason').value.trim() || 'Credits assigned by reseller';
+    
+    if (!email || !amount || amount <= 0) {
+      showNotice('activateError', '❌ Please enter valid client email and amount');
+      return;
+    }
+    
+    const btn = e.target.querySelector('button[type="submit"]');
+    const originalText = btn.innerHTML;
+    btn.disabled = true;
+    btn.innerHTML = 'Processing...';
+    
+    try {
+      const r = await fetch('/api/reseller/assign-credits', {
+        method: 'POST',
+        credentials: 'same-origin',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ email: email, amount: amount, reason: reason })
+      });
+      const d = await r.json();
+      
+      if (d.success) {
+        showNotice('activateSuccess', `✅ ${d.message}`);
+        document.getElementById('assignCreditsForm').reset();
+        await loadDashboard();
+        await loadClients();
+        await refreshWalletBalance();
+        document.getElementById('assignResult').innerHTML = `<div class="notice notice-success" style="display:block;">✅ Transferred ${amount} credits to ${esc(d.client.username)}. Your remaining balance: ${d.reseller_credits_remaining}</div>`;
+        setTimeout(() => { document.getElementById('assignResult').innerHTML = ''; }, 5000);
+      } else {
+        showNotice('activateError', `❌ ${d.error}`);
+      }
+    } catch(err) { showNotice('activateError', '❌ Network error. Please try again.'); } 
+    finally { btn.disabled = false; btn.innerHTML = originalText; }
+  });
+
+  function searchClients() { loadClients(); }
+  function clearSearch() { document.getElementById('clientSearchInput').value = ''; loadClients(); }
 
   loadDashboard(); 
   loadClients();
