@@ -2540,9 +2540,8 @@ def create_app(config_class=Config):
             'attempts_count': len(attempts_data)
         })
 
-    
-        # ==================== RESELLER DASHBOARD API ENDPOINTS ====================
-    
+    # ==================== RESELLER DASHBOARD API ENDPOINTS ====================
+
     @app.route('/api/reseller/dashboard')
     @api_login_required
     def reseller_dashboard_api():
@@ -2551,6 +2550,9 @@ def create_app(config_class=Config):
             user = current_user
             if not user.is_reseller and not user.is_admin:
                 return jsonify({'success': False, 'error': 'Unauthorized'}), 403
+            
+            # Refresh user data from database to get latest counts
+            db.session.refresh(user)
             
             # Get clients (users activated by this reseller)
             clients = User.query.filter_by(activated_by=user.id).all()
@@ -2589,7 +2591,9 @@ def create_app(config_class=Config):
                 'active_clients': active_clients,
                 'expired_clients': expired_clients,
                 'this_month_clients': this_month_clients,
-                'pending_requests': pending_requests
+                'pending_requests': pending_requests,
+                'activations_used': user.activations_used or 0,
+                'activation_limit': user.activation_limit or 10
             })
         except Exception as e:
             print(f"Error in reseller_dashboard_api: {e}")
