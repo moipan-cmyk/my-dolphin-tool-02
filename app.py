@@ -2540,7 +2540,7 @@ def create_app(config_class=Config):
             'attempts_count': len(attempts_data)
         })
 
-    # ==================== RESELLER DASHBOARD API ENDPOINTS ====================
+        # ==================== RESELLER DASHBOARD API ENDPOINTS ====================
 
     @app.route('/api/reseller/dashboard')
     @api_login_required
@@ -2586,6 +2586,7 @@ def create_app(config_class=Config):
                 'commission_rate': user.commission_rate or 15,
                 'total_earnings': total_earnings,
                 'credits': user.credits or 0,
+                'wallet_balance': user.credits or 0,  # ADD THIS LINE - Reseller's wallet balance
                 'this_month_earnings': this_month_earnings,
                 'total_clients': total_clients,
                 'active_clients': active_clients,
@@ -2599,6 +2600,7 @@ def create_app(config_class=Config):
             print(f"Error in reseller_dashboard_api: {e}")
             traceback.print_exc()
             return jsonify({'success': False, 'error': str(e)}), 500
+            
     
     @app.route('/api/reseller/clients')
     @api_login_required
@@ -2925,6 +2927,124 @@ def create_app(config_class=Config):
             db.session.rollback()
             print(f"Error in reseller_activate_license: {e}")
             traceback.print_exc()
+            return jsonify({'success': False, 'error': str(e)}), 500
+
+    # ==================== RESELLER ASSIGN CREDITS TO CLIENT ====================
+    @app.route('/api/reseller/assign-credits', methods=['POST'])
+    @api_login_required
+    def reseller_assign_credits():
+        """Reseller can assign credits to their clients from their wallet"""
+        try:
+            user = current_user
+            if not user.is_reseller and not user.is_admin:
+                return jsonify({'success': False, 'error': 'Unauthorized'}), 403
+            
+            data = request.get_json()
+            client_email = data.get('email', '').strip().lower()
+            amount = data.get('amount', 0)
+            reason = data.get('reason', 'Credits assigned by reseller')
+            
+            # Validate amount
+            if not amount or amount <= 0:
+                return jsonify({'success': False, 'error': 'Amount must be greater than 0'}), 400
+            
+            # Check if reseller has enough credits
+            if (user.credits or 0) < amount:
+                return jsonify({
+                    'success': False, 
+                    'error': f'Insufficient credits. You have {user.credits or 0} credits, need {amount}'
+                }), 400
+            
+            # Find the client (must be activated by this reseller)
+            client = User.query.filter_by(email=client_email).first()
+            if not client:
+                return jsonify({'success': False, 'error': 'Client not found'}), 404
+            
+            # Check if client belongs to this reseller
+            if client.activated_by != user.id:
+                return jsonify({'success': False, 'error': 'This client is not associated with you'}), 403
+            
+            # Deduct credits from reseller
+            user.credits = (user.credits or 0) - amount
+            
+            # Add credits to client
+            client.credits = (client.credits or 0) + amount
+            
+            # Create transaction records
+            # Reseller deduction
+            reseller_transaction = CreditTransaction(
+                user_id=user.id,
+                amount=-amount,
+                transaction_type='reseller_gift',
+                description=f'Assigned {amount} credits to client {client.email}',
+                created_by=user.id
+            )
+            db.session.add(reseller_transaction)
+            
+            # Client addition
+            client_transaction = CreditTransaction(
+                user_id=client.id,
+                amount=amount,
+                transaction_type='reseller_gift',
+                description=f'Credits assigned by reseller {user.username}',
+                created_by=user.id
+            )
+            db.session.add(client_transaction)
+            
+            db.session.commit()
+            
+            log_system_action(user.id, 'reseller_assign_credits', 
+                            f'Assigned {amount} credits to client {client.username} ({client.email})')
+            
+            return jsonify({
+                'success': True,
+                'message': f'Successfully assigned {amount} credits to {client.username}',
+                'reseller_credits_remaining': user.credits,
+                'client_credits_new': client.credits,
+                'client': {
+                    'username': client.username,
+                    'email': client.email,
+                    'credits': client.credits
+                }
+            }), 200
+            
+        except Exception as e:
+            db.session.rollback()
+            print(f"Error in reseller_assign_credits: {e}")
+            traceback.print_exc()
+            return jsonify({'success': False, 'error': str(e)}), 500
+
+
+    # ==================== RESELLER GET CLIENT CREDITS BALANCE ====================
+    @app.route('/api/reseller/client-credits/<string:client_email>')
+    @api_login_required
+    def reseller_get_client_credits(client_email):
+        """Get client's current credits balance"""
+        try:
+            user = current_user
+            if not user.is_reseller and not user.is_admin:
+                return jsonify({'success': False, 'error': 'Unauthorized'}), 403
+            
+            # Find the client
+            client = User.query.filter_by(email=client_email).first()
+            if not client:
+                return jsonify({'success': False, 'error': 'Client not found'}), 404
+            
+            # Check if client belongs to this reseller
+            if client.activated_by != user.id:
+                return jsonify({'success': False, 'error': 'This client is not associated with you'}), 403
+            
+            return jsonify({
+                'success': True,
+                'client': {
+                    'username': client.username,
+                    'email': client.email,
+                    'credits': client.credits or 0
+                }
+            }), 200
+            
+        except Exception as e:
+            print(f"Error in reseller_get_client_credits: {e}")
             return jsonify({'success': False, 'error': str(e)}), 500
 
 
