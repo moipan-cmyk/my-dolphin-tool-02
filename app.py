@@ -326,8 +326,17 @@ def create_app(config_class=Config):
             base_url = os.environ.get('BASE_URL') or config.get('BASE_URL') or 'https://my-dolphin-tool-02.onrender.com'
             
             print(f"📧 Reset email - Base URL: {base_url}")
-
             
+            print(f"\n{'='*60}")
+            print(f"📧 EMAIL CONFIGURATION CHECK:")
+            print(f"   SMTP_SERVER: {smtp_server}")
+            print(f"   SMTP_PORT: {smtp_port}")
+            print(f"   SMTP_USER: {smtp_user}")
+            print(f"   SMTP_PASSWORD set: {'YES' if smtp_password else 'NO'}")
+            print(f"   FROM_EMAIL: {from_email}")      
+            print(f"   BASE_URL: {base_url}")
+            print(f"{'='*60}\n")
+
             reset_link = f"{base_url}/reset-password/{reset_token}"
             
             html_content = f"""
