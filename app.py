@@ -1425,7 +1425,7 @@ def create_app(config_class=Config):
             print(f"Error in user_info: {e}")
             traceback.print_exc()
             return jsonify({'success': False, 'error': str(e)}), 500
-    
+
     @app.route('/api/user/profile')
     @api_login_required
     def user_profile():
@@ -1442,8 +1442,12 @@ def create_app(config_class=Config):
             
             device_count = Device.query.filter_by(user_id=user.id, is_active=True).count()
             
+            # Get last login from session if not in user object
+            last_login = user.last_login.isoformat() if user.last_login else None
+            
             return jsonify({
                 'success': True,
+                # ========== ACCOUNT INFORMATION ==========
                 'username': user.username,
                 'email': user.email,
                 'credits': user.credits or 0,
@@ -1452,15 +1456,30 @@ def create_app(config_class=Config):
                 'is_banned': user.is_banned,
                 'is_active': user.is_active,
                 'created_at': user.created_at.isoformat() if user.created_at else None,
+                'last_login': last_login,
                 'commission_rate': user.commission_rate or 0,
                 'total_commission': user.total_commission or 0,
+                
+                # ========== LICENSE INFORMATION ==========
                 'license_type': user.license_type or 'None',
                 'license_status': 'Active' if user.is_license_valid() else 'Expired',
                 'license_expiry': user.license_expiry_date.isoformat() if user.license_expiry_date else None,
                 'days_remaining': days_remaining,
                 'device_limit': user.device_limit if user.device_limit < 999999 else 'Unlimited',
                 'device_count': device_count,
-                'license_key': getattr(user, 'license_key', 'N/A')
+                'license_key': getattr(user, 'license_key', 'N/A'),
+                
+                # ========== DEVICE BINDING INFORMATION ==========
+                'is_device_bound': user.bound_hwid_hash is not None,
+                'bound_at': user.bound_at.isoformat() if user.bound_at else None,
+                'last_verified': user.last_verified_at.isoformat() if user.last_verified_at else None,
+                'pc_manufacturer': user.bound_pc_manufacturer or 'Not bound',
+                'windows_version': user.bound_windows_version or 'Not bound',
+                'bound_ip': user.bound_ip_address or 'Not bound',
+                'verification_failures': user.verification_failures or 0,
+                'is_verified_device': user.is_verified_device or False,
+                'hardware_fingerprint': (user.bound_hardware_fingerprint[:32] + '...') if user.bound_hardware_fingerprint and len(user.bound_hardware_fingerprint) > 32 else (user.bound_hardware_fingerprint or 'Not bound'),
+                'bound_hwid_preview': (user.bound_hwid_hash[:16] + '...') if user.bound_hwid_hash else 'Not bound',
             })
         except Exception as e:
             print(f"Error in user_profile: {e}")
