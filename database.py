@@ -4,12 +4,13 @@ from werkzeug.security import generate_password_hash, check_password_hash
 from datetime import datetime, timedelta
 import secrets
 import hashlib
+import json
 
 db = SQLAlchemy()
 
 
 # ==========================
-# USER MODEL
+# USER MODEL (UPDATED with device binding fields)
 # ==========================
 
 class User(UserMixin, db.Model):
@@ -52,6 +53,18 @@ class User(UserMixin, db.Model):
     hwid_change_count = db.Column(db.Integer, default=0)
     suspended_until = db.Column(db.DateTime, nullable=True)
     failed_login_count = db.Column(db.Integer, default=0)
+    
+    # ========== NEW DEVICE BINDING FIELDS ==========
+    bound_hwid_hash = db.Column(db.String(256), nullable=True, index=True)  # Stored HWID
+    bound_pc_manufacturer = db.Column(db.String(200), nullable=True)
+    bound_windows_version = db.Column(db.String(100), nullable=True)
+    bound_hardware_fingerprint = db.Column(db.String(256), nullable=True, index=True)
+    bound_system_info = db.Column(db.Text, nullable=True)  # JSON string
+    bound_ip_address = db.Column(db.String(50), nullable=True)
+    bound_at = db.Column(db.DateTime, nullable=True)
+    last_verified_at = db.Column(db.DateTime, nullable=True)
+    verification_failures = db.Column(db.Integer, default=0)
+    is_verified_device = db.Column(db.Boolean, default=False)
 
     # Relationships
     activator = db.relationship('User', remote_side=[id], backref='activated_clients', foreign_keys=[activated_by])
@@ -66,6 +79,10 @@ class User(UserMixin, db.Model):
         db.CheckConstraint("license_status IN ('inactive', 'active', 'expired', 'suspended')", name='check_license_status'),
         db.CheckConstraint("credits >= 0", name='check_credits_non_negative'),
         db.CheckConstraint("commission_rate BETWEEN 0 AND 100", name='check_commission_rate'),
+        db.CheckConstraint("verification_failures >= 0", name='check_verification_failures'),
+        db.Index('idx_user_bound_hwid', 'bound_hwid_hash'),
+        db.Index('idx_user_bound_fingerprint', 'bound_hardware_fingerprint'),
+        db.Index('idx_user_verified_device', 'is_verified_device'),
     )
 
     def set_password(self, password):
@@ -137,12 +154,84 @@ class User(UserMixin, db.Model):
         self.reset_token = None
         self.reset_token_expiry = None
 
+    # ========== NEW DEVICE BINDING METHODS ==========
+    
+    def bind_device(self, hwid_hash, pc_manufacturer, windows_version, hardware_fingerprint, system_info, ip_address):
+        """Bind a device to this user account"""
+        self.bound_hwid_hash = hwid_hash
+        self.bound_pc_manufacturer = pc_manufacturer
+        self.bound_windows_version = windows_version
+        self.bound_hardware_fingerprint = hardware_fingerprint
+        self.bound_system_info = json.dumps(system_info) if isinstance(system_info, dict) else system_info
+        self.bound_ip_address = ip_address
+        self.bound_at = datetime.utcnow()
+        self.last_verified_at = datetime.utcnow()
+        self.is_verified_device = True
+        self.verification_failures = 0
+        db.session.commit()
+    
+    def verify_device_match(self, hwid_hash, hardware_fingerprint=None):
+        """Verify current device matches bound device"""
+        if not self.bound_hwid_hash:
+            return False, "Device not bound"
+        
+        if hwid_hash != self.bound_hwid_hash:
+            self.verification_failures += 1
+            db.session.commit()
+            
+            if self.verification_failures >= 3:
+                self.suspended_until = datetime.utcnow() + timedelta(hours=24)
+                db.session.commit()
+                return False, f"Device mismatch! Account suspended for 24 hours. (Attempt {self.verification_failures}/3)"
+            
+            return False, f"HWID mismatch! Attempt {self.verification_failures}/3"
+        
+        # Optional: Verify hardware fingerprint as well
+        if hardware_fingerprint and self.bound_hardware_fingerprint:
+            if hardware_fingerprint != self.bound_hardware_fingerprint:
+                self.verification_failures += 1
+                db.session.commit()
+                return False, f"Hardware fingerprint mismatch! Attempt {self.verification_failures}/3"
+        
+        # Update last verification timestamp
+        self.last_verified_at = datetime.utcnow()
+        db.session.commit()
+        return True, "Device verified"
+    
+    def unbind_device(self):
+        """Unbind device from user account (admin only)"""
+        self.bound_hwid_hash = None
+        self.bound_pc_manufacturer = None
+        self.bound_windows_version = None
+        self.bound_hardware_fingerprint = None
+        self.bound_system_info = None
+        self.bound_ip_address = None
+        self.bound_at = None
+        self.last_verified_at = None
+        self.is_verified_device = False
+        self.verification_failures = 0
+        db.session.commit()
+    
+    def get_device_binding_info(self):
+        """Get device binding information for display"""
+        return {
+            'is_bound': self.bound_hwid_hash is not None,
+            'bound_at': self.bound_at.isoformat() if self.bound_at else None,
+            'last_verified': self.last_verified_at.isoformat() if self.last_verified_at else None,
+            'pc_manufacturer': self.bound_pc_manufacturer,
+            'windows_version': self.bound_windows_version,
+            'bound_ip': self.bound_ip_address,
+            'verification_failures': self.verification_failures,
+            'is_verified_device': self.is_verified_device,
+            'hardware_fingerprint_preview': self.bound_hardware_fingerprint[:32] + '...' if self.bound_hardware_fingerprint else None
+        }
+
     def __repr__(self):
         return f'<User {self.username} (Admission {self.admission_number}) from {self.country}>'
 
 
 # ==========================
-# DEVICE MODEL
+# DEVICE MODEL (UPDATED with binding fields)
 # ==========================
 
 class Device(db.Model):
@@ -164,6 +253,11 @@ class Device(db.Model):
     created_at = db.Column(db.DateTime, default=datetime.utcnow)
     updated_at = db.Column(db.DateTime, default=datetime.utcnow, onupdate=datetime.utcnow)
     
+    # New fields for additional device info
+    pc_manufacturer = db.Column(db.String(200), nullable=True)
+    windows_version = db.Column(db.String(100), nullable=True)
+    hardware_fingerprint = db.Column(db.String(256), nullable=True)
+    
     sessions = db.relationship('UserSession', backref='device', lazy='dynamic', cascade='all, delete-orphan')
     history = db.relationship('DeviceHistory', backref='device_ref', lazy='dynamic', foreign_keys='DeviceHistory.device_id')
     
@@ -171,7 +265,8 @@ class Device(db.Model):
         db.UniqueConstraint('user_id', 'hwid_hash', name='unique_user_device'),
         db.Index('idx_devices_hwid_hash', 'hwid_hash'),
         db.Index('idx_devices_user_active', 'user_id', 'is_active'),
-        db.Index('idx_devices_last_seen', 'last_seen')
+        db.Index('idx_devices_last_seen', 'last_seen'),
+        db.Index('idx_devices_hardware_fingerprint', 'hardware_fingerprint'),
     )
 
     def generate_session_token(self):
@@ -208,7 +303,7 @@ class Device(db.Model):
 
 
 # ==========================
-# USER SESSION MODEL
+# USER SESSION MODEL (UPDATED with binding fields)
 # ==========================
 
 class UserSession(db.Model):
@@ -224,9 +319,16 @@ class UserSession(db.Model):
     last_activity = db.Column(db.DateTime, default=datetime.utcnow)
     is_active = db.Column(db.Boolean, default=True)
     
+    # New fields for session binding
+    session_hwid_hash = db.Column(db.String(256), nullable=True)
+    session_hardware_fingerprint = db.Column(db.String(256), nullable=True)
+    session_pc_manufacturer = db.Column(db.String(200), nullable=True)
+    session_windows_version = db.Column(db.String(100), nullable=True)
+    
     __table_args__ = (
         db.Index('idx_sessions_user_active', 'user_id', 'is_active', 'expires_at'),
-        db.Index('idx_sessions_token_expiry', 'session_token', 'expires_at')
+        db.Index('idx_sessions_token_expiry', 'session_token', 'expires_at'),
+        db.Index('idx_sessions_hwid', 'session_hwid_hash'),
     )
 
     def is_valid(self): 
@@ -252,7 +354,7 @@ class UserSession(db.Model):
 
 
 # ==========================
-# DEVICE HISTORY MODEL
+# DEVICE HISTORY MODEL (UPDATED)
 # ==========================
 
 class DeviceHistory(db.Model):
@@ -271,7 +373,7 @@ class DeviceHistory(db.Model):
     created_at = db.Column(db.DateTime, default=datetime.utcnow, index=True)
     
     __table_args__ = (
-        db.CheckConstraint("action IN ('register','unregister','reset','change_pc','login','logout','admin_deleted','reactivate','session_created','session_expired','admin_reset_all','admin_reset_single','admin_toggle_trust','reset_all','reset_single')", name='check_device_action'),
+        db.CheckConstraint("action IN ('register','unregister','reset','change_pc','login','logout','admin_deleted','reactivate','session_created','session_expired','admin_reset_all','admin_reset_single','admin_toggle_trust','reset_all','reset_single','device_bound','device_mismatch')", name='check_device_action'),
         db.Index('idx_device_history_user_date', 'user_id', 'created_at'),
         db.Index('idx_device_history_action', 'action')
     )
@@ -323,7 +425,7 @@ class SystemLog(db.Model):
 
 
 # ==========================
-# CREDIT TRANSACTION MODEL (UPDATED with reseller_gift)
+# CREDIT TRANSACTION MODEL
 # ==========================
 
 class CreditTransaction(db.Model):
@@ -709,20 +811,21 @@ def run_migrations():
         from sqlalchemy import text
         print("\n🔄 Running database migrations...")
         
-        columns_to_add = [
-            ('total_devices_registered', "ALTER TABLE users ADD COLUMN IF NOT EXISTS total_devices_registered INTEGER DEFAULT 0"),
-            ('country', "ALTER TABLE users ADD COLUMN IF NOT EXISTS country VARCHAR(100) DEFAULT 'Unknown'"),
-            ('current_session_key', "ALTER TABLE users ADD COLUMN IF NOT EXISTS current_session_key VARCHAR(128)"),
-            ('last_session_key', "ALTER TABLE users ADD COLUMN IF NOT EXISTS last_session_key VARCHAR(128)"),
-            ('last_used_hwid_hash', "ALTER TABLE users ADD COLUMN IF NOT EXISTS last_used_hwid_hash VARCHAR(256)"),
-            ('hwid_change_count', "ALTER TABLE users ADD COLUMN IF NOT EXISTS hwid_change_count INTEGER DEFAULT 0"),
-            ('suspended_until', "ALTER TABLE users ADD COLUMN IF NOT EXISTS suspended_until TIMESTAMP"),
-            ('failed_login_count', "ALTER TABLE users ADD COLUMN IF NOT EXISTS failed_login_count INTEGER DEFAULT 0"),
-            ('activation_limit', "ALTER TABLE users ADD COLUMN IF NOT EXISTS activation_limit INTEGER DEFAULT 10"),
-            ('activations_used', "ALTER TABLE users ADD COLUMN IF NOT EXISTS activations_used INTEGER DEFAULT 0"),
+        # New device binding columns for users table
+        binding_columns_to_add = [
+            ('bound_hwid_hash', "ALTER TABLE users ADD COLUMN IF NOT EXISTS bound_hwid_hash VARCHAR(256)"),
+            ('bound_pc_manufacturer', "ALTER TABLE users ADD COLUMN IF NOT EXISTS bound_pc_manufacturer VARCHAR(200)"),
+            ('bound_windows_version', "ALTER TABLE users ADD COLUMN IF NOT EXISTS bound_windows_version VARCHAR(100)"),
+            ('bound_hardware_fingerprint', "ALTER TABLE users ADD COLUMN IF NOT EXISTS bound_hardware_fingerprint VARCHAR(256)"),
+            ('bound_system_info', "ALTER TABLE users ADD COLUMN IF NOT EXISTS bound_system_info TEXT"),
+            ('bound_ip_address', "ALTER TABLE users ADD COLUMN IF NOT EXISTS bound_ip_address VARCHAR(50)"),
+            ('bound_at', "ALTER TABLE users ADD COLUMN IF NOT EXISTS bound_at TIMESTAMP"),
+            ('last_verified_at', "ALTER TABLE users ADD COLUMN IF NOT EXISTS last_verified_at TIMESTAMP"),
+            ('verification_failures', "ALTER TABLE users ADD COLUMN IF NOT EXISTS verification_failures INTEGER DEFAULT 0"),
+            ('is_verified_device', "ALTER TABLE users ADD COLUMN IF NOT EXISTS is_verified_device BOOLEAN DEFAULT FALSE"),
         ]
         
-        for col_name, alter_statement in columns_to_add:
+        for col_name, alter_statement in binding_columns_to_add:
             try:
                 db.session.execute(text(alter_statement))
                 db.session.commit()
@@ -730,6 +833,76 @@ def run_migrations():
             except Exception as e:
                 print(f"⚠️ Could not add {col_name}: {e}")
                 db.session.rollback()
+        
+        # New columns for devices table
+        device_columns_to_add = [
+            ('pc_manufacturer', "ALTER TABLE devices ADD COLUMN IF NOT EXISTS pc_manufacturer VARCHAR(200)"),
+            ('windows_version', "ALTER TABLE devices ADD COLUMN IF NOT EXISTS windows_version VARCHAR(100)"),
+            ('hardware_fingerprint', "ALTER TABLE devices ADD COLUMN IF NOT EXISTS hardware_fingerprint VARCHAR(256)"),
+        ]
+        
+        for col_name, alter_statement in device_columns_to_add:
+            try:
+                db.session.execute(text(alter_statement))
+                db.session.commit()
+                print(f"✅ Added column to devices: {col_name}")
+            except Exception as e:
+                print(f"⚠️ Could not add {col_name} to devices: {e}")
+                db.session.rollback()
+        
+        # New columns for user_sessions table
+        session_columns_to_add = [
+            ('session_hwid_hash', "ALTER TABLE user_sessions ADD COLUMN IF NOT EXISTS session_hwid_hash VARCHAR(256)"),
+            ('session_hardware_fingerprint', "ALTER TABLE user_sessions ADD COLUMN IF NOT EXISTS session_hardware_fingerprint VARCHAR(256)"),
+            ('session_pc_manufacturer', "ALTER TABLE user_sessions ADD COLUMN IF NOT EXISTS session_pc_manufacturer VARCHAR(200)"),
+            ('session_windows_version', "ALTER TABLE user_sessions ADD COLUMN IF NOT EXISTS session_windows_version VARCHAR(100)"),
+        ]
+        
+        for col_name, alter_statement in session_columns_to_add:
+            try:
+                db.session.execute(text(alter_statement))
+                db.session.commit()
+                print(f"✅ Added column to user_sessions: {col_name}")
+            except Exception as e:
+                print(f"⚠️ Could not add {col_name} to user_sessions: {e}")
+                db.session.rollback()
+        
+        # Create indexes for new columns
+        indexes_to_create = [
+            'CREATE INDEX IF NOT EXISTS idx_users_bound_hwid ON users(bound_hwid_hash) WHERE bound_hwid_hash IS NOT NULL;',
+            'CREATE INDEX IF NOT EXISTS idx_users_bound_fingerprint ON users(bound_hardware_fingerprint) WHERE bound_hardware_fingerprint IS NOT NULL;',
+            'CREATE INDEX IF NOT EXISTS idx_users_verified_device ON users(is_verified_device) WHERE is_verified_device = true;',
+            'CREATE INDEX IF NOT EXISTS idx_devices_hardware_fingerprint ON devices(hardware_fingerprint) WHERE hardware_fingerprint IS NOT NULL;',
+            'CREATE INDEX IF NOT EXISTS idx_sessions_hwid ON user_sessions(session_hwid_hash) WHERE session_hwid_hash IS NOT NULL;',
+        ]
+        
+        for index_statement in indexes_to_create:
+            try:
+                db.session.execute(text(index_statement))
+                db.session.commit()
+                print(f"✅ Created index")
+            except Exception as e:
+                print(f"⚠️ Could not create index: {e}")
+                db.session.rollback()
+        
+        # Update device_history action constraint
+        try:
+            db.session.execute(text("ALTER TABLE device_history DROP CONSTRAINT IF EXISTS check_device_action"))
+            db.session.commit()
+            db.session.execute(text("""
+                ALTER TABLE device_history ADD CONSTRAINT check_device_action 
+                CHECK (action IN (
+                    'register','unregister','reset','change_pc','login','logout',
+                    'admin_deleted','reactivate','session_created','session_expired',
+                    'admin_reset_all','admin_reset_single','admin_toggle_trust',
+                    'reset_all','reset_single','device_bound','device_mismatch'
+                ))
+            """))
+            db.session.commit()
+            print("✅ Updated device_history action constraint")
+        except Exception as e:
+            print(f"⚠️ device_history constraint: {e}")
+            db.session.rollback()
         
         # Update credit_transactions constraint to include reseller_gift
         try:
@@ -748,53 +921,6 @@ def run_migrations():
         except Exception as e:
             print(f"⚠️ transaction_type constraint: {e}")
             db.session.rollback()
-        
-        # Rest of tables creation...
-        tables_to_create = [
-            ('device_history', """
-                CREATE TABLE IF NOT EXISTS device_history (
-                    id SERIAL PRIMARY KEY,
-                    user_id INTEGER NOT NULL REFERENCES users(id) ON DELETE CASCADE,
-                    device_id INTEGER REFERENCES devices(id) ON DELETE SET NULL,
-                    hardware_id VARCHAR(128),
-                    hwid_hash VARCHAR(256),
-                    device_name VARCHAR(255),
-                    action VARCHAR(50) NOT NULL,
-                    reason VARCHAR(255),
-                    ip_address VARCHAR(45),
-                    user_agent VARCHAR(500),
-                    extra_data JSONB,
-                    created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
-                );
-                CREATE INDEX IF NOT EXISTS idx_device_history_user_date ON device_history(user_id, created_at);
-                CREATE INDEX IF NOT EXISTS idx_device_history_action ON device_history(action);
-            """),
-            ('user_sessions', """
-                CREATE TABLE IF NOT EXISTS user_sessions (
-                    id SERIAL PRIMARY KEY,
-                    user_id INTEGER NOT NULL REFERENCES users(id) ON DELETE CASCADE,
-                    device_id INTEGER NOT NULL REFERENCES devices(id) ON DELETE CASCADE,
-                    session_token VARCHAR(256) UNIQUE NOT NULL,
-                    ip_address VARCHAR(45),
-                    user_agent VARCHAR(500),
-                    created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
-                    expires_at TIMESTAMP NOT NULL,
-                    last_activity TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
-                    is_active BOOLEAN DEFAULT true
-                );
-                CREATE INDEX IF NOT EXISTS idx_sessions_token_expiry ON user_sessions(session_token, expires_at);
-                CREATE INDEX IF NOT EXISTS idx_sessions_user_active ON user_sessions(user_id, is_active, expires_at);
-            """),
-        ]
-        
-        for table_name, create_statement in tables_to_create:
-            try:
-                db.session.execute(text(create_statement))
-                db.session.commit()
-                print(f"✅ Created/verified table: {table_name}")
-            except Exception as e:
-                print(f"⚠️ Could not create {table_name}: {e}")
-                db.session.rollback()
         
         print("✅ Database migrations completed successfully")
     except Exception as e:
@@ -815,5 +941,8 @@ def create_postgres_indexes():
         'CREATE INDEX IF NOT EXISTS idx_users_is_reseller ON users(is_reseller) WHERE is_reseller = true;',
         'CREATE INDEX IF NOT EXISTS idx_credit_transactions_user ON credit_transactions(user_id, created_at);',
         'CREATE INDEX IF NOT EXISTS idx_credit_transactions_type ON credit_transactions(transaction_type);',
+        'CREATE INDEX IF NOT EXISTS idx_users_bound_hwid ON users(bound_hwid_hash) WHERE bound_hwid_hash IS NOT NULL;',
+        'CREATE INDEX IF NOT EXISTS idx_users_bound_fingerprint ON users(bound_hardware_fingerprint) WHERE bound_hardware_fingerprint IS NOT NULL;',
+        'CREATE INDEX IF NOT EXISTS idx_devices_hardware_fingerprint ON devices(hardware_fingerprint);',
     ]
     return indexes
