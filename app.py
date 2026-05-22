@@ -62,8 +62,8 @@ class GSMManagerOTPProvider:
         
         return signature
 
-        def place_order(self, service_name: str, quantity: int = 1, **kwargs) -> dict:
-       # """Place order on GSM Manager using service name"""
+    def place_order(self, service_name: str, quantity: int = 1, **kwargs) -> dict:
+        """Place order on GSM Manager using service name"""
         
         payload = {
             'action': 'place_order',
@@ -102,7 +102,7 @@ class GSMManagerOTPProvider:
                 try:
                     result = response.json()
                     print(f"📡 [GSM] JSON Response: {result}")
-                except json_module.JSONDecodeError as e:
+                except json.JSONDecodeError as e:
                     print(f"❌ [GSM] JSON Parse Error: {e}")
                     print(f"❌ [GSM] Raw response: {response.text}")
                     return {
@@ -136,10 +136,8 @@ class GSMManagerOTPProvider:
             traceback.print_exc()
             return {'success': False, 'error': str(e)}
 
-        def check_order_status(self, order_id: str) -> dict:
+    def check_order_status(self, order_id: str) -> dict:
         """Check order status and get OTP"""
-        import time
-        import json as json_module
         
         payload = {
             'action': 'order_status',
@@ -166,7 +164,7 @@ class GSMManagerOTPProvider:
             if response.status_code == 200:
                 try:
                     result = response.json()
-                except json_module.JSONDecodeError:
+                except json.JSONDecodeError:
                     return {'success': False, 'error': f'Invalid JSON response: {response.text[:100]}'}
                 
                 if result.get('status') == 'success':
@@ -185,7 +183,6 @@ class GSMManagerOTPProvider:
         except Exception as e:
             return {'success': False, 'error': str(e)}
 
-    
     def generate_otp(self, otp_type: str, model: str = None, imei: str = None) -> dict:
         """
         Generate OTP from GSM Manager
@@ -200,7 +197,7 @@ class GSMManagerOTPProvider:
                 'name': 'OPPO Flash OTP',
                 'delivery': 'Minutes',
                 'price_usd': 23,
-                'your_price_credits': 35  # Your markup (23 USD -> 35 credits)
+                'your_price_credits': 35
             },
             
             # OnePlus Service
@@ -346,7 +343,6 @@ class GSMManagerOTPProvider:
                 'delivery': 'minutes',
                 'message': f'Order placed. Delivery in {mapping["delivery"]}. Please check status shortly.'
             }
-
 
 # ==================== YOUR OTP_TYPES WITH YOUR PRICES (IN CREDITS) ====================
 
