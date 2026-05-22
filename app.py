@@ -1061,7 +1061,7 @@ def create_app(config_class=Config):
         
         return render_template('reset_password.html', token=token)
 
-            ##########DESKTOP VALIDATION SPOT #################################################
+    ##########DESKTOP VALIDATION SPOT #################################################
     
     @app.route('/api/validate-license', methods=['POST'])
     def validate_license():
@@ -1090,6 +1090,17 @@ def create_app(config_class=Config):
             admission_number = data.get('admission_number')
             password = data.get('password', '')[:128]
             hwid = data.get('hwid', '')[:256] if data.get('hwid') else None
+            
+            # ========== NEW: EXTRACT DEVICE BINDING INFORMATION ==========
+            pc_manufacturer = data.get('pc_manufacturer', '').strip()[:200]
+            windows_version = data.get('windows_version', '').strip()[:100]
+            hardware_fingerprint = data.get('hardware_fingerprint', '').strip()[:256]
+            system_info = data.get('system_info', {})
+            tool_version = data.get('tool_version', '').strip()[:20]
+            
+            # Log device info for debugging
+            if pc_manufacturer or windows_version:
+                print(f"🔐 Device Binding Info - PC: {pc_manufacturer}, OS: {windows_version[:50] if windows_version else 'Unknown'}...")
             
             # Get IP for rate limiting
             client_ip = get_real_ip()
@@ -1263,6 +1274,48 @@ def create_app(config_class=Config):
                     log_system_action(user.id, 'device_register', f'New desktop client registered: {device_name}')
                     print(f"✅ New device registered: {device_name} for user {user.username}")
             
+            # ========== NEW: UPDATE DEVICE BINDING INFORMATION ==========
+            # Store device binding information on successful login (after HWID check)
+            if pc_manufacturer or windows_version or hardware_fingerprint:
+                # Check if this is first time binding (no bound HWID yet)
+                if not user.bound_hwid_hash and hashed_hwid:
+                    # First time binding - store all device info
+                    user.bound_hwid_hash = hashed_hwid
+                    user.bound_pc_manufacturer = pc_manufacturer
+                    user.bound_windows_version = windows_version
+                    user.bound_hardware_fingerprint = hardware_fingerprint
+                    user.bound_system_info = json.dumps(system_info) if system_info else None
+                    user.bound_ip_address = client_ip
+                    user.bound_at = datetime.utcnow()
+                    user.last_verified_at = datetime.utcnow()
+                    user.is_verified_device = True
+                    user.verification_failures = 0
+                    db_session.commit()
+                    print(f"✅ Device bound to user {user.username} - Manufacturer: {pc_manufacturer}")
+                    log_system_action(user.id, 'device_bound', 
+                                    f'Device bound - Manufacturer: {pc_manufacturer}, OS: {windows_version[:50] if windows_version else "Unknown"}')
+                elif hashed_hwid and hashed_hwid == user.bound_hwid_hash:
+                    # Existing device - update last verified timestamp
+                    user.last_verified_at = datetime.utcnow()
+                    db_session.commit()
+                    print(f"✅ Device verified for user {user.username}")
+                elif hashed_hwid and hashed_hwid != user.bound_hwid_hash and user.bound_hwid_hash:
+                    # Device mismatch - increment failure counter (only if bound HWID exists)
+                    user.verification_failures = (user.verification_failures or 0) + 1
+                    db_session.commit()
+                    log_system_action(user.id, 'device_mismatch', 
+                                    f'Device mismatch - Bound HWID: {user.bound_hwid_hash[:16] if user.bound_hwid_hash else "None"}..., Current: {hashed_hwid[:16]}...')
+                    print(f"⚠️ Device mismatch for user {user.username} - Attempt {user.verification_failures}/3")
+                    
+                    if user.verification_failures >= 3:
+                        user.suspended_until = datetime.utcnow() + timedelta(hours=24)
+                        db_session.commit()
+                        return jsonify({
+                            'success': False,
+                            'error': 'Device mismatch detected. Account suspended for 24 hours.',
+                            'code': 'DEVICE_MISMATCH_SUSPENDED'
+                        }), 403
+            
             if not session_obj:
                 session_obj = UserSession(
                     user_id=user.id,
@@ -1335,7 +1388,7 @@ def create_app(config_class=Config):
             traceback.print_exc()
             return jsonify({'success': False, 'error': str(e)}), 500
 
-     ############################# ##SESSION VALIDATION
+        ############################# ##SESSION VALIDATION
     @app.route('/api/user/validate-session', methods=['POST'])
     def validate_session_endpoint():
         try:
@@ -1351,6 +1404,9 @@ def create_app(config_class=Config):
             data = request.get_json() or {}
             session_token = data.get('session_token', '')[:256]
             hwid = data.get('hwid', '')[:256] if data.get('hwid') else None
+            hardware_fingerprint = data.get('hardware_fingerprint', '')[:256] if data.get('hardware_fingerprint') else None
+            pc_manufacturer = data.get('pc_manufacturer', '')[:200] if data.get('pc_manufacturer') else None
+            windows_version = data.get('windows_version', '')[:100] if data.get('windows_version') else None
             
             if not session_token:
                 return jsonify({'success': False, 'error': 'Session token required'}), 400
@@ -1376,33 +1432,81 @@ def create_app(config_class=Config):
                         'code': 'INACTIVITY_TIMEOUT'
                     }), 401
             
+            # Get the user associated with this session
+            user = User.query.get(session_obj.user_id)
+            if not user:
+                return jsonify({'success': False, 'valid': False, 'error': 'User not found'}), 401
+            
+            # ========== DEVICE BINDING VERIFICATION ==========
+            verification_warning = None
+            
             if hwid:
                 hashed_hwid = hash_hwid(hwid)
                 device = db.session.get(Device, session_obj.device_id)
+                
+                # Check if device matches session
                 if not device or device.hwid_hash != hashed_hwid:
                     return jsonify({'success': False, 'valid': False, 'error': 'Session does not match device'}), 403
+                
+                # Check if device matches user's bound HWID (if bound)
+                if user.bound_hwid_hash and hashed_hwid != user.bound_hwid_hash:
+                    # Device mismatch - increment failure counter
+                    user.verification_failures = (user.verification_failures or 0) + 1
+                    db.session.commit()
+                    log_system_action(user.id, 'session_device_mismatch', 
+                                    f'Device mismatch during session validation - Bound: {user.bound_hwid_hash[:16]}..., Current: {hashed_hwid[:16]}...')
+                    print(f"⚠️ Session device mismatch for user {user.username} - Attempt {user.verification_failures}/3")
+                    
+                    if user.verification_failures >= 3:
+                        user.suspended_until = datetime.utcnow() + timedelta(hours=24)
+                        db.session.commit()
+                        return jsonify({
+                            'success': False,
+                            'valid': False,
+                            'error': 'Device mismatch detected. Account suspended for 24 hours.',
+                            'code': 'DEVICE_MISMATCH_SUSPENDED'
+                        }), 403
+                    
+                    verification_warning = f"Device mismatch warning - {3 - user.verification_failures} attempts remaining"
+                
+                # Optional: Check hardware fingerprint if available and bound
+                if hardware_fingerprint and user.bound_hardware_fingerprint:
+                    if hardware_fingerprint != user.bound_hardware_fingerprint:
+                        log_system_action(user.id, 'fingerprint_mismatch', 
+                                        f'Hardware fingerprint mismatch during session validation')
+                        verification_warning = "Hardware fingerprint mismatch - Please contact support"
+                
+                # Update last verification timestamp on successful match
+                if user.bound_hwid_hash and hashed_hwid == user.bound_hwid_hash:
+                    user.last_verified_at = datetime.utcnow()
+                    db.session.commit()
             
-            # Update last activity timestamp
+            # Update session last activity timestamp
             session_obj.last_activity = datetime.utcnow()
             db.session.commit()
             
-            return jsonify({
+            response_data = {
                 'success': True,
                 'valid': True,
                 'user_id': session_obj.user_id,
                 'expires_at': session_obj.expires_at.isoformat(),
-                'device_id': session_obj.device_id
-            })
+                'device_id': session_obj.device_id,
+                'device_verified': user.is_verified_device if user else False,
+                'verification_failures': user.verification_failures if user else 0,
+            }
+            
+            if verification_warning:
+                response_data['warning'] = verification_warning
+            
+            return jsonify(response_data)
+            
         except Exception as e:
             db.session.rollback()
+            print(f"Error in validate_session_endpoint: {e}")
+            traceback.print_exc()
             return jsonify({'success': False, 'error': str(e)}), 500
 
-
-            
-    
     # ==================== USER DASHBOARD API ENDPOINTS ====================
-    # Using api_login_required instead of login_required for API endpoints
-    
     @app.route('/api/user/info')
     @api_login_required
     def user_info():
@@ -1410,8 +1514,22 @@ def create_app(config_class=Config):
             user = current_user
             if not user:
                 return jsonify({'success': False, 'error': 'User not authenticated'}), 401
+            
+            days_remaining = 0
+            if user.license_expiry_date:
+                days_remaining = (user.license_expiry_date - datetime.utcnow()).days
+                if days_remaining < 0:
+                    days_remaining = 0
+            
+            device_count = Device.query.filter_by(user_id=user.id, is_active=True).count()
+            
+            # Get last login
+            last_login = user.last_login.isoformat() if user.last_login else None
+            
             return jsonify({
                 'success': True,
+                # ========== ACCOUNT INFORMATION ==========
+                'user_id': user.id,
                 'username': user.username,
                 'email': user.email,
                 'credits': user.credits or 0,
@@ -1419,7 +1537,39 @@ def create_app(config_class=Config):
                 'country': user.country or 'Not set',
                 'is_banned': user.is_banned,
                 'is_active': user.is_active,
-                'created_at': user.created_at.isoformat() if user.created_at else None
+                'is_admin': user.is_admin,
+                'is_reseller': user.is_reseller,
+                'created_at': user.created_at.isoformat() if user.created_at else None,
+                'last_login': last_login,
+                
+                # ========== LICENSE INFORMATION ==========
+                'license_type': user.license_type or 'None',
+                'license_status': 'Active' if user.is_license_valid() else 'Expired',
+                'license_expiry': user.license_expiry_date.isoformat() if user.license_expiry_date else None,
+                'days_remaining': days_remaining,
+                'device_limit': user.device_limit if user.device_limit < 999999 else 'Unlimited',
+                'device_count': device_count,
+                'license_key': getattr(user, 'license_key', 'N/A'),
+                'commission_rate': user.commission_rate or 0,
+                'total_commission': user.total_commission or 0,
+                'total_sales': user.total_sales or 0,
+                
+                # ========== DEVICE BINDING INFORMATION ==========
+                'is_device_bound': user.bound_hwid_hash is not None,
+                'bound_at': user.bound_at.isoformat() if user.bound_at else None,
+                'last_verified': user.last_verified_at.isoformat() if user.last_verified_at else None,
+                'pc_manufacturer': user.bound_pc_manufacturer or 'Not bound',
+                'windows_version': user.bound_windows_version or 'Not bound',
+                'bound_ip': user.bound_ip_address or 'Not bound',
+                'verification_failures': user.verification_failures or 0,
+                'is_verified_device': user.is_verified_device or False,
+                'hardware_fingerprint_preview': (user.bound_hardware_fingerprint[:32] + '...') if user.bound_hardware_fingerprint and len(user.bound_hardware_fingerprint) > 32 else (user.bound_hardware_fingerprint or 'Not bound'),
+                'bound_hwid_preview': (user.bound_hwid_hash[:16] + '...') if user.bound_hwid_hash else 'Not bound',
+                
+                # ========== SESSION INFORMATION ==========
+                'session_key': getattr(user, 'current_session_key', None),
+                'hwid_change_count': user.hwid_change_count or 0,
+                'suspended_until': user.suspended_until.isoformat() if user.suspended_until else None,
             })
         except Exception as e:
             print(f"Error in user_info: {e}")
@@ -1485,7 +1635,7 @@ def create_app(config_class=Config):
             print(f"Error in user_profile: {e}")
             traceback.print_exc()
             return jsonify({'success': False, 'error': str(e)}), 500
-    
+
     @app.route('/api/user/devices')
     @api_login_required
     def user_devices():
@@ -1498,21 +1648,47 @@ def create_app(config_class=Config):
                     'id': d.id,
                     'device_name': d.device_name or 'Unknown Device',
                     'hwid': d.hwid_hash[:16] + '...' if d.hwid_hash else 'N/A',
+                    'hwid_full': d.hwid_hash if d.hwid_hash else None,  # Full HWID for admin
                     'is_active': d.is_active,
                     'is_trusted': getattr(d, 'is_trusted', False),
+                    'is_bound': d.is_bound,
                     'created_at': d.created_at.isoformat() if d.created_at else None,
                     'last_seen': d.last_seen.isoformat() if d.last_seen else None,
-                    'ip_address': d.ip_address
+                    'first_seen': d.first_seen.isoformat() if d.first_seen else None,
+                    'ip_address': d.ip_address,
+                    # Extra device details
+                    'manufacturer': getattr(d, 'manufacturer', None) or getattr(d, 'pc_manufacturer', None),
+                    'model': getattr(d, 'model', None),
+                    'os_version': getattr(d, 'os_version', None) or getattr(d, 'windows_version', None),
+                    'hardware_fingerprint': getattr(d, 'hardware_fingerprint', None),
+                    'hardware_fingerprint_preview': (getattr(d, 'hardware_fingerprint', '')[:16] + '...') if getattr(d, 'hardware_fingerprint', '') else None,
                 })
+            
+            # Get current session device info
+            current_session = UserSession.query.filter_by(
+                user_id=current_user.id, 
+                is_active=True
+            ).filter(UserSession.expires_at > datetime.utcnow()).first()
+            
+            current_device_id = current_session.device_id if current_session else None
             
             return jsonify({
                 'success': True,
                 'devices': devices_data,
                 'total': len(devices_data),
-                'device_limit': current_user.device_limit
+                'active_devices': sum(1 for d in devices if d.is_active),
+                'device_limit': current_user.device_limit,
+                'remaining_slots': max(0, current_user.device_limit - sum(1 for d in devices if d.is_active)),
+                'current_device_id': current_device_id,
+                # Device binding status
+                'is_device_bound': current_user.bound_hwid_hash is not None,
+                'bound_device_preview': (current_user.bound_hwid_hash[:16] + '...') if current_user.bound_hwid_hash else None,
+                'verification_failures': current_user.verification_failures or 0,
+                'is_verified_device': current_user.is_verified_device or False,
             })
         except Exception as e:
             print(f"Error in user_devices: {e}")
+            traceback.print_exc()
             return jsonify({'success': False, 'error': str(e)}), 500
     
     @app.route('/api/user/reset-cost')
@@ -1627,43 +1803,98 @@ def create_app(config_class=Config):
             print(f"Error in user_reset_devices: {e}")
             traceback.print_exc()
             return jsonify({'success': False, 'error': str(e)}), 500
-    
+
     @app.route('/api/user/device-history')
     @api_login_required
     def user_device_history():
-        """Get device history/logs"""
+        """Get device history/logs with binding events and detailed information"""
         try:
-            history = DeviceHistory.query.filter_by(user_id=current_user.id).order_by(DeviceHistory.created_at.desc()).limit(50).all()
+            # Get device history records
+            history = DeviceHistory.query.filter_by(user_id=current_user.id).order_by(DeviceHistory.created_at.desc()).limit(100).all()
             
             history_list = []
             for h in history:
-                history_list.append({
+                entry = {
+                    'id': h.id,
                     'action': h.action,
                     'reason': h.reason,
                     'device_name': h.device_name,
                     'created_at': h.created_at.isoformat() if h.created_at else None,
-                    'ip_address': h.ip_address
-                })
+                    'ip_address': h.ip_address,
+                    'user_agent': h.user_agent[:100] if h.user_agent else None,
+                    'extra_data': h.extra_data,
+                }
+                
+                # Add HWID preview if available
+                if h.hwid_hash:
+                    entry['hwid_preview'] = h.hwid_hash[:16] + '...'
+                
+                history_list.append(entry)
             
+            # If no device history, get system logs as fallback
             if not history_list:
-                logs = SystemLog.query.filter_by(user_id=current_user.id).order_by(SystemLog.created_at.desc()).limit(50).all()
+                logs = SystemLog.query.filter_by(user_id=current_user.id).order_by(SystemLog.created_at.desc()).limit(100).all()
                 for log in logs:
                     history_list.append({
+                        'id': log.id,
                         'action': log.log_type,
                         'reason': log.message,
                         'device_name': None,
                         'created_at': log.created_at.isoformat() if log.created_at else None,
-                        'ip_address': log.ip_address
+                        'ip_address': log.ip_address,
+                        'user_agent': log.user_agent[:100] if log.user_agent else None,
+                        'extra_data': None,
                     })
+            
+            # Get binding events specifically
+            binding_events = []
+            if current_user.bound_at:
+                binding_events.append({
+                    'event': 'device_bound',
+                    'timestamp': current_user.bound_at.isoformat() if current_user.bound_at else None,
+                    'pc_manufacturer': current_user.bound_pc_manufacturer,
+                    'windows_version': current_user.bound_windows_version,
+                    'ip_address': current_user.bound_ip_address,
+                })
+            
+            if current_user.last_verified_at:
+                binding_events.append({
+                    'event': 'last_verified',
+                    'timestamp': current_user.last_verified_at.isoformat() if current_user.last_verified_at else None,
+                    'verification_failures': current_user.verification_failures or 0,
+                })
+            
+            # Get statistics
+            stats = {
+                'total_history_entries': len(history_list),
+                'device_bound': current_user.bound_hwid_hash is not None,
+                'bound_at': current_user.bound_at.isoformat() if current_user.bound_at else None,
+                'last_verified': current_user.last_verified_at.isoformat() if current_user.last_verified_at else None,
+                'verification_failures': current_user.verification_failures or 0,
+                'is_verified_device': current_user.is_verified_device or False,
+                'total_devices_registered': current_user.total_devices_registered or 0,
+                'last_login': current_user.last_login.isoformat() if current_user.last_login else None,
+            }
+            
+            # Group history by action type
+            action_counts = {}
+            for entry in history_list:
+                action = entry.get('action', 'unknown')
+                action_counts[action] = action_counts.get(action, 0) + 1
             
             return jsonify({
                 'success': True,
                 'history': history_list,
-                'total': len(history_list)
+                'total': len(history_list),
+                'binding_events': binding_events,
+                'stats': stats,
+                'action_summary': action_counts,
             })
         except Exception as e:
             print(f"Error in user_device_history: {e}")
+            traceback.print_exc()
             return jsonify({'success': False, 'error': str(e)}), 500
+            
     
     @app.route('/api/user/change-password', methods=['POST'])
     @api_login_required
