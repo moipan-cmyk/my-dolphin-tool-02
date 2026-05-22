@@ -114,7 +114,7 @@ class GSMManagerOTPProvider:
                 print(f"❌ [GSM] Error: {error_msg}")
                 return {
                     'success': False,
-                    'error': f'Insufficient credits in GSM Manager account. Please add funds.',
+                    'error': f'server to server error.contact admin for more info.',
                     'details': error_msg
                 }
             
