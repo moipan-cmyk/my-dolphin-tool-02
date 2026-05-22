@@ -59,9 +59,11 @@ class GSMManagerOTPProvider:
         ).hexdigest()
         
         return signature
-    
-    def place_order(self, service_name: str, quantity: int = 1, **kwargs) -> dict:
+
+        def place_order(self, service_name: str, quantity: int = 1, **kwargs) -> dict:
         """Place order on GSM Manager using service name"""
+        import time
+        import json as json_module
         
         payload = {
             'action': 'place_order',
@@ -81,6 +83,8 @@ class GSMManagerOTPProvider:
         
         try:
             print(f"📡 [GSM] Placing order for: {service_name}")
+            print(f"📡 [GSM] URL: {self.api_url}/api/order")
+            print(f"📡 [GSM] Payload keys: {list(payload.keys())}")
             
             response = self.session.post(
                 f"{self.api_url}/api/order",
@@ -89,8 +93,23 @@ class GSMManagerOTPProvider:
                 timeout=30
             )
             
+            print(f"📡 [GSM] Response Status: {response.status_code}")
+            print(f"📡 [GSM] Response Headers: {dict(response.headers)}")
+            print(f"📡 [GSM] Response Text (first 500 chars): {response.text[:500]}")
+            
             if response.status_code == 200:
-                result = response.json()
+                # Try to parse JSON
+                try:
+                    result = response.json()
+                    print(f"📡 [GSM] JSON Response: {result}")
+                except json_module.JSONDecodeError as e:
+                    print(f"❌ [GSM] JSON Parse Error: {e}")
+                    print(f"❌ [GSM] Raw response: {response.text}")
+                    return {
+                        'success': False,
+                        'error': f'Invalid response from API. Expected JSON but got: {response.text[:100]}'
+                    }
+                
                 if result.get('status') == 'success':
                     data = result.get('data', {})
                     return {
@@ -106,13 +125,21 @@ class GSMManagerOTPProvider:
                         'error': result.get('message', 'Failed to place order')
                     }
             else:
-                return {'success': False, 'error': f'HTTP {response.status_code}'}
+                return {
+                    'success': False, 
+                    'error': f'HTTP {response.status_code}: {response.text[:200]}'
+                }
                 
         except Exception as e:
+            print(f"❌ [GSM] Exception: {e}")
+            import traceback
+            traceback.print_exc()
             return {'success': False, 'error': str(e)}
-    
-    def check_order_status(self, order_id: str) -> dict:
+
+        def check_order_status(self, order_id: str) -> dict:
         """Check order status and get OTP"""
+        import time
+        import json as json_module
         
         payload = {
             'action': 'order_status',
@@ -125,14 +152,23 @@ class GSMManagerOTPProvider:
         payload['signature'] = self._generate_signature(payload)
         
         try:
+            print(f"📡 [GSM] Checking status for order: {order_id}")
+            
             response = self.session.post(
                 f"{self.api_url}/api/order/status",
                 json=payload,
                 timeout=30
             )
             
+            print(f"📡 [GSM] Status Response: {response.status_code}")
+            print(f"📡 [GSM] Status Text: {response.text[:200]}")
+            
             if response.status_code == 200:
-                result = response.json()
+                try:
+                    result = response.json()
+                except json_module.JSONDecodeError:
+                    return {'success': False, 'error': f'Invalid JSON response: {response.text[:100]}'}
+                
                 if result.get('status') == 'success':
                     data = result.get('data', {})
                     return {
@@ -148,6 +184,7 @@ class GSMManagerOTPProvider:
                 return {'success': False, 'error': f'HTTP {response.status_code}'}
         except Exception as e:
             return {'success': False, 'error': str(e)}
+
     
     def generate_otp(self, otp_type: str, model: str = None, imei: str = None) -> dict:
         """
