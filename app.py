@@ -1700,8 +1700,8 @@ def create_app(config_class=Config):
                 'bound_ip': user.bound_ip_address or 'Not bound',
                 'verification_failures': user.verification_failures or 0,
                 'is_verified_device': user.is_verified_device or False,
-                'hardware_fingerprint': (user.bound_hardware_fingerprint[:5] + '........') if user.bound_hardware_fingerprint else 'Not bound',
-                'bound_hwid_preview': (user.bound_hwid_hash[:5] + '.....') if user.bound_hwid_hash else 'Not bound',
+                'hardware_fingerprint': user.bound_hardware_fingerprint if user.bound_hardware_fingerprint else 'Not bound',
+                'bound_hwid_preview': user.bound_hwid_hash if user.bound_hwid_hash else 'Not bound',
             })
         except Exception as e:
             print(f"Error in user_profile: {e}")
