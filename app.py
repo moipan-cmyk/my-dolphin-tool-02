@@ -62,11 +62,14 @@ class GSMManagerOTPProvider:
         
         return signature
 
-    def place_order(self, service_name: str, quantity: int = 1, **kwargs) -> dict:
-        """Place order on GSM Manager using service name"""
+        def place_order(self, service_name: str, quantity: int = 1, **kwargs) -> dict:
+        """Place order on GSM Manager using Dhru Fusion API pattern"""
+        
+        # For Dhru Fusion API, we need to use their specific endpoint
+        # Based on the pattern, it should be /api/otp/generate or similar
         
         payload = {
-            'action': 'place_order',
+            'action': 'generate_otp',  # Changed from 'place_order' to 'generate_otp'
             'service': service_name,
             'quantity': quantity,
             'username': self.username,
@@ -75,69 +78,61 @@ class GSMManagerOTPProvider:
         }
         
         # Add optional fields
-        for key, value in kwargs.items():
-            if value:
-                payload[key] = value
+        if kwargs.get('model'):
+            payload['model'] = kwargs['model']
+        if kwargs.get('imei'):
+            payload['imei'] = kwargs['imei']
         
         payload['signature'] = self._generate_signature(payload)
         
         try:
+            # Try the correct Dhru Fusion endpoint
+            endpoint = f"{self.api_url}/api/otp/generate"
             print(f"📡 [GSM] Placing order for: {service_name}")
-            print(f"📡 [GSM] URL: {self.api_url}/api/order")
-            print(f"📡 [GSM] Payload keys: {list(payload.keys())}")
+            print(f"📡 [GSM] URL: {endpoint}")
+            print(f"📡 [GSM] Action: {payload['action']}")
             
             response = self.session.post(
-                f"{self.api_url}/api/order",
+                endpoint,
                 json=payload,
                 headers={'Content-Type': 'application/json'},
                 timeout=30
             )
             
             print(f"📡 [GSM] Response Status: {response.status_code}")
-            print(f"📡 [GSM] Response Headers: {dict(response.headers)}")
-            print(f"📡 [GSM] Response Text (first 500 chars): {response.text[:500]}")
+            print(f"📡 [GSM] Response Text: {response.text[:500]}")
             
             if response.status_code == 200:
-                # Try to parse JSON
                 try:
                     result = response.json()
-                    print(f"📡 [GSM] JSON Response: {result}")
+                    print(f"📡 [GSM] Response: {result}")
+                    
+                    if result.get('status') == 'success':
+                        data = result.get('data', {})
+                        return {
+                            'success': True,
+                            'order_id': data.get('order_id'),
+                            'status': data.get('status', 'pending'),
+                            'price': data.get('price'),
+                            'currency': data.get('currency', 'USD'),
+                            'otp_code': data.get('otp_code')  # May come directly
+                        }
+                    else:
+                        return {
+                            'success': False,
+                            'error': result.get('message', 'Failed to generate OTP')
+                        }
                 except json.JSONDecodeError as e:
-                    print(f"❌ [GSM] JSON Parse Error: {e}")
-                    print(f"❌ [GSM] Raw response: {response.text}")
-                    return {
-                        'success': False,
-                        'error': f'Invalid response from API. Expected JSON but got: {response.text[:100]}'
-                    }
-                
-                if result.get('status') == 'success':
-                    data = result.get('data', {})
-                    return {
-                        'success': True,
-                        'order_id': data.get('order_id'),
-                        'status': data.get('status', 'pending'),
-                        'price': data.get('price'),
-                        'currency': data.get('currency', 'USD')
-                    }
-                else:
-                    return {
-                        'success': False,
-                        'error': result.get('message', 'Failed to place order')
-                    }
+                    return {'success': False, 'error': f'Invalid JSON: {response.text[:100]}'}
             else:
-                return {
-                    'success': False, 
-                    'error': f'HTTP {response.status_code}: {response.text[:200]}'
-                }
+                return {'success': False, 'error': f'HTTP {response.status_code}'}
                 
         except Exception as e:
             print(f"❌ [GSM] Exception: {e}")
-            import traceback
-            traceback.print_exc()
             return {'success': False, 'error': str(e)}
 
-    def check_order_status(self, order_id: str) -> dict:
-        """Check order status and get OTP"""
+        def check_order_status(self, order_id: str) -> dict:
+        """Check order status using Dhru Fusion API pattern"""
         
         payload = {
             'action': 'order_status',
@@ -150,39 +145,38 @@ class GSMManagerOTPProvider:
         payload['signature'] = self._generate_signature(payload)
         
         try:
-            print(f"📡 [GSM] Checking status for order: {order_id}")
+            endpoint = f"{self.api_url}/api/order/status"
+            print(f"📡 [GSM] Checking status: {order_id}")
             
             response = self.session.post(
-                f"{self.api_url}/api/order/status",
+                endpoint,
                 json=payload,
                 timeout=30
             )
             
-            print(f"📡 [GSM] Status Response: {response.status_code}")
-            print(f"📡 [GSM] Status Text: {response.text[:200]}")
-            
             if response.status_code == 200:
                 try:
                     result = response.json()
-                except json.JSONDecodeError:
-                    return {'success': False, 'error': f'Invalid JSON response: {response.text[:100]}'}
-                
-                if result.get('status') == 'success':
-                    data = result.get('data', {})
-                    return {
-                        'success': True,
-                        'order_id': order_id,
-                        'status': data.get('status'),
-                        'otp_code': data.get('otp_code'),
-                        'delivery_time': data.get('delivery_time')
-                    }
-                else:
-                    return {'success': False, 'error': result.get('message')}
+                    if result.get('status') == 'success':
+                        data = result.get('data', {})
+                        return {
+                            'success': True,
+                            'order_id': order_id,
+                            'status': data.get('status'),
+                            'otp_code': data.get('otp_code'),
+                            'delivery_time': data.get('delivery_time')
+                        }
+                    else:
+                        return {'success': False, 'error': result.get('message')}
+                except:
+                    return {'success': False, 'error': 'Invalid response'}
             else:
                 return {'success': False, 'error': f'HTTP {response.status_code}'}
         except Exception as e:
             return {'success': False, 'error': str(e)}
 
+
+    
     def generate_otp(self, otp_type: str, model: str = None, imei: str = None) -> dict:
         """
         Generate OTP from GSM Manager
