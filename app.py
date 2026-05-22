@@ -61,7 +61,6 @@ class GSMManagerOTPProvider:
         ).hexdigest()
         
         return signature
-    
     def place_order(self, service_name: str, quantity: int = 1, **kwargs) -> dict:
         """Place order on GSM Manager using Dhru Fusion API pattern"""
         
@@ -86,7 +85,6 @@ class GSMManagerOTPProvider:
             endpoint = f"{self.api_url}/api/otp/generate"
             print(f"📡 [GSM] Placing order for: {service_name}")
             print(f"📡 [GSM] URL: {endpoint}")
-            print(f"📡 [GSM] Action: {payload['action']}")
             
             response = self.session.post(
                 endpoint,
@@ -96,37 +94,57 @@ class GSMManagerOTPProvider:
             )
             
             print(f"📡 [GSM] Response Status: {response.status_code}")
-            print(f"📡 [GSM] Response Text: {response.text[:500]}")
             
-            if response.status_code == 200:
-                try:
-                    result = response.json()
-                    print(f"📡 [GSM] Response: {result}")
-                    
-                    if result.get('status') == 'success':
-                        data = result.get('data', {})
-                        return {
-                            'success': True,
-                            'order_id': data.get('order_id'),
-                            'status': data.get('status', 'pending'),
-                            'price': data.get('price'),
-                            'currency': data.get('currency', 'USD'),
-                            'otp_code': data.get('otp_code')
-                        }
+            # Try to extract error message from HTML if not JSON
+            if response.status_code != 200 or 'text/html' in response.headers.get('Content-Type', ''):
+                # Try to find the error message in HTML
+                import re
+                # Look for title or error message
+                title_match = re.search(r'<title>(.*?)</title>', response.text)
+                if title_match:
+                    error_msg = title_match.group(1)
+                else:
+                    # Look for common error patterns
+                    error_match = re.search(r'(Insufficient credits|Not enough credits|Balance too low)', response.text, re.IGNORECASE)
+                    if error_match:
+                        error_msg = error_match.group(1)
                     else:
-                        return {
-                            'success': False,
-                            'error': result.get('message', 'Failed to generate OTP')
-                        }
-                except json.JSONDecodeError as e:
-                    return {'success': False, 'error': f'Invalid JSON: {response.text[:100]}'}
-            else:
-                return {'success': False, 'error': f'HTTP {response.status_code}'}
+                        error_msg = "Unknown error (possibly insufficient credits)"
+                
+                print(f"❌ [GSM] Error: {error_msg}")
+                return {
+                    'success': False,
+                    'error': f'Insufficient credits in GSM Manager account. Please add funds.',
+                    'details': error_msg
+                }
+            
+            # If JSON response
+            try:
+                result = response.json()
+                print(f"📡 [GSM] Response: {result}")
+                
+                if result.get('status') == 'success':
+                    data = result.get('data', {})
+                    return {
+                        'success': True,
+                        'order_id': data.get('order_id'),
+                        'status': data.get('status', 'pending'),
+                        'price': data.get('price'),
+                        'currency': data.get('currency', 'USD'),
+                        'otp_code': data.get('otp_code')
+                    }
+                else:
+                    return {
+                        'success': False,
+                        'error': result.get('message', 'Failed to generate OTP')
+                    }
+            except json.JSONDecodeError:
+                return {'success': False, 'error': 'Invalid response from server'}
                 
         except Exception as e:
             print(f"❌ [GSM] Exception: {e}")
             return {'success': False, 'error': str(e)}
-    
+            
     def check_order_status(self, order_id: str) -> dict:
         """Check order status using Dhru Fusion API pattern"""
         
