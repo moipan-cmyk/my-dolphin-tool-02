@@ -22,6 +22,321 @@ from database import db, User, Device, UserSession, DeviceHistory, CreditTransac
 from database import check_command_limit, increment_command_count, check_login_limit, log_login_attempt
 from database import db, User, Device, UserSession, DeviceHistory, CreditTransaction, SystemLog, CommandUsage, LoginAttempt, SamsungOrder, ServerStatus
 from sqlalchemy import func
+# ==================== GSM MANAGER OTP PROVIDER ====================
+import hmac
+import requests
+from dotenv import load_dotenv
+
+# Load environment variables
+load_dotenv()
+
+# GSM Manager Configuration
+GSM_API_URL = os.getenv('DHRU_API_URL')  # https://gsmmanager.com/public
+GSM_USERNAME = os.getenv('DHRU_USERNAME')  # clintonmoipan34@gmail.com
+GSM_API_KEY = os.getenv('DHRU_API_KEY')  # O6LS-KYUJ-PLJ4-TVQ6-NIWQ-AQ
+
+
+class GSMManagerOTPProvider:
+    """GSM Manager API Provider for OTP generation"""
+    
+    def __init__(self):
+        self.api_url = GSM_API_URL
+        self.username = GSM_USERNAME
+        self.api_key = GSM_API_KEY
+        self.session = requests.Session()
+        self.session.timeout = 30
+    
+    def _generate_signature(self, params: dict) -> str:
+        """Generate HMAC-SHA256 signature for API request"""
+        sorted_params = sorted(params.items())
+        signature_string = '&'.join([f"{k}={v}" for k, v in sorted_params])
+        
+        signature = hmac.new(
+            self.api_key.encode(),
+            signature_string.encode(),
+            hashlib.sha256
+        ).hexdigest()
+        
+        return signature
+    
+    def place_order(self, service_name: str, quantity: int = 1, **kwargs) -> dict:
+        """Place order on GSM Manager using service name"""
+        
+        payload = {
+            'action': 'place_order',
+            'service': service_name,
+            'quantity': quantity,
+            'username': self.username,
+            'api_key': self.api_key,
+            'timestamp': int(time.time())
+        }
+        
+        # Add optional fields
+        for key, value in kwargs.items():
+            if value:
+                payload[key] = value
+        
+        payload['signature'] = self._generate_signature(payload)
+        
+        try:
+            print(f"📡 [GSM] Placing order for: {service_name}")
+            
+            response = self.session.post(
+                f"{self.api_url}/api/order",
+                json=payload,
+                headers={'Content-Type': 'application/json'},
+                timeout=30
+            )
+            
+            if response.status_code == 200:
+                result = response.json()
+                if result.get('status') == 'success':
+                    data = result.get('data', {})
+                    return {
+                        'success': True,
+                        'order_id': data.get('order_id'),
+                        'status': data.get('status', 'pending'),
+                        'price': data.get('price'),
+                        'currency': data.get('currency', 'USD')
+                    }
+                else:
+                    return {
+                        'success': False,
+                        'error': result.get('message', 'Failed to place order')
+                    }
+            else:
+                return {'success': False, 'error': f'HTTP {response.status_code}'}
+                
+        except Exception as e:
+            return {'success': False, 'error': str(e)}
+    
+    def check_order_status(self, order_id: str) -> dict:
+        """Check order status and get OTP"""
+        
+        payload = {
+            'action': 'order_status',
+            'order_id': order_id,
+            'username': self.username,
+            'api_key': self.api_key,
+            'timestamp': int(time.time())
+        }
+        
+        payload['signature'] = self._generate_signature(payload)
+        
+        try:
+            response = self.session.post(
+                f"{self.api_url}/api/order/status",
+                json=payload,
+                timeout=30
+            )
+            
+            if response.status_code == 200:
+                result = response.json()
+                if result.get('status') == 'success':
+                    data = result.get('data', {})
+                    return {
+                        'success': True,
+                        'order_id': order_id,
+                        'status': data.get('status'),
+                        'otp_code': data.get('otp_code'),
+                        'delivery_time': data.get('delivery_time')
+                    }
+                else:
+                    return {'success': False, 'error': result.get('message')}
+            else:
+                return {'success': False, 'error': f'HTTP {response.status_code}'}
+        except Exception as e:
+            return {'success': False, 'error': str(e)}
+    
+    def generate_otp(self, otp_type: str, model: str = None, imei: str = None) -> dict:
+        """
+        Generate OTP from GSM Manager
+        Uses exact service names from GSM Manager
+        """
+        
+        # Complete service mapping based on GSM Manager services
+        service_mapping = {
+            # OPPO Service
+            'oppo_flash': {
+                'service_name': 'OPlusPro Login - OppO OTP',
+                'name': 'OPPO Flash OTP',
+                'delivery': 'Minutes',
+                'price_usd': 23,
+                'your_price_credits': 35  # Your markup (23 USD -> 35 credits)
+            },
+            
+            # OnePlus Service
+            'oneplus': {
+                'service_name': 'OplusPro Login OTP (OnePlus)',
+                'name': 'OnePlus OTP',
+                'delivery': 'Minutes',
+                'price_usd': 10,
+                'your_price_credits': 20
+            },
+            
+            # Realme Service
+            'realme_frp': {
+                'service_name': 'OplusPro OTP (Realme MTK One Click FRP Reset)',
+                'name': 'Realme MTK One Click FRP Reset',
+                'delivery': 'Instant',
+                'price_usd': 5,
+                'your_price_credits': 12
+            },
+            'realme_mtk': {
+                'service_name': 'OplusPro OTP (Realme MTK One Click FRP Reset)',
+                'name': 'Realme MTK OTP',
+                'delivery': 'Instant',
+                'price_usd': 5,
+                'your_price_credits': 12
+            },
+            
+            # Tecno/Infinix/iTel AntiCrack
+            'tecno_anticrack': {
+                'service_name': 'OPlusPro OTP (Tecno/Infinix/iTel Loader AntiCrack)',
+                'name': 'Tecno/Infinix/iTel Loader AntiCrack',
+                'delivery': 'Instant',
+                'price_usd': 10,
+                'your_price_credits': 18
+            },
+            'tecno_anticrack_p7': {
+                'service_name': 'OPlusPro OTP (Tecno/Infinix/iTel Loader AntiCrack)',
+                'name': 'Tecno/Infinix/iTel AntiCrack P7',
+                'delivery': 'Instant',
+                'price_usd': 10,
+                'your_price_credits': 18
+            },
+            
+            # Tecno/Infinix/iTel Auth Flash
+            'tecno_auth_mtk': {
+                'service_name': 'OPlusPro OTP (Tecno/Infinix/iTel Loader Auth Flash)',
+                'name': 'Tecno/Infinix/iTel Loader Auth Flash',
+                'delivery': 'Instant',
+                'price_usd': 9,
+                'your_price_credits': 16
+            },
+            'infinix_auth_mtk': {
+                'service_name': 'OPlusPro OTP (Tecno/Infinix/iTel Loader Auth Flash)',
+                'name': 'Infinix Auth Flash MTK',
+                'delivery': 'Instant',
+                'price_usd': 9,
+                'your_price_credits': 16
+            },
+            'tecno_auth_spd': {
+                'service_name': 'OPlusPro OTP (Tecno/Infinix/iTel Loader Auth Flash)',
+                'name': 'Tecno/Infinix/iTel Auth Flash SPD',
+                'delivery': 'Instant',
+                'price_usd': 9,
+                'your_price_credits': 16
+            },
+            
+            # Xiaomi Service
+            'xiaomi_frp': {
+                'service_name': 'OplusPro OTP (Xiaomi FRP ONE CLICK)',
+                'name': 'Xiaomi FRP One Click',
+                'delivery': 'Instant',
+                'price_usd': 4.5,
+                'your_price_credits': 10
+            },
+            'xiaomi_otp': {
+                'service_name': 'OplusPro OTP (Xiaomi FRP ONE CLICK)',
+                'name': 'Xiaomi OTP',
+                'delivery': 'Instant',
+                'price_usd': 4.5,
+                'your_price_credits': 10
+            },
+        }
+        
+        # Check if OTP type is supported
+        if otp_type not in service_mapping:
+            return {
+                'success': False,
+                'error': f'OTP type "{otp_type}" not supported',
+                'supported_types': list(service_mapping.keys())
+            }
+        
+        mapping = service_mapping[otp_type]
+        service_name = mapping['service_name']
+        
+        print(f"📡 [GSM] Placing order for {mapping['name']}")
+        print(f"   Service: {service_name}")
+        print(f"   Delivery: {mapping['delivery']}")
+        print(f"   Provider Price: ${mapping['price_usd']} USD")
+        print(f"   Your Price: {mapping['your_price_credits']} credits")
+        
+        # Place order
+        order_result = self.place_order(service_name, quantity=1, model=model, imei=imei)
+        
+        if not order_result.get('success'):
+            return order_result
+        
+        order_id = order_result.get('order_id')
+        
+        # For instant delivery, check status immediately
+        if mapping['delivery'] == 'Instant':
+            # Wait a moment for processing
+            time.sleep(3)
+            
+            # Check status to get OTP
+            status_result = self.check_order_status(order_id)
+            
+            if status_result.get('success') and status_result.get('otp_code'):
+                return {
+                    'success': True,
+                    'otp_code': status_result.get('otp_code'),
+                    'order_id': order_id,
+                    'service_name': mapping['name'],
+                    'delivery': 'instant',
+                    'price_usd': mapping['price_usd'],
+                    'your_price_credits': mapping['your_price_credits']
+                }
+            else:
+                return {
+                    'success': True,
+                    'pending': True,
+                    'order_id': order_id,
+                    'service_name': mapping['name'],
+                    'delivery': 'instant',
+                    'message': 'Order placed. OTP is being processed.'
+                }
+        else:
+            # For minutes delivery, return pending
+            return {
+                'success': True,
+                'pending': True,
+                'order_id': order_id,
+                'service_name': mapping['name'],
+                'delivery': 'minutes',
+                'message': f'Order placed. Delivery in {mapping["delivery"]}. Please check status shortly.'
+            }
+
+
+# ==================== YOUR OTP_TYPES WITH YOUR PRICES (IN CREDITS) ====================
+
+OTP_TYPES = {
+    # OPPO (Your price: 35 credits - Provider: $23 USD)
+    'oppo_flash': {'name': 'OPPO Flash OTP', 'cost': 35, 'provider_price_usd': 23},
+    
+    # OnePlus (Your price: 20 credits - Provider: $10 USD)
+    'oneplus': {'name': 'OnePlus OTP', 'cost': 20, 'provider_price_usd': 10},
+    
+    # Realme (Your price: 12 credits - Provider: $5 USD)
+    'realme_frp': {'name': 'Realme MTK One Click FRP Reset', 'cost': 12, 'provider_price_usd': 5},
+    'realme_mtk': {'name': 'Realme MTK OTP', 'cost': 12, 'provider_price_usd': 5},
+    
+    # Tecno/Infinix AntiCrack (Your price: 18 credits - Provider: $10 USD)
+    'tecno_anticrack': {'name': 'Tecno/Infinix/iTel Loader AntiCrack', 'cost': 18, 'provider_price_usd': 10},
+    'tecno_anticrack_p7': {'name': 'Tecno/Infinix/iTel AntiCrack P7', 'cost': 18, 'provider_price_usd': 10},
+    
+    # Tecno/Infinix Auth Flash (Your price: 16 credits - Provider: $9 USD)
+    'tecno_auth_mtk': {'name': 'Tecno/Infinix/iTel Loader Auth Flash', 'cost': 16, 'provider_price_usd': 9},
+    'infinix_auth_mtk': {'name': 'Infinix Auth Flash MTK', 'cost': 16, 'provider_price_usd': 9},
+    'tecno_auth_spd': {'name': 'Tecno/Infinix/iTel Auth Flash SPD', 'cost': 16, 'provider_price_usd': 9},
+    'tecno_cpid': {'name': 'Tecno/Infinix/iTel CPID', 'cost': 25, 'provider_price_usd': 15},
+    
+    # Xiaomi (Your price: 10 credits - Provider: $4.50 USD)
+    'xiaomi_frp': {'name': 'Xiaomi FRP One Click', 'cost': 10, 'provider_price_usd': 4.5},
+    'xiaomi_otp': {'name': 'Xiaomi OTP', 'cost': 10, 'provider_price_usd': 4.5},
+}
 
 # ==================== CONSTANTS ====================
 SESSION_DURATION_HOURS = 12       # Hardware binding: 12 hours
@@ -4166,125 +4481,128 @@ def create_app(config_class=Config):
         
         return jsonify({'success': True, 'message': f'Version updated to {latest_version}'})
 
-    # ═══════════════════════════════════════════════════════════
-    #  OTP MANAGEMENT API
+            # ═══════════════════════════════════════════════════════════
+    #  OTP MANAGEMENT API - FORWARDS TO GSM MANAGER
     # ═══════════════════════════════════════════════════════════
     
     OTP_TYPES = {
-        'oppo_flash': {'name': 'OPPO Flash OTP', 'cost': 20},
-        'tecno_anticrack': {'name': 'Tecno/Itel/Infinix AntiCrack', 'cost': 10},
-        'tecno_anticrack_p7': {'name': 'Tecno/Itel/Infinix AntiCrack P7', 'cost': 12},
-        'tecno_auth_mtk': {'name': 'Tecno/Itel/Infinix Auth Flash MTK', 'cost': 9},
-        'infinix_auth_mtk': {'name': 'Infinix Auth Flash MTK', 'cost': 8},
-        'tecno_auth_spd': {'name': 'Tecno/Itel/Infinix Auth Flash SPD', 'cost': 13},
-        'tecno_cpid': {'name': 'Tecno/Itel/Infinix CPID', 'cost': 20},
-        'realme_mtk': {'name': 'Realme MTK OTP', 'cost': 5},
-        'oneplus': {'name': 'OnePlus OTP', 'cost': 6},
+        # OPPO/OnePlus Services (Your price in credits)
+        'oppo_flash': {'name': 'OPPO Flash OTP', 'cost': 35},
+        'oneplus': {'name': 'OnePlus OTP', 'cost': 20},
+        'oplus_pro': {'name': 'OPLUS Pro OTP', 'cost': 35},
+        
+        # Realme Services
+        'realme_frp': {'name': 'Realme MTK One Click FRP Reset', 'cost': 12},
+        'realme_mtk': {'name': 'Realme MTK OTP', 'cost': 12},
+        
+        # Tecno/Infinix/iTel AntiCrack
+        'tecno_anticrack': {'name': 'Tecno/Infinix/iTel Loader AntiCrack', 'cost': 18},
+        'tecno_anticrack_p7': {'name': 'Tecno/Infinix/iTel AntiCrack P7', 'cost': 18},
+        
+        # Tecno/Infinix/iTel Auth Flash
+        'tecno_auth_mtk': {'name': 'Tecno/Infinix/iTel Loader Auth Flash', 'cost': 16},
+        'infinix_auth_mtk': {'name': 'Infinix Auth Flash MTK', 'cost': 16},
+        'tecno_auth_spd': {'name': 'Tecno/Infinix/iTel Auth Flash SPD', 'cost': 16},
+        'tecno_cpid': {'name': 'Tecno/Infinix/iTel CPID', 'cost': 25},
+        
+        # Xiaomi Services
+        'xiaomi_frp': {'name': 'Xiaomi FRP One Click', 'cost': 10},
+        'xiaomi_otp': {'name': 'Xiaomi OTP', 'cost': 10},
     }
 
     from database import StoredOTP
 
-    # ── ADMIN: Add OTPs ──
-    @app.route('/api/admin/otps/add', methods=['POST'])
-    @login_required
-    def admin_add_otps():
-        if not current_user.is_admin:
-            return jsonify({'error': 'Unauthorized'}), 403
-        data = request.get_json()
-        otp_type = data.get('otp_type', '').strip().lower()
-        otp_codes = data.get('otp_codes', [])
-        notes = data.get('notes', '').strip()
-        if otp_type not in OTP_TYPES:
-            return jsonify({'error': f'Invalid OTP type. Valid: {", ".join(OTP_TYPES.keys())}'}), 400
-        if not otp_codes or not isinstance(otp_codes, list):
-            return jsonify({'error': 'otp_codes must be a non-empty list'}), 400
-        otp_info = OTP_TYPES[otp_type]
-        added, duplicates, skipped = 0, 0, 0
-        for code in otp_codes:
-            code = str(code).strip()
-            if not code: skipped += 1; continue
-            if StoredOTP.query.filter_by(otp_code=code).first(): duplicates += 1; continue
-            otp = StoredOTP(otp_code=code, otp_type=otp_type, otp_name=otp_info['name'],
-                           credits_cost=otp_info['cost'], notes=notes, created_by=current_user.id)
-            db.session.add(otp); added += 1
-        db.session.commit()
-        log_system_action(current_user.id, 'otp_add', f'Added {added} {otp_info["name"]} OTPs')
-        return jsonify({'success': True, 'message': f'Added {added} OTPs', 'stats': {'added': added, 'duplicates': duplicates, 'skipped': skipped}})
-
-    # ── ADMIN: OTP Stats ──
+    # ── ADMIN: OTP Stats (Now shows GSM Manager as provider) ──
     @app.route('/api/admin/otps/stats', methods=['GET'])
     @login_required
     def admin_otp_stats():
         if not current_user.is_admin:
             return jsonify({'error': 'Unauthorized'}), 403
-        stats = {}
-        for otp_type, info in OTP_TYPES.items():
-            total = StoredOTP.query.filter_by(otp_type=otp_type).count()
-            available = StoredOTP.query.filter_by(otp_type=otp_type, is_used=False).count()
-            used = StoredOTP.query.filter_by(otp_type=otp_type, is_used=True).count()
-            recent = StoredOTP.query.filter_by(otp_type=otp_type, is_used=True).order_by(StoredOTP.used_at.desc()).limit(5).all()
-            stats[otp_type] = {'name': info['name'], 'cost': info['cost'], 'total': total, 'available': available, 'used': used,
-                              'recent_usage': [{'id': o.id, 'used_by': o.user.username if o.user else '?', 'used_at': o.used_at.isoformat() if o.used_at else None} for o in recent]}
-        return jsonify({'success': True, 'stats': stats, 'summary': {'total_available': sum(s['available'] for s in stats.values()), 'total_used': sum(s['used'] for s in stats.values())}})
+        
+        # Return provider info instead of local OTP stats
+        return jsonify({
+            'success': True,
+            'provider': 'GSM Manager',
+            'provider_url': GSM_API_URL,
+            'message': 'OTPs are now provided by GSM Manager in real-time. No local OTP storage needed.',
+            'otp_types': OTP_TYPES,
+            'summary': {
+                'total_available': 'Unlimited (Real-time from provider)',
+                'total_used': 'N/A (Tracked via transactions)'
+            }
+        })
 
-    # ── ADMIN: List OTPs ──
+    # ── ADMIN: List OTPs (Deprecated - show message) ──
     @app.route('/api/admin/otps/list', methods=['GET'])
     @login_required
     def admin_otp_list():
         if not current_user.is_admin:
             return jsonify({'error': 'Unauthorized'}), 403
-        otp_type = request.args.get('type', '').strip()
-        status = request.args.get('status', 'all')
-        page = int(request.args.get('page', 1))
-        limit = int(request.args.get('limit', 50))
-        query = StoredOTP.query
-        if otp_type and otp_type in OTP_TYPES: query = query.filter_by(otp_type=otp_type)
-        if status == 'available': query = query.filter_by(is_used=False)
-        elif status == 'used': query = query.filter_by(is_used=True)
-        query = query.order_by(StoredOTP.created_at.desc())
-        total = query.count()
-        otps = query.offset((page-1)*limit).limit(limit).all()
-        return jsonify({'success': True, 'otps': [o.to_dict(admin_view=True) for o in otps], 'total': total, 'page': page, 'limit': limit})
+        
+        return jsonify({
+            'success': False,
+            'error': 'This endpoint is deprecated. OTPs are now provided by GSM Manager in real-time.',
+            'message': 'No local OTP storage needed. All OTPs are generated on-demand.',
+            'provider': 'GSM Manager'
+        }), 410
 
-    # ── ADMIN: Used History ──
+    # ── ADMIN: Used History (Shows transaction history) ──
     @app.route('/api/admin/otps/used-history', methods=['GET'])
     @login_required
     def admin_otp_used_history():
         if not current_user.is_admin:
             return jsonify({'error': 'Unauthorized'}), 403
-        page = int(request.args.get('page', 1))
-        limit = int(request.args.get('limit', 50))
-        query = StoredOTP.query.filter_by(is_used=True).order_by(StoredOTP.used_at.desc())
-        total = query.count()
-        otps = query.offset((page-1)*limit).limit(limit).all()
-        history = [{'id': o.id, 'otp_type': o.otp_type, 'otp_name': o.otp_name, 'cost': o.credits_cost,
-                    'used_by': o.user.username if o.user else '?', 'used_by_email': o.user.email if o.user else '?',
-                    'used_at': o.used_at.isoformat() if o.used_at else None} for o in otps]
-        return jsonify({'success': True, 'history': history, 'total': total})
+        
+        # Return transaction history instead
+        transactions = CreditTransaction.query.filter_by(transaction_type='otp_purchase').order_by(CreditTransaction.created_at.desc()).limit(50).all()
+        
+        history = []
+        for t in transactions:
+            user = User.query.get(t.user_id)
+            history.append({
+                'id': t.id,
+                'otp_type': 'N/A',
+                'otp_name': t.description[:50],
+                'cost': abs(t.amount),
+                'used_by': user.username if user else '?',
+                'used_by_email': user.email if user else '?',
+                'used_at': t.created_at.isoformat() if t.created_at else None
+            })
+        
+        return jsonify({'success': True, 'history': history, 'total': len(history), 'source': 'credit_transactions'})
 
-    # ── ADMIN: Delete OTP ──
+    # ── ADMIN: Delete OTP (Deprecated) ──
     @app.route('/api/admin/otps/delete/<int:otp_id>', methods=['DELETE'])
     @login_required
     def admin_delete_otp(otp_id):
         if not current_user.is_admin:
             return jsonify({'error': 'Unauthorized'}), 403
-        otp = StoredOTP.query.get(otp_id)
-        if not otp: return jsonify({'error': 'OTP not found'}), 404
-        if otp.is_used: return jsonify({'error': 'Cannot delete used OTP'}), 400
-        db.session.delete(otp); db.session.commit()
-        return jsonify({'success': True, 'message': 'OTP deleted'})
+        
+        return jsonify({
+            'success': False,
+            'error': 'This endpoint is deprecated. OTPs are now provided by GSM Manager.',
+            'message': 'No local OTPs to delete.'
+        }), 410
 
-    # ── USER: Request OTP (FULL SECURITY + ATOMIC) ──
+
+    # ── USER: Request OTP (FORWARDS TO GSM MANAGER) ──
     @app.route('/api/user/otps/request', methods=['POST'])
     @api_login_required
     def user_request_otp():
+        """
+        Request OTP - Forwards to GSM Manager API
+        Uses YOUR pricing from OTP_TYPES
+        """
         db_session = db.session
         user = current_user
         
+        # ========== VALIDATION (Your existing checks) ==========
         if is_maintenance_mode():
             return jsonify({'success': False, 'error': 'Server under maintenance', 'code': 'MAINTENANCE_MODE'}), 503
+        
         if user.is_banned:
             return jsonify({'success': False, 'error': 'Account is banned', 'code': 'ACCOUNT_BANNED', 'is_banned': True}), 403
+        
         if not user.is_license_valid():
             return jsonify({'success': False, 'error': 'License has expired', 'code': 'LICENSE_EXPIRED', 'license_expired': True}), 403
         
@@ -4293,50 +4611,178 @@ def create_app(config_class=Config):
             return jsonify({'success': False, 'error': f'Daily limit reached ({cmd_count}/100)', 'code': 'COMMAND_LIMIT_REACHED'}), 429
         
         data = request.get_json()
-        if not data: return jsonify({'success': False, 'error': 'No JSON data'}), 400
-        otp_type = data.get('otp_type', '').strip().lower()
-        if not otp_type or otp_type not in OTP_TYPES:
-            return jsonify({'success': False, 'error': f'Invalid OTP type', 'valid_types': list(OTP_TYPES.keys())}), 400
+        if not data:
+            return jsonify({'success': False, 'error': 'No JSON data'}), 400
         
+        otp_type = data.get('otp_type', '').strip().lower()
+        model = data.get('model', '').strip()
+        imei = data.get('imei', '').strip()
+        
+        if not otp_type or otp_type not in OTP_TYPES:
+            return jsonify({
+                'success': False, 
+                'error': f'Invalid OTP type', 
+                'valid_types': list(OTP_TYPES.keys())
+            }), 400
+        
+        # Get YOUR pricing (what user pays in credits)
         otp_info = OTP_TYPES[otp_type]
         cost = otp_info['cost']
         otp_name = otp_info['name']
         user_credits = user.credits or 0
         
         if user_credits < cost:
-            return jsonify({'success': False, 'error': f'Need {cost} credits. You have {user_credits}', 'code': 'INSUFFICIENT_CREDITS', 'credits_needed': cost, 'credits_available': user_credits}), 403
+            return jsonify({
+                'success': False, 
+                'error': f'Need {cost} credits. You have {user_credits}', 
+                'code': 'INSUFFICIENT_CREDITS', 
+                'credits_needed': cost, 
+                'credits_available': user_credits
+            }), 403
         
-        otp = StoredOTP.query.filter_by(otp_type=otp_type, is_used=False).order_by(StoredOTP.id).first()
-        if not otp:
-            return jsonify({'success': False, 'error': f'No {otp_name} OTPs available', 'code': 'OTP_OUT_OF_STOCK'}), 404
+        # ========== FORWARD TO GSM MANAGER ==========
+        
+        gsm = GSMManagerOTPProvider()
+        result = gsm.generate_otp(otp_type, model, imei)
+        
+        print(f"📡 [GSM] User: {user.username}, Type: {otp_type}, Success: {result.get('success')}")
+        
+        if not result.get('success'):
+            log_system_action(user.id, 'otp_provider_error', 
+                             f'GSM Manager failed for {otp_name}: {result.get("error")}')
+            
+            return jsonify({
+                'success': False,
+                'error': result.get('error', 'Service temporarily unavailable'),
+                'code': 'PROVIDER_ERROR',
+                'credits_not_deducted': True
+            }), 503
+        
+        # If OTP is pending (still processing)
+        if result.get('pending'):
+            return jsonify({
+                'success': False,
+                'pending': True,
+                'order_id': result.get('order_id'),
+                'delivery': result.get('delivery', 'minutes'),
+                'message': result.get('message', 'Order placed. Please check status later.'),
+                'check_url': f'/api/otp/status/{result.get("order_id")}',
+                'credits_not_deducted': True
+            }), 202
+        
+        # ========== SUCCESS - DEDUCT CREDITS AND RETURN OTP ==========
         
         try:
+            # Deduct credits from user (YOUR price)
             user.credits = user_credits - cost
-            otp.is_used = True; otp.used_by = user.id; otp.used_at = datetime.utcnow()
-            transaction = CreditTransaction(user_id=user.id, amount=-cost, transaction_type='otp_purchase',
-                                           description=f'Purchased {otp_name} OTP (ID: {otp.id})')
+            
+            # Create transaction record (metadata only, NO OTP stored)
+            transaction = CreditTransaction(
+                user_id=user.id, 
+                amount=-cost, 
+                transaction_type='otp_purchase',
+                description=f'Purchased {otp_name} from GSM Manager (Order: {result.get("order_id")})'
+            )
             db_session.add(transaction)
+            
+            # Increment command counter
             new_count = increment_command_count(user.id)
-            log_system_action(user.id, 'otp_purchase', f'Purchased {otp_name} OTP for {cost} credits. Remaining: {user.credits}')
+            
+            # Log successful purchase
+            log_system_action(user.id, 'otp_purchase', 
+                             f'Purchased {otp_name} from GSM Manager for {cost} credits')
+            
             db_session.commit()
-            otp_code = otp.otp_code
-            return jsonify({'success': True, 'otp_code': otp_code, 'otp_type': otp_type, 'otp_name': otp_name,
-                           'cost': cost, 'credits_remaining': user.credits, 'commands_used_today': new_count,
-                           'usage_note': '⚠️ Save this code now! It will NOT be shown again.'}), 200
+            
+            print(f"✅ [GSM] Success - User: {user.username}, OTP: {otp_name}, Cost: {cost} credits")
+            
+            # Return OTP to user
+            return jsonify({
+                'success': True,
+                'otp_code': result.get('otp_code'),
+                'otp_type': otp_type,
+                'otp_name': otp_name,
+                'cost': cost,
+                'credits_remaining': user.credits,
+                'commands_used_today': new_count,
+                'order_id': result.get('order_id'),
+                'provider': 'gsm_manager',
+                'delivery': result.get('delivery', 'instant'),
+                'usage_note': '⚠️ Save this code now! It will NOT be shown again.'
+            }), 200
+            
         except Exception as e:
             db_session.rollback()
-            print(f"❌ OTP purchase failed: {e}")
-            return jsonify({'success': False, 'error': 'Transaction failed. No credits deducted.', 'code': 'TRANSACTION_FAILED'}), 500
+            print(f"❌ [GSM] Transaction failed: {e}")
+            traceback.print_exc()
+            
+            return jsonify({
+                'success': False, 
+                'error': 'Transaction failed. No credits deducted.', 
+                'code': 'TRANSACTION_FAILED'
+            }), 500
 
-    # ── USER: OTP History ──
+
+    # ── USER: OTP History (Shows transaction history) ──
     @app.route('/api/user/otps/history', methods=['GET'])
     @api_login_required
     def user_otp_history():
-        purchases = StoredOTP.query.filter_by(used_by=current_user.id).order_by(StoredOTP.used_at.desc()).limit(50).all()
-        history = [{'id': p.id, 'type': p.otp_type, 'name': p.otp_name, 'cost': p.credits_cost, 'used_at': p.used_at.isoformat() if p.used_at else None} for p in purchases]
-        return jsonify({'success': True, 'history': history, 'total': len(history), 'total_spent': sum(p.credits_cost for p in purchases)})
+        # Get OTP purchases from credit transactions
+        purchases = CreditTransaction.query.filter_by(
+            user_id=current_user.id, 
+            transaction_type='otp_purchase'
+        ).order_by(CreditTransaction.created_at.desc()).limit(50).all()
+        
+        history = []
+        for p in purchases:
+            history.append({
+                'id': p.id,
+                'type': 'otp_purchase',
+                'name': p.description[:50],
+                'cost': abs(p.amount),
+                'used_at': p.created_at.isoformat() if p.created_at else None
+            })
+        
+        return jsonify({
+            'success': True, 
+            'history': history, 
+            'total': len(history), 
+            'total_spent': sum(abs(p.amount) for p in purchases),
+            'provider': 'GSM Manager'
+        })
 
 
+    # ── Check Pending OTP Status (New endpoint) ──
+    @app.route('/api/otp/status/<order_id>', methods=['GET'])
+    @api_login_required
+    def check_pending_otp(order_id):
+        """Check status of pending OTP order from GSM Manager"""
+        
+        gsm = GSMManagerOTPProvider()
+        result = gsm.check_order_status(order_id)
+        
+        if result.get('success'):
+            if result.get('otp_code'):
+                return jsonify({
+                    'success': True,
+                    'ready': True,
+                    'otp_code': result.get('otp_code'),
+                    'status': result.get('status'),
+                    'order_id': order_id
+                })
+            else:
+                return jsonify({
+                    'success': True,
+                    'ready': False,
+                    'status': result.get('status'),
+                    'message': 'OTP is still being processed. Please check again in a few moments.'
+                })
+        else:
+            return jsonify({
+                'success': False,
+                'error': result.get('error', 'Unknown error')
+            }), 500
+            
  # ═══════════════════════════════════════════════════════════
 #  AUTO-FIX: Ensure OTP constraint exists
 # ═══════════════════════════════════════════════════════════
