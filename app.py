@@ -61,15 +61,12 @@ class GSMManagerOTPProvider:
         ).hexdigest()
         
         return signature
-
-        def place_order(self, service_name: str, quantity: int = 1, **kwargs) -> dict:
+    
+    def place_order(self, service_name: str, quantity: int = 1, **kwargs) -> dict:
         """Place order on GSM Manager using Dhru Fusion API pattern"""
         
-        # For Dhru Fusion API, we need to use their specific endpoint
-        # Based on the pattern, it should be /api/otp/generate or similar
-        
         payload = {
-            'action': 'generate_otp',  # Changed from 'place_order' to 'generate_otp'
+            'action': 'generate_otp',
             'service': service_name,
             'quantity': quantity,
             'username': self.username,
@@ -86,7 +83,6 @@ class GSMManagerOTPProvider:
         payload['signature'] = self._generate_signature(payload)
         
         try:
-            # Try the correct Dhru Fusion endpoint
             endpoint = f"{self.api_url}/api/otp/generate"
             print(f"📡 [GSM] Placing order for: {service_name}")
             print(f"📡 [GSM] URL: {endpoint}")
@@ -115,7 +111,7 @@ class GSMManagerOTPProvider:
                             'status': data.get('status', 'pending'),
                             'price': data.get('price'),
                             'currency': data.get('currency', 'USD'),
-                            'otp_code': data.get('otp_code')  # May come directly
+                            'otp_code': data.get('otp_code')
                         }
                     else:
                         return {
@@ -130,8 +126,8 @@ class GSMManagerOTPProvider:
         except Exception as e:
             print(f"❌ [GSM] Exception: {e}")
             return {'success': False, 'error': str(e)}
-
-        def check_order_status(self, order_id: str) -> dict:
+    
+    def check_order_status(self, order_id: str) -> dict:
         """Check order status using Dhru Fusion API pattern"""
         
         payload = {
@@ -174,8 +170,6 @@ class GSMManagerOTPProvider:
                 return {'success': False, 'error': f'HTTP {response.status_code}'}
         except Exception as e:
             return {'success': False, 'error': str(e)}
-
-
     
     def generate_otp(self, otp_type: str, model: str = None, imei: str = None) -> dict:
         """
@@ -336,8 +330,7 @@ class GSMManagerOTPProvider:
                 'service_name': mapping['name'],
                 'delivery': 'minutes',
                 'message': f'Order placed. Delivery in {mapping["delivery"]}. Please check status shortly.'
-            }
-
+            } 
 # ==================== YOUR OTP_TYPES WITH YOUR PRICES (IN CREDITS) ====================
 
 OTP_TYPES = {
