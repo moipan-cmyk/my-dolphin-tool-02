@@ -475,8 +475,8 @@ def create_app(config_class=Config):
         storage_uri="memory://",  # Change to os.environ.get('REDIS_URL', 'memory://') for production
         headers_enabled=True  # Add rate limit headers to responses
     )
-    
-    # Optional: Add rate limit error handler for JSON responses
+
+        # Optional: Add rate limit error handler for JSON responses
     @app.errorhandler(429)
     def ratelimit_handler(e):
         """Return JSON instead of HTML for rate limit errors"""
@@ -492,7 +492,8 @@ def create_app(config_class=Config):
     login_manager.login_view = 'login'
     login_manager.login_message = None
     
-        with app.app_context():
+    # ========== THIS NEEDS TO BE INDENTED CORRECTLY ==========
+    with app.app_context():
         db.create_all()
         print("✅ Database tables created/verified")
 
