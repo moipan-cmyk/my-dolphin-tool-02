@@ -1309,15 +1309,18 @@ def create_app(config_class=Config):
                             'requires_reset': True
                         }), 403
                     
-                    # Register new device
+                    ## Register new device
                     new_device = Device(
-                        user_id=user.id,
-                        hardware_id=hwid,
-                        hwid_hash=hashed_hwid,
-                        device_name=f"Desktop-{hwid[:8]}" if hwid else "Unknown-Device",
-                        ip_address=get_real_ip(),
-                        is_active=True,
-                        is_bound=True
+                    user_id=user.id,
+                    hardware_id=hwid,
+                    hwid_hash=hashed_hwid,
+                    device_name=f"Desktop-{hwid[:8]}" if hwid else "Unknown-Device",
+                    ip_address=get_real_ip(),
+                    is_active=True,
+                    is_bound=True,
+               # Add device binding details
+                    pc_manufacturer=pc_manufacturer if pc_manufacturer else None,
+                    windows_version=windows_version if windows_version else None,
                     )
                     db_session.add(new_device)
                     db_session.flush()
