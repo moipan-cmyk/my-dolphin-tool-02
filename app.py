@@ -492,13 +492,80 @@ def create_app(config_class=Config):
     login_manager.login_view = 'login'
     login_manager.login_message = None
     
-    with app.app_context():
+        with app.app_context():
         db.create_all()
         print("✅ Database tables created/verified")
 
         # ==================== RUN DATABASE MIGRATIONS ====================
         from database import run_migrations
         run_migrations()
+        
+        # ==================== ADD DEVICE BINDING COLUMNS ====================
+        try:
+            from sqlalchemy import text
+            
+            # Add device binding columns to users table
+            binding_columns = [
+                ('bound_hwid_hash', "ALTER TABLE users ADD COLUMN IF NOT EXISTS bound_hwid_hash VARCHAR(256)"),
+                ('bound_pc_manufacturer', "ALTER TABLE users ADD COLUMN IF NOT EXISTS bound_pc_manufacturer VARCHAR(200)"),
+                ('bound_windows_version', "ALTER TABLE users ADD COLUMN IF NOT EXISTS bound_windows_version VARCHAR(100)"),
+                ('bound_hardware_fingerprint', "ALTER TABLE users ADD COLUMN IF NOT EXISTS bound_hardware_fingerprint VARCHAR(256)"),
+                ('bound_system_info', "ALTER TABLE users ADD COLUMN IF NOT EXISTS bound_system_info TEXT"),
+                ('bound_ip_address', "ALTER TABLE users ADD COLUMN IF NOT EXISTS bound_ip_address VARCHAR(50)"),
+                ('bound_at', "ALTER TABLE users ADD COLUMN IF NOT EXISTS bound_at TIMESTAMP"),
+                ('last_verified_at', "ALTER TABLE users ADD COLUMN IF NOT EXISTS last_verified_at TIMESTAMP"),
+                ('verification_failures', "ALTER TABLE users ADD COLUMN IF NOT EXISTS verification_failures INTEGER DEFAULT 0"),
+                ('is_verified_device', "ALTER TABLE users ADD COLUMN IF NOT EXISTS is_verified_device BOOLEAN DEFAULT FALSE"),
+            ]
+            
+            for col_name, alter_stmt in binding_columns:
+                try:
+                    db.session.execute(text(alter_stmt))
+                    db.session.commit()
+                    print(f"✅ Added column: {col_name}")
+                except Exception as e:
+                    # Column might already exist
+                    print(f"⚠️ Column {col_name} - {str(e)[:50]}")
+                    db.session.rollback()
+            
+            # Add columns to devices table
+            device_columns = [
+                ('pc_manufacturer', "ALTER TABLE devices ADD COLUMN IF NOT EXISTS pc_manufacturer VARCHAR(200)"),
+                ('windows_version', "ALTER TABLE devices ADD COLUMN IF NOT EXISTS windows_version VARCHAR(100)"),
+                ('hardware_fingerprint', "ALTER TABLE devices ADD COLUMN IF NOT EXISTS hardware_fingerprint VARCHAR(256)"),
+            ]
+            
+            for col_name, alter_stmt in device_columns:
+                try:
+                    db.session.execute(text(alter_stmt))
+                    db.session.commit()
+                    print(f"✅ Added column to devices: {col_name}")
+                except Exception as e:
+                    print(f"⚠️ Device column {col_name} - {str(e)[:50]}")
+                    db.session.rollback()
+            
+            # Add columns to user_sessions table
+            session_columns = [
+                ('session_hwid_hash', "ALTER TABLE user_sessions ADD COLUMN IF NOT EXISTS session_hwid_hash VARCHAR(256)"),
+                ('session_hardware_fingerprint', "ALTER TABLE user_sessions ADD COLUMN IF NOT EXISTS session_hardware_fingerprint VARCHAR(256)"),
+                ('session_pc_manufacturer', "ALTER TABLE user_sessions ADD COLUMN IF NOT EXISTS session_pc_manufacturer VARCHAR(200)"),
+                ('session_windows_version', "ALTER TABLE user_sessions ADD COLUMN IF NOT EXISTS session_windows_version VARCHAR(100)"),
+            ]
+            
+            for col_name, alter_stmt in session_columns:
+                try:
+                    db.session.execute(text(alter_stmt))
+                    db.session.commit()
+                    print(f"✅ Added column to user_sessions: {col_name}")
+                except Exception as e:
+                    print(f"⚠️ Session column {col_name} - {str(e)[:50]}")
+                    db.session.rollback()
+                    
+            print("✅ Device binding columns migration completed")
+            
+        except Exception as e:
+            print(f"❌ Error adding device binding columns: {e}")
+            # Don't crash the app if migration fails
         
     # ==================== ADMIN USER SETUP FROM ENV ====================
         admin_email = os.environ.get('ADMIN_EMAIL')
@@ -2980,7 +3047,6 @@ def create_app(config_class=Config):
 
 
     # ==================== ADMIN RESET ACTION ENDPOINTS ====================
-    # ADD THESE THREE ENDPOINTS:
 
     @app.route('/api/admin/reset-command-limit', methods=['POST'])
     @login_required
@@ -3048,6 +3114,7 @@ def create_app(config_class=Config):
             'message': f'Command limits reset for {updated} users',
             'users_reset': updated
         })
+        
     @app.route('/api/admin/reset-login-attempts', methods=['POST'])
     @login_required
     def admin_reset_login_attempts():
