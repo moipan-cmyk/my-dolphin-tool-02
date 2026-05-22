@@ -55,7 +55,6 @@ body::before{content:'';position:fixed;inset:0;background-image:linear-gradient(
 .nav-item.active{background:rgba(99,102,241,.15);color:var(--accent2);border:1px solid rgba(99,102,241,.2)}
 .nav-item.active::before{content:'';position:absolute;left:0;top:20%;bottom:20%;width:2px;background:var(--accent);border-radius:2px}
 .nav-icon{font-size:15px;width:18px;text-align:center;flex-shrink:0}
-.nav-badge{margin-left:auto;background:var(--accent);color:#fff;font-size:9px;font-weight:700;font-family:var(--mono);padding:1px 6px;border-radius:99px}
 .sidebar-footer{padding:12px 10px;border-top:1px solid var(--border);display:flex;flex-direction:column;gap:6px}
 .footer-btn{display:flex;align-items:center;gap:8px;padding:8px 10px;border-radius:var(--r-sm);cursor:pointer;font-size:12.5px;font-weight:500;border:none;background:0 0;color:var(--text2);width:100%;text-align:left;transition:all .15s;text-decoration:none}
 .footer-btn:hover{background:rgba(255,255,255,.05);color:var(--text)}
@@ -141,8 +140,6 @@ tbody tr:hover{background:rgba(99,102,241,.04)}
 .badge-admin{background:var(--purple-bg);color:var(--purple);border:1px solid rgba(168,85,247,.25)}
 .badge-reseller{background:var(--blue-bg);color:var(--blue);border:1px solid rgba(59,130,246,.25)}
 .badge-warn{background:var(--amber-bg);color:var(--amber);border:1px solid rgba(245,158,11,.25)}
-.badge-used{background:var(--red-bg);color:var(--red);border:1px solid rgba(239,68,68,.25)}
-.badge-available{background:var(--green-bg);color:var(--green);border:1px solid rgba(16,185,129,.25)}
 .tag{display:inline-flex;padding:1px 6px;border-radius:3px;font-size:9.5px;font-weight:700;font-family:var(--mono);text-transform:uppercase;letter-spacing:.4px}
 .tag-admin{background:var(--purple-bg);color:var(--purple)}
 .tag-reseller{background:var(--blue-bg);color:var(--blue)}
@@ -159,16 +156,12 @@ tbody tr:hover{background:rgba(99,102,241,.04)}
 .section-header{display:flex;align-items:center;gap:10px;margin:18px 0 12px}
 .section-header-title{font-size:12px;font-weight:600;color:var(--text2);font-family:var(--mono);text-transform:uppercase;letter-spacing:.5px}
 .section-header-line{flex:1;height:1px;background:var(--border)}
-.overlay-bg{display:none;position:fixed;inset:0;z-index:99;background:rgba(0,0,0,.4)}
-.overlay-bg.open{display:block}
 .otp-summary-row{display:grid;grid-template-columns:repeat(auto-fit,minmax(200px,1fr));gap:10px;margin-bottom:16px}
 .otp-card{background:var(--surface2);border:1px solid var(--border);border-radius:var(--r-sm);padding:12px}
 .otp-card-name{font-size:12px;font-weight:600;color:var(--text);margin-bottom:6px}
 .otp-card-stats{display:flex;gap:12px;font-size:11px;font-family:var(--mono)}
 .otp-card-stats span{color:var(--text3)}
 .otp-card-stats .avail{color:var(--green)}
-.otp-card-stats .used{color:var(--amber)}
-textarea{resize:vertical;min-height:80px;font-family:var(--mono);font-size:12px}
 .modal-overlay{display:none;position:fixed;inset:0;background:rgba(0,0,0,.7);backdrop-filter:blur(6px);z-index:999;align-items:center;justify-content:center}
 .modal-overlay.open{display:flex}
 .modal-box{background:var(--surface);border:1px solid var(--border2);border-radius:var(--r);padding:24px;width:90%;max-width:500px;position:relative;animation:modalIn .2s ease;box-shadow:0 20px 60px rgba(0,0,0,.6);max-height:90vh;overflow-y:auto}
@@ -176,12 +169,14 @@ textarea{resize:vertical;min-height:80px;font-family:var(--mono);font-size:12px}
 .modal-title{font-size:15px;font-weight:600;color:var(--text);margin-bottom:4px;display:flex;align-items:center;gap:8px}
 .modal-close{position:absolute;right:16px;top:14px;width:26px;height:26px;border-radius:50%;border:1px solid var(--border2);background:var(--surface2);color:var(--text3);cursor:pointer;font-size:14px;display:flex;align-items:center;justify-content:center;transition:all .15s}
 .modal-close:hover{color:var(--text);border-color:var(--red)}
+.provider-status-card{background:var(--surface2);border:1px solid var(--border);border-radius:var(--r-sm);padding:14px;margin-bottom:16px}
+.provider-status-row{display:flex;align-items:center;gap:12px;flex-wrap:wrap}
 @media (max-width:768px){.sidebar{transform:translateX(-100%)}.sidebar.open{transform:translateX(0)}.main{margin-left:0}.mobile-toggle{display:flex!important}.content{padding:16px}.topbar{padding:10px 16px}.stats-row{grid-template-columns:1fr 1fr}.form-row{flex-direction:column}.otp-summary-row{grid-template-columns:1fr 1fr}}
 </style>
 </head>
 <body>
 
-<!-- Modals (same as before) -->
+<!-- Modals -->
 <div id="changePasswordModal" class="modal-overlay"><div class="modal-box"><div class="modal-title">🔐 Change Password</div><div style="color:var(--text3);margin-bottom:14px;">Update your admin password</div>
 <form id="changePasswordForm"><div class="form-group" style="margin-bottom:12px;"><label>Current Password</label><input type="password" id="current-password" required></div>
 <div class="form-group" style="margin-bottom:12px;"><label>New Password</label><input type="password" id="new-password" required></div>
@@ -222,7 +217,7 @@ textarea{resize:vertical;min-height:80px;font-family:var(--mono);font-size:12px}
     <button class="nav-item" onclick="switchTab('license-tab', this)"><span class="nav-icon">🎫</span> Licenses</button>
     <button class="nav-item" onclick="switchTab('samsung-tab', this)"><span class="nav-icon">📱</span> Samsung FRP</button>
     <div class="nav-section">OTP Store</div>
-    <button class="nav-item" onclick="switchTab('otp-tab', this)"><span class="nav-icon">🔑</span> OTP Management<span class="nav-badge" id="nav-otp-badge" style="display:none">0</span></button>
+    <button class="nav-item" onclick="switchTab('otp-tab', this)"><span class="nav-icon">🔑</span> OTP Management</button>
     <div class="nav-section">System</div>
     <button class="nav-item" onclick="switchTab('rate-limits-tab', this)"><span class="nav-icon">⏱️</span> Rate Limits</button>
     <button class="nav-item" onclick="switchTab('logs-tab', this)"><span class="nav-icon">📋</span> System Logs</button>
@@ -249,7 +244,7 @@ textarea{resize:vertical;min-height:80px;font-family:var(--mono);font-size:12px}
   </div>
 
   <div class="content">
-    <!-- Stats -->
+    <!-- Stats Row -->
     <div class="stats-row">
       <div class="stat-card" style="--card-accent:var(--accent)"><div class="stat-icon">👥</div><div class="stat-val" id="total-users">0</div><div class="stat-label">Total Users</div></div>
       <div class="stat-card" style="--card-accent:var(--blue)"><div class="stat-icon">🏪</div><div class="stat-val" id="total-resellers-stat">0</div><div class="stat-label">Resellers</div></div>
@@ -259,7 +254,7 @@ textarea{resize:vertical;min-height:80px;font-family:var(--mono);font-size:12px}
       <div class="stat-card" style="--card-accent:var(--amber)"><div class="stat-icon">📱</div><div class="stat-val" id="total-devices">0</div><div class="stat-label">Devices</div></div>
     </div>
 
-    <!-- TAB: USERS (same as before - omitted for brevity, keep your existing) -->
+    <!-- TAB: USERS -->
     <div id="users-tab" class="tab-content active">
       <div class="panel">
         <div class="panel-header"><div class="panel-title"><span class="panel-title-icon">👥</span> User Management</div></div>
@@ -274,7 +269,7 @@ textarea{resize:vertical;min-height:80px;font-family:var(--mono);font-size:12px}
       </div>
     </div>
 
-    <!-- TAB: RESELLERS (same as before - omitted for brevity) -->
+    <!-- TAB: RESELLERS -->
     <div id="resellers-tab" class="tab-content">
       <div class="panel"><div class="panel-header"><div class="panel-title"><span class="panel-title-icon">🏪</span> Reseller Management</div></div>
         <div class="controls-row"><div class="search-input"><span class="search-icon">🔍</span><input type="text" id="reseller-search" placeholder="Search resellers…"></div><button onclick="searchResellers()" class="btn btn-ghost btn-sm">Search</button></div>
@@ -283,7 +278,7 @@ textarea{resize:vertical;min-height:80px;font-family:var(--mono);font-size:12px}
       </div>
     </div>
 
-    <!-- TAB: CREDITS (same as before) -->
+    <!-- TAB: CREDITS -->
     <div id="credits-tab" class="tab-content">
       <div class="panel">
         <div class="panel-header"><div class="panel-title"><span class="panel-title-icon">💎</span> Credit Management</div></div>
@@ -296,7 +291,7 @@ textarea{resize:vertical;min-height:80px;font-family:var(--mono);font-size:12px}
       </div>
     </div>
 
-    <!-- TAB: LICENSE (same as before) -->
+    <!-- TAB: LICENSE -->
     <div id="license-tab" class="tab-content">
       <div class="panel">
         <div class="panel-header"><div class="panel-title"><span class="panel-title-icon">🎫</span> License Management</div></div>
@@ -310,7 +305,7 @@ textarea{resize:vertical;min-height:80px;font-family:var(--mono);font-size:12px}
       </div>
     </div>
 
-    <!-- TAB: SAMSUNG FRP - COMPLETE REBUILD WITH SEARCH -->
+    <!-- TAB: SAMSUNG FRP -->
     <div id="samsung-tab" class="tab-content">
       <div class="panel">
         <div class="panel-header"><div class="panel-title"><span class="panel-title-icon">📱</span> Samsung FRP Management</div></div>
@@ -343,8 +338,6 @@ textarea{resize:vertical;min-height:80px;font-family:var(--mono);font-size:12px}
         </div>
 
         <div class="section-header"><span class="section-header-title">Orders</span><div class="section-header-line"></div></div>
-        
-        <!-- Controls Row with Search -->
         <div class="controls-row">
           <div class="filter-chips">
             <button class="chip" onclick="filterSamsungOrders('pending', this)">Pending</button>
@@ -361,7 +354,6 @@ textarea{resize:vertical;min-height:80px;font-family:var(--mono);font-size:12px}
           <button onclick="clearSamsungSearch()" class="btn btn-ghost btn-sm">Clear</button>
           <button onclick="loadSamsungOrders()" class="btn btn-ghost btn-sm">🔄 Refresh</button>
         </div>
-        
         <div id="samsung-orders-list"><p style="color:var(--text3);padding:20px;text-align:center;">Loading orders...</p></div>
         <div class="pagination"><div class="page-info" id="samsung-order-page-info">—</div><div class="page-btns">
           <button class="page-btn" id="samsungOrderPrev" disabled>←</button>
@@ -370,28 +362,58 @@ textarea{resize:vertical;min-height:80px;font-family:var(--mono);font-size:12px}
       </div>
     </div>
 
-    <!-- TAB: OTP MANAGEMENT (same as before) -->
+    <!-- TAB: OTP MANAGEMENT - GSM MANAGER VERSION -->
     <div id="otp-tab" class="tab-content">
       <div class="panel">
-        <div class="panel-header"><div class="panel-title"><span class="panel-title-icon">🔑</span> OTP Management</div></div>
-        <div id="otp-success" class="notice notice-success"></div><div id="otp-error" class="notice notice-error"></div>
-        <div class="section-header"><span class="section-header-title">OTP Inventory</span><div class="section-header-line"></div></div>
-        <div id="otp-stats-container" class="otp-summary-row"><p style="color:var(--text3);padding:12px;">Loading stats…</p></div>
-        <div class="section-header"><span class="section-header-title">Add OTP Codes</span><div class="section-header-line"></div></div>
-        <form id="addOtpForm"><div class="form-row"><div class="form-group" style="flex:1;"><label>OTP Type</label><select id="otp-type" required><option value="">— Select —</option><option value="oppo_flash">OPPO Flash OTP (20 credits)</option><option value="tecno_anticrack">Tecno/Itel/Infinix AntiCrack (10 credits)</option><option value="tecno_anticrack_p7">Tecno AntiCrack P7 (12 credits)</option><option value="tecno_auth_mtk">Tecno Auth MTK (9 credits)</option><option value="infinix_auth_mtk">Infinix Auth MTK (8 credits)</option><option value="tecno_auth_spd">Tecno Auth SPD (13 credits)</option><option value="tecno_cpid">Tecno CPID (20 credits)</option><option value="realme_mtk">Realme MTK OTP (5 credits)</option><option value="oneplus">OnePlus OTP (6 credits)</option></select></div></div>
-        <div class="form-group"><label>OTP Codes (one per line or comma-separated)</label><textarea id="otp-codes" rows="5" placeholder="Paste OTP codes here..." required></textarea></div>
-        <div class="form-group"><label>Notes</label><input type="text" id="otp-notes" placeholder="Batch info"></div>
-        <button type="submit" class="btn btn-primary">➕ Add OTP Codes</button></form>
-        <div class="section-header"><span class="section-header-title">OTP List & Filter</span><div class="section-header-line"></div></div>
-        <div class="controls-row"><div class="form-group" style="max-width:200px;"><label>Type</label><select id="otp-filter-type" onchange="loadOtpList()"><option value="">All Types</option><option value="oppo_flash">OPPO Flash</option><option value="tecno_anticrack">Tecno AntiCrack</option><option value="tecno_anticrack_p7">Tecno AntiCrack P7</option><option value="tecno_auth_mtk">Tecno Auth MTK</option><option value="infinix_auth_mtk">Infinix Auth MTK</option><option value="tecno_auth_spd">Tecno Auth SPD</option><option value="tecno_cpid">Tecno CPID</option><option value="realme_mtk">Realme MTK</option><option value="oneplus">OnePlus</option></select></div><div class="form-group" style="max-width:150px;"><label>Status</label><select id="otp-filter-status" onchange="loadOtpList()"><option value="all">All</option><option value="available">Available</option><option value="used">Used</option></select></div><button onclick="loadOtpList()" class="btn btn-ghost btn-sm">Refresh</button></div>
-        <div id="otp-list"><p style="color:var(--text3);padding:20px;text-align:center;">Loading...</p></div>
-        <div class="pagination"><div class="page-info" id="otp-page-info">—</div><div class="page-btns"><button class="page-btn" id="otpPrev" disabled>←</button><button class="page-btn" id="otpNext" disabled>→</button></div></div>
-        <div class="section-header"><span class="section-header-title">Recent OTP Usage</span><div class="section-header-line"></div></div>
-        <div id="otp-used-history"><p style="color:var(--text3);padding:12px;">Loading history...</p></div>
+        <div class="panel-header">
+          <div class="panel-title">
+            <span class="panel-title-icon">🔑</span> OTP Management - GSM Manager
+          </div>
+        </div>
+        
+        <div id="otp-success" class="notice notice-success"></div>
+        <div id="otp-error" class="notice notice-error"></div>
+        
+        <!-- Provider Status Card -->
+        <div class="section-header">
+          <span class="section-header-title">Provider Status</span>
+          <div class="section-header-line"></div>
+        </div>
+        <div class="provider-status-card">
+          <div class="provider-status-row">
+            <span>📡 OTP Provider:</span>
+            <span id="otp-provider-status" class="badge badge-success">GSM Manager</span>
+            <span id="otp-provider-url" style="color:var(--text3);font-size:11px;">https://gsmmanager.com/public</span>
+          </div>
+          <div style="margin-top:8px;font-size:11px;color:var(--text3);">
+            ℹ️ OTPs are generated in real-time via GSM Manager. No manual inventory management needed.
+          </div>
+        </div>
+        
+        <!-- Your Pricing Table -->
+        <div class="section-header">
+          <span class="section-header-title">Your Pricing (Credits)</span>
+          <div class="section-header-line"></div>
+        </div>
+        <div id="otp-pricing-container" class="otp-summary-row">
+          <div class="otp-card"><div class="otp-card-name">🔑 OPPO Flash OTP</div><div class="otp-card-stats"><span>💰 35 credits</span><span class="avail">Provider: $23 USD</span></div></div>
+          <div class="otp-card"><div class="otp-card-name">🔑 OnePlus OTP</div><div class="otp-card-stats"><span>💰 20 credits</span><span class="avail">Provider: $10 USD</span></div></div>
+          <div class="otp-card"><div class="otp-card-name">🔑 Realme MTK OTP</div><div class="otp-card-stats"><span>💰 12 credits</span><span class="avail">Provider: $5 USD</span></div></div>
+          <div class="otp-card"><div class="otp-card-name">🔑 Tecno/Infinix AntiCrack</div><div class="otp-card-stats"><span>💰 18 credits</span><span class="avail">Provider: $10 USD</span></div></div>
+          <div class="otp-card"><div class="otp-card-name">🔑 Tecno/Infinix Auth Flash</div><div class="otp-card-stats"><span>💰 16 credits</span><span class="avail">Provider: $9 USD</span></div></div>
+          <div class="otp-card"><div class="otp-card-name">🔑 Xiaomi FRP One Click</div><div class="otp-card-stats"><span>💰 10 credits</span><span class="avail">Provider: $4.50 USD</span></div></div>
+        </div>
+        
+        <!-- OTP Purchase History -->
+        <div class="section-header">
+          <span class="section-header-title">OTP Purchase History</span>
+          <div class="section-header-line"></div>
+        </div>
+        <div id="otp-purchase-history"><p style="color:var(--text3);padding:12px;">Loading history...</p></div>
       </div>
     </div>
 
-    <!-- TAB: RATE LIMITS (same as before) -->
+    <!-- TAB: RATE LIMITS -->
     <div id="rate-limits-tab" class="tab-content">
       <div class="panel">
         <div class="panel-header"><div class="panel-title"><span class="panel-title-icon">⏱️</span> Rate Limit Control</div></div>
@@ -407,7 +429,7 @@ textarea{resize:vertical;min-height:80px;font-family:var(--mono);font-size:12px}
       </div>
     </div>
 
-    <!-- TAB: LOGS (same as before) -->
+    <!-- TAB: LOGS -->
     <div id="logs-tab" class="tab-content">
       <div class="panel">
         <div class="panel-header"><div class="panel-title"><span class="panel-title-icon">📋</span> System Logs</div></div>
@@ -419,7 +441,7 @@ textarea{resize:vertical;min-height:80px;font-family:var(--mono);font-size:12px}
 </main>
 
 <script>
-let userFilter='all',userSearch='',userPage=1,resellerSearch='',resellerPage=1,allLogs=[],logFilter='all',logSearch='',otpPage=1;
+let userFilter='all',userSearch='',userPage=1,resellerSearch='',resellerPage=1,allLogs=[],logFilter='all',logSearch='';
 let samsungOrderStatus='all',samsungOrderPage=1,samsungOrderSearch='',allSamsungOrders=[];
 const PP=10;
 
@@ -429,7 +451,7 @@ const pageTitles={
   'credits-tab':['Credit Management','Add or remove user credits'],
   'license-tab':['License Management','Activate, assign, and remove licenses'],
   'samsung-tab':['Samsung FRP','Manage Samsung FRP orders and server status'],
-  'otp-tab':['OTP Management','Upload and manage OTP codes'],
+  'otp-tab':['OTP Management','GSM Manager - Real-time OTP generation'],
   'rate-limits-tab':['Rate Limit Control','Reset login and command limits'],
   'logs-tab':['System Logs','View all system activity and events']
 };
@@ -446,7 +468,7 @@ function switchTab(id,btn){
   if(id==='resellers-tab')loadResellers();
   if(id==='credits-tab')loadCredits();
   if(id==='samsung-tab'){loadSamsungServerStatus();loadSamsungOrders();}
-  if(id==='otp-tab'){loadOtpStats();loadOtpList();loadOtpHistory();}
+  if(id==='otp-tab'){loadOtpStats();loadOtpHistory();}
   if(id==='logs-tab')loadLogs();
   closeSidebar();
 }
@@ -518,7 +540,7 @@ async function loadResellers(){
 
 async function loadCredits(){try{const r=await fetch('/api/admin/credit-stats');const d=await r.json();if(d.success)document.getElementById('total-credits-amount').textContent=(d.total_credits||0).toLocaleString()}catch(e){}}
 
-// ============ SAMSUNG FRP FUNCTIONS WITH SEARCH ============
+// ============ SAMSUNG FRP FUNCTIONS ============
 async function loadSamsungServerStatus(){
   try{
     const r=await fetch('/api/admin/samsung/server/status');
@@ -627,10 +649,8 @@ async function loadSamsungOrders(){
       return;
     }
     
-    // Store all orders for search
     allSamsungOrders = d.orders || [];
     
-    // Apply client-side search
     let filteredOrders = allSamsungOrders;
     if(samsungOrderSearch){
       filteredOrders = allSamsungOrders.filter(o => 
@@ -641,7 +661,6 @@ async function loadSamsungOrders(){
       );
     }
     
-    // Paginate filtered results
     const total = filteredOrders.length;
     const start = (samsungOrderPage - 1) * PP;
     const paginatedOrders = filteredOrders.slice(start, start + PP);
@@ -680,7 +699,7 @@ async function loadSamsungOrders(){
       }
       if(o.status === 'failed'){
         h+=`<button class="btn btn-sm btn-warning" onclick="refundSamsungOrder(${o.id})">💰 Refund</button>`;
-        h+=`<button class="btn btn-sm btn-info" onclick="processSamsungOrder(${o.id},'completed')">🔄 Retry & Complete</button>`;
+        h+=`<button class="btn btn-sm btn-info" onclick="processSamsungOrder(${o.id},'completed')">🔄 Retry</button>`;
       }
       if(o.status === 'processing'){
         h+=`<button class="btn btn-sm btn-success" onclick="processSamsungOrder(${o.id},'completed')">✅ Complete</button>`;
@@ -743,12 +762,12 @@ async function processSamsungOrder(orderId, status){
 }
 
 async function refundSamsungOrder(orderId){
-  if(!confirm(`Refund credits for order #${orderId}? Credits will be returned to the user.`)) return;
+  if(!confirm(`Refund credits for order #${orderId}?`)) return;
   try{
     const r = await fetch(`/api/admin/samsung/order/${orderId}/refund`,{method:'POST'});
     const d = await r.json();
     if(d.success){
-      showSamsungNotice(true, d.message || `Refunded ${d.credits_refunded || 'credits'} for order #${orderId}`);
+      showSamsungNotice(true, d.message || `Refunded for order #${orderId}`);
       await loadSamsungOrders();
       await loadDashboardStats();
       await loadCredits();
@@ -767,75 +786,84 @@ function showSamsungNotice(success, msg){
   setTimeout(() => el.style.display = 'none', 4000);
 }
 
-// ── OTP FUNCTIONS (keep your existing ones) ──
+// ============ OTP FUNCTIONS - GSM MANAGER VERSION ============
 async function loadOtpStats(){
-  try{const r=await fetch('/api/admin/otps/stats');const d=await r.json();
-    if(!d.success)return;
-    let h='';
-    for(const[k,v]of Object.entries(d.stats||{})){
-      h+=`<div class="otp-card"><div class="otp-card-name">🔑 ${v.name}</div><div class="otp-card-stats"><span>💰 ${v.cost}cr</span><span class="avail">✅ ${v.available}</span><span class="used">📤 ${v.used}</span></div></div>`;
-    }
-    document.getElementById('otp-stats-container').innerHTML=h||'<p style="color:var(--text3);padding:12px;">No OTPs stored.</p>';
-    const totalAvail=d.summary?d.summary.total_available:0;
-    const badge=document.getElementById('nav-otp-badge');
-    badge.textContent=totalAvail;badge.style.display=totalAvail>0?'inline':'none';
-  }catch(e){document.getElementById('otp-stats-container').innerHTML='<p style="color:var(--red);">Error loading stats.</p>'}
-}
-
-async function loadOtpList(){
-  const type=document.getElementById('otp-filter-type').value;
-  const status=document.getElementById('otp-filter-status').value;
   try{
-    const r=await fetch(`/api/admin/otps/list?type=${type}&status=${status}&page=${otpPage}&limit=30`);
-    const d=await r.json();
-    if(!d.otps||!d.otps.length){document.getElementById('otp-list').innerHTML='<p style="color:var(--text3);padding:12px;">No OTPs found.</p>';return}
-    let h='<div class="table-wrap">\n<table><thead></tr><th>ID</th><th>Code</th><th>Type</th><th>Cost</th><th>Status</th><th>Used By</th><th>Date</th><th>Action</th></tr></thead><tbody>';
-    d.otps.forEach(o=>{
-      const sb=o.is_used?'<span class="badge badge-used">Used</span>':'<span class="badge badge-available">Available</span>';
-      h+=`<tr><td class="mono-cell">${o.id}</td><td class="mono-cell">${o.otp_code}</td><td>${o.otp_name}</td><td class="mono-cell">${o.credits_cost} cr</td><td>${sb}</td><td class="mono-cell">${o.used_by_username||'—'}</td><td class="mono-cell" style="font-size:10px;">${o.used_at||o.created_at||'—'}</td>
-      <td>${!o.is_used?`<button class="btn btn-sm btn-danger" onclick="deleteOtp(${o.id})">🗑</button>`:'<span style="color:var(--text3);font-size:10px;">—</span>'}</td></tr>`;
-    });
-    h+='</tbody></table></div>';
-    document.getElementById('otp-list').innerHTML=h;
-    const tp=Math.max(1,Math.ceil(d.total/30));
-    document.getElementById('otp-page-info').textContent=`Page ${otpPage} of ${tp} · ${d.total} OTPs`;
-    document.getElementById('otpPrev').disabled=otpPage===1;document.getElementById('otpNext').disabled=otpPage>=tp;
-    document.getElementById('otpPrev').onclick=()=>{if(otpPage>1){otpPage--;loadOtpList()}};
-    document.getElementById('otpNext').onclick=()=>{if(otpPage<tp){otpPage++;loadOtpList()}};
-  }catch(e){document.getElementById('otp-list').innerHTML='<p style="color:var(--red);">Error loading OTPs.</p>'}
+    const r = await fetch('/api/admin/otps/stats');
+    const d = await r.json();
+    if(d.success){
+      if(document.getElementById('otp-provider-status')){
+        document.getElementById('otp-provider-status').innerHTML = d.provider || 'GSM Manager';
+        document.getElementById('otp-provider-url').innerHTML = d.provider_url || 'https://gsmmanager.com/public';
+      }
+    }
+  } catch(e){
+    console.error('loadOtpStats error:', e);
+  }
 }
 
 async function loadOtpHistory(){
   try{
-    const r=await fetch('/api/admin/otps/used-history?limit=20');
-    const d=await r.json();
-    if(!d.history||!d.history.length){document.getElementById('otp-used-history').innerHTML='<p style="color:var(--text3);padding:12px;">No usage yet.</p>';return}
-    let h='<div class="table-wrap"><table><thead><tr><th>ID</th><th>Type</th><th>User</th><th>Email</th><th>Cost</th><th>Date</th></tr></thead><tbody>';
-    d.history.forEach(o=>{h+=`<tr><td class="mono-cell">${o.id}</td><td>${o.name}</td><td class="mono-cell">${o.user||'?'}</td><td class="mono-cell" style="font-size:10px;">${o.email||'?'}</td><td class="mono-cell">${o.cost} cr</td><td class="mono-cell" style="font-size:10px;">${o.used_at||'—'}</td></tr>`});
-    h+='</tbody></table></div>';document.getElementById('otp-used-history').innerHTML=h;
-  }catch(e){document.getElementById('otp-used-history').innerHTML='<p style="color:var(--red);">Error loading history.</p>'}
+    const r = await fetch('/api/user/otps/history');
+    const d = await r.json();
+    if(d.success && d.history && d.history.length){
+      let h = '<div class="table-wrap"></table><thead></tr>';
+      h += '<th>ID</th><th>Description</th><th>Cost</th><th>Date</th>';
+      h += '</thead><tbody>';
+      
+      d.history.forEach(p => {
+        h += `<tr>
+                <td class="mono-cell">${p.id}</td>
+                <td>${esc(p.name || p.description || 'OTP Purchase')}</td>
+                <td class="mono-cell">${p.cost} credits</td>
+                <td class="mono-cell" style="font-size:10px;">${p.used_at ? p.used_at.substring(0,16) : '—'}</td>
+               </tr>`;
+      });
+      
+      h += `<tr style="background:rgba(99,102,241,.1);">
+              <td colspan="2"><strong>Total Spent</strong></td>
+              <td class="mono-cell"><strong>${d.total_spent || 0} credits</strong></td>
+              <td></td>
+             </tr>`;
+      h += '</tbody></div>';
+      document.getElementById('otp-purchase-history').innerHTML = h;
+    } else {
+      document.getElementById('otp-purchase-history').innerHTML = '<p style="color:var(--text3);padding:12px;">No OTP purchases yet.</p>';
+    }
+  } catch(e){
+    console.error('loadOtpHistory error:', e);
+    document.getElementById('otp-purchase-history').innerHTML = '<p style="color:var(--red);padding:12px;">Error loading history.</p>';
+  }
 }
 
-async function deleteOtp(id){if(!confirm('Delete OTP #'+id+'?'))return;try{const r=await fetch('/api/admin/otps/delete/'+id,{method:'DELETE'});const d=await r.json();if(d.success){showOT('otp-success','OTP deleted');loadOtpStats();loadOtpList()}else showOT('otp-error',d.error)}catch(e){showOT('otp-error','Network error')}}
+// ============ ACTIONS ============
+async function toggleBan(id,isBanned){if(!confirm(`${isBanned?'Unban':'Ban'} this user?`))return;await fetch(`/api/admin/ban-user/${id}`,{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({ban:!isBanned})});loadUsers();loadResellers();loadDashboardStats()}
+async function makeReseller(id,name){const c=prompt(`Commission rate for ${name} (%):`,'15');if(!c)return;const l=prompt(`Activation limit:`,'10');if(!l)return;try{const r=await fetch(`/api/admin/make-reseller/${id}`,{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({commission_rate:parseInt(c),activation_limit:parseInt(l)})});const d=await r.json();alert(d.message||d.error);loadUsers();loadResellers()}catch(e){alert('Network error')}}
+async function removeReseller(id,name){if(!confirm(`Remove reseller from ${name}?`))return;try{const r=await fetch(`/api/admin/remove-reseller/${id}`,{method:'POST'});const d=await r.json();alert(d.message||d.error);loadUsers();loadResellers()}catch(e){alert('Network error')}}
+async function editCommission(id,name,cur){const c=prompt(`Commission for ${name} (%):`,cur);if(!c)return;try{const r=await fetch(`/api/admin/update-reseller-commission/${id}`,{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({commission_rate:parseInt(c)})});const d=await r.json();alert(d.message||d.error);loadResellers()}catch(e){alert('Network error')}}
+function addCreditUser(email){document.getElementById('credit-user').value=email;switchTab('credits-tab',document.querySelector('[onclick*="credits-tab"]'))}
+async function removeCreditsQuick(email){const a=prompt('Amount to remove:','10');if(!a)return;const r=await fetch('/api/admin/remove-credits',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({user:email,amount:parseInt(a)})});const d=await r.json();alert(d.message||d.error);loadUsers();loadCredits()}
+async function removeLicense(email){if(!confirm(`Remove license from ${email}?`))return;const r=await fetch('/api/admin/remove-license',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({email})});const d=await r.json();alert(d.message||d.error);loadUsers()}
+function changeUserPassword(email,username){document.getElementById('target-email').value=email;document.getElementById('target-username').textContent=username;openModal('changeUserPasswordModal')}
+function showChangePasswordModal(){openModal('changePasswordModal')}
+function openModal(id){document.getElementById(id).classList.add('open')}
+function closeModal(id){document.getElementById(id).classList.remove('open')}
 
-function showOT(id,msg){const el=document.getElementById(id);el.textContent=(id.includes('success')?'✅ ':'❌ ')+msg;el.style.display='block';setTimeout(()=>el.style.display='none',4000)}
+// ============ MAINTENANCE ============
+async function checkMaintenance(){try{const r=await fetch('/api/admin/maintenance-status');const d=await r.json();const dot=document.getElementById('maintDot');const label=document.getElementById('maintenanceStatus');if(d.maintenance){dot.className='maint-dot on';label.textContent='Maintenance ON'}else{dot.className='maint-dot off';label.textContent='Maintenance OFF'}}catch(e){}}
+async function toggleMaintenance(){const r=await fetch('/api/admin/maintenance-status');const d=await r.json();if(!confirm(`Turn maintenance ${!d.maintenance?'ON':'OFF'}?`))return;await fetch('/api/admin/toggle-maintenance',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({enabled:!d.maintenance})});checkMaintenance()}
 
-document.getElementById('addOtpForm').addEventListener('submit',async e=>{
-  e.preventDefault();
-  const type=document.getElementById('otp-type').value;
-  const raw=document.getElementById('otp-codes').value;
-  const notes=document.getElementById('otp-notes').value;
-  if(!type||!raw.trim()){showOT('otp-error','Select type and enter codes');return}
-  const codes=raw.split(/[\n,]+/).map(c=>c.trim()).filter(c=>c);
-  if(!codes.length){showOT('otp-error','No valid codes found');return}
-  try{
-    const r=await fetch('/api/admin/otps/add',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({otp_type:type,otp_codes:codes,notes})});
-    const d=await r.json();
-    if(d.success){showOT('otp-success',d.message);document.getElementById('otp-codes').value='';loadOtpStats();loadOtpList()}else showOT('otp-error',d.error)
-  }catch(e){showOT('otp-error','Network error')}
-});
+// ============ FORM HANDLERS ============
+function showNotice(id,msg,isErr){const el=document.getElementById(id);el.className='notice '+(isErr?'notice-error':'notice-success');el.textContent=(isErr?'❌ ':'✅ ')+msg;el.style.display='block';setTimeout(()=>el.style.display='none',4000)}
+document.getElementById('addCreditForm').addEventListener('submit',async e=>{e.preventDefault();try{const r=await fetch('/api/admin/add-credits',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({user:document.getElementById('credit-user').value,amount:parseInt(document.getElementById('credit-amount').value)})});const d=await r.json();showNotice('credit-success',d.message||d.error,!d.success);if(d.success){loadCredits();loadUsers()}}catch(e){showNotice('credit-error','Network error',true)}});
+document.getElementById('removeCreditForm').addEventListener('submit',async e=>{e.preventDefault();try{const r=await fetch('/api/admin/remove-credits',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({user:document.getElementById('remove-credit-user').value,amount:parseInt(document.getElementById('remove-credit-amount').value)})});const d=await r.json();showNotice('credit-success',d.message||d.error,!d.success);if(d.success){loadCredits();loadUsers()}}catch(e){showNotice('credit-error','Network error',true)}});
+document.getElementById('licenseForm').addEventListener('submit',async e=>{e.preventDefault();try{const r=await fetch('/api/admin/assign-license',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({email:document.getElementById('user-email').value,license_type:document.getElementById('license-type').value})});const d=await r.json();showNotice(d.success?'license-success':'license-error',d.message||d.error,!d.success);if(d.success)loadUsers()}catch(e){showNotice('license-error','Network error',true)}});
+document.getElementById('customLicenseForm').addEventListener('submit',async e=>{e.preventDefault();try{const r=await fetch('/api/admin/assign-custom-license',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({email:document.getElementById('custom-user-email').value,license_type:document.getElementById('custom-license-type').value,duration_value:parseInt(document.getElementById('custom-duration-value').value),duration_unit:document.getElementById('custom-duration-unit').value,device_limit:parseInt(document.getElementById('custom-device-limit').value)})});const d=await r.json();showNotice(d.success?'license-success':'license-error',d.message||d.error,!d.success);if(d.success)loadUsers()}catch(e){showNotice('license-error','Network error',true)}});
+document.getElementById('removeLicenseForm').addEventListener('submit',async e=>{e.preventDefault();try{const r=await fetch('/api/admin/remove-license',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({email:document.getElementById('remove-license-email').value})});const d=await r.json();showNotice(d.success?'license-success':'license-error',d.message||d.error,!d.success);if(d.success)loadUsers()}catch(e){showNotice('license-error','Network error',true)}});
+document.getElementById('changePasswordForm').addEventListener('submit',async e=>{e.preventDefault();const np=document.getElementById('new-password').value;const cn=document.getElementById('confirm-new-password').value;if(np!==cn){showNotice('cp-error','Passwords do not match',true);return}try{const r=await fetch('/api/user/change-password',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({current_password:document.getElementById('current-password').value,new_password:np})});const d=await r.json();if(d.success){showNotice('cp-success','Password updated',false);setTimeout(()=>closeModal('changePasswordModal'),1500)}else showNotice('cp-error',d.error,true)}catch(e){showNotice('cp-error','Network error',true)}});
+document.getElementById('changeUserPasswordForm').addEventListener('submit',async e=>{e.preventDefault();const np=document.getElementById('new-user-password').value;const cn=document.getElementById('confirm-user-password').value;if(np!==cn){showNotice('cup-error','Passwords do not match',true);return}try{const r=await fetch('/api/admin/change-user-password',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({email:document.getElementById('target-email').value,new_password:np})});const d=await r.json();if(d.success){showNotice('cup-success','Password changed',false);setTimeout(()=>closeModal('changeUserPasswordModal'),1500)}else showNotice('cup-error',d.error,true)}catch(e){showNotice('cup-error','Network error',true)}});
 
-// ── RATE LIMITS (keep your existing functions) ──
+// ============ RATE LIMITS ============
 async function checkUserLimits(){
   const userId=document.getElementById('check-user-id').value;const username=document.getElementById('check-username').value;const email=document.getElementById('check-email').value;
   let url='';if(userId){url=`/api/admin/user-limits/${userId}`}else if(username||email){
@@ -849,8 +877,7 @@ async function resetCommandLimit(){
   const body={};if(userId)body.user_id=parseInt(userId);else if(username)body.username=username;else if(email)body.email=email;else{showRLError('Enter User ID, username, or email');return}
   try{const r=await fetch('/api/admin/reset-command-limit',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify(body)});const d=await r.json();if(d.success)showRLSuccess(d.message);else showRLError(d.error)}catch(e){showRLError('Network error')}
 }
-async function resetAllCommandLimits(){if(!confirm('⚠ Reset ALL users?'))return;try{const r=await fetch('/api/admin/reset-command-limit-all',{method:'POST'});const d=await r.json();if(d.success)showRLSuccess(d.message);else showRLError(d.error)}catch(e){showRLError('Network error')}
-}
+async function resetAllCommandLimits(){if(!confirm('⚠ Reset ALL users?'))return;try{const r=await fetch('/api/admin/reset-command-limit-all',{method:'POST'});const d=await r.json();if(d.success)showRLSuccess(d.message);else showRLError(d.error)}catch(e){showRLError('Network error')}}
 async function resetLoginAttempts(){
   const identifier=document.getElementById('reset-login-identifier').value.trim();if(!identifier){showRLError('Enter email, username, or IP');return}
   try{const r=await fetch('/api/admin/reset-login-attempts',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({identifier})});const d=await r.json();if(d.success){showRLSuccess(`${d.message} (${d.deleted_attempts} deleted)`);document.getElementById('reset-login-identifier').value=''}else showRLError(d.error)}catch(e){showRLError('Network error')}
@@ -858,7 +885,7 @@ async function resetLoginAttempts(){
 function showRLSuccess(msg){const el=document.getElementById('rate-limit-success');el.textContent='✅ '+msg;el.style.display='block';setTimeout(()=>el.style.display='none',4000)}
 function showRLError(msg){const el=document.getElementById('rate-limit-error');el.textContent='❌ '+msg;el.style.display='block';setTimeout(()=>el.style.display='none',4000)}
 
-// ── LOGS (keep your existing functions) ──
+// ============ LOGS ============
 function filterLogs(f,btn){logFilter=f;document.querySelectorAll('#logs-tab .chip').forEach(b=>b.classList.remove('active'));if(btn)btn.classList.add('active');displayLogs()}
 function searchLogs(){logSearch=document.getElementById('log-search').value.toLowerCase();displayLogs()}
 function clearLogSearch(){document.getElementById('log-search').value='';logSearch='';displayLogs()}
@@ -873,32 +900,6 @@ function displayLogs(){
   document.getElementById('system-logs').innerHTML=h;
 }
 
-// ── ACTIONS ──
-async function toggleBan(id,isBanned){if(!confirm(`${isBanned?'Unban':'Ban'} this user?`))return;await fetch(`/api/admin/ban-user/${id}`,{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({ban:!isBanned})});loadUsers();loadResellers();loadDashboardStats()}
-async function makeReseller(id,name){const c=prompt(`Commission rate for ${name} (%):`,'15');if(!c)return;const l=prompt(`Activation limit:`,'10');if(!l)return;try{const r=await fetch(`/api/admin/make-reseller/${id}`,{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({commission_rate:parseInt(c),activation_limit:parseInt(l)})});const d=await r.json();alert(d.message||d.error);loadUsers();loadResellers()}catch(e){alert('Network error')}}
-async function removeReseller(id,name){if(!confirm(`Remove reseller from ${name}?`))return;try{const r=await fetch(`/api/admin/remove-reseller/${id}`,{method:'POST'});const d=await r.json();alert(d.message||d.error);loadUsers();loadResellers()}catch(e){alert('Network error')}}
-async function editCommission(id,name,cur){const c=prompt(`Commission for ${name} (%):`,cur);if(!c)return;try{const r=await fetch(`/api/admin/update-reseller-commission/${id}`,{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({commission_rate:parseInt(c)})});const d=await r.json();alert(d.message||d.error);loadResellers()}catch(e){alert('Network error')}}
-function addCreditUser(email){document.getElementById('credit-user').value=email;switchTab('credits-tab',document.querySelector('[onclick*="credits-tab"]'))}
-async function removeCreditsQuick(email){const a=prompt('Amount to remove:','10');if(!a)return;const r=await fetch('/api/admin/remove-credits',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({user:email,amount:parseInt(a)})});const d=await r.json();alert(d.message||d.error);loadUsers();loadCredits()}
-async function removeLicense(email){if(!confirm(`Remove license from ${email}?`))return;const r=await fetch('/api/admin/remove-license',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({email})});const d=await r.json();alert(d.message||d.error);loadUsers()}
-function changeUserPassword(email,username){document.getElementById('target-email').value=email;document.getElementById('target-username').textContent=username;openModal('changeUserPasswordModal')}
-function showChangePasswordModal(){openModal('changePasswordModal')}
-function openModal(id){document.getElementById(id).classList.add('open')}
-function closeModal(id){document.getElementById(id).classList.remove('open')}
-
-// ── MAINTENANCE ──
-async function checkMaintenance(){try{const r=await fetch('/api/admin/maintenance-status');const d=await r.json();const dot=document.getElementById('maintDot');const label=document.getElementById('maintenanceStatus');if(d.maintenance){dot.className='maint-dot on';label.textContent='Maintenance ON'}else{dot.className='maint-dot off';label.textContent='Maintenance OFF'}}catch(e){}}
-async function toggleMaintenance(){const r=await fetch('/api/admin/maintenance-status');const d=await r.json();if(!confirm(`Turn maintenance ${!d.maintenance?'ON':'OFF'}?`))return;await fetch('/api/admin/toggle-maintenance',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({enabled:!d.maintenance})});checkMaintenance()}
-
-// ── FORM HANDLERS ──
-function showNotice(id,msg,isErr){const el=document.getElementById(id);el.className='notice '+(isErr?'notice-error':'notice-success');el.textContent=(isErr?'❌ ':'✅ ')+msg;el.style.display='block';setTimeout(()=>el.style.display='none',4000)}
-document.getElementById('addCreditForm').addEventListener('submit',async e=>{e.preventDefault();try{const r=await fetch('/api/admin/add-credits',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({user:document.getElementById('credit-user').value,amount:parseInt(document.getElementById('credit-amount').value)})});const d=await r.json();showNotice('credit-success',d.message||d.error,!d.success);if(d.success){loadCredits();loadUsers()}}catch(e){showNotice('credit-error','Network error',true)}});
-document.getElementById('removeCreditForm').addEventListener('submit',async e=>{e.preventDefault();try{const r=await fetch('/api/admin/remove-credits',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({user:document.getElementById('remove-credit-user').value,amount:parseInt(document.getElementById('remove-credit-amount').value)})});const d=await r.json();showNotice('credit-success',d.message||d.error,!d.success);if(d.success){loadCredits();loadUsers()}}catch(e){showNotice('credit-error','Network error',true)}});
-document.getElementById('licenseForm').addEventListener('submit',async e=>{e.preventDefault();try{const r=await fetch('/api/admin/assign-license',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({email:document.getElementById('user-email').value,license_type:document.getElementById('license-type').value})});const d=await r.json();showNotice(d.success?'license-success':'license-error',d.message||d.error,!d.success);if(d.success)loadUsers()}catch(e){showNotice('license-error','Network error',true)}});
-document.getElementById('customLicenseForm').addEventListener('submit',async e=>{e.preventDefault();try{const r=await fetch('/api/admin/assign-custom-license',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({email:document.getElementById('custom-user-email').value,license_type:document.getElementById('custom-license-type').value,duration_value:parseInt(document.getElementById('custom-duration-value').value),duration_unit:document.getElementById('custom-duration-unit').value,device_limit:parseInt(document.getElementById('custom-device-limit').value)})});const d=await r.json();showNotice(d.success?'license-success':'license-error',d.message||d.error,!d.success);if(d.success)loadUsers()}catch(e){showNotice('license-error','Network error',true)}});
-document.getElementById('removeLicenseForm').addEventListener('submit',async e=>{e.preventDefault();try{const r=await fetch('/api/admin/remove-license',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({email:document.getElementById('remove-license-email').value})});const d=await r.json();showNotice(d.success?'license-success':'license-error',d.message||d.error,!d.success);if(d.success)loadUsers()}catch(e){showNotice('license-error','Network error',true)}});
-document.getElementById('changePasswordForm').addEventListener('submit',async e=>{e.preventDefault();const np=document.getElementById('new-password').value;const cn=document.getElementById('confirm-new-password').value;if(np!==cn){showNotice('cp-error','Passwords do not match',true);return}try{const r=await fetch('/api/user/change-password',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({current_password:document.getElementById('current-password').value,new_password:np})});const d=await r.json();if(d.success){showNotice('cp-success','Password updated',false);setTimeout(()=>closeModal('changePasswordModal'),1500)}else showNotice('cp-error',d.error,true)}catch(e){showNotice('cp-error','Network error',true)}});
-document.getElementById('changeUserPasswordForm').addEventListener('submit',async e=>{e.preventDefault();const np=document.getElementById('new-user-password').value;const cn=document.getElementById('confirm-user-password').value;if(np!==cn){showNotice('cup-error','Passwords do not match',true);return}try{const r=await fetch('/api/admin/change-user-password',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({email:document.getElementById('target-email').value,new_password:np})});const d=await r.json();if(d.success){showNotice('cup-success','Password changed',false);setTimeout(()=>closeModal('changeUserPasswordModal'),1500)}else showNotice('cup-error',d.error,true)}catch(e){showNotice('cup-error','Network error',true)}});
 function esc(s){if(!s)return'';return String(s).replace(/[&<>"]/g,c=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;'}[c]))}
 
 // Init
