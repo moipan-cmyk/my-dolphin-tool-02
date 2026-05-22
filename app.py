@@ -27,6 +27,8 @@ import hmac
 import time
 import requests
 from dotenv import load_dotenv
+import time
+import json as json_module
 
 # Load environment variables
 load_dotenv()
@@ -61,9 +63,7 @@ class GSMManagerOTPProvider:
         return signature
 
         def place_order(self, service_name: str, quantity: int = 1, **kwargs) -> dict:
-        """Place order on GSM Manager using service name"""
-        import time
-        import json as json_module
+       # """Place order on GSM Manager using service name"""
         
         payload = {
             'action': 'place_order',
