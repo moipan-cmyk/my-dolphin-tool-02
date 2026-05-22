@@ -204,8 +204,9 @@
 
         .info-item .value {
             color: white;
-            font-size: 1rem;
+            font-size: 0.9rem;
             font-weight: 600;
+            word-break: break-word;
         }
 
         .value.banned {
@@ -778,6 +779,26 @@
                 </div>
             </div>
 
+            <!-- Device Binding Information Card -->
+            <div class="card">
+                <div class="card-header">
+                    <h2>🔒 Device binding information</h2>
+                    <button class="btn-secondary btn-sm" onclick="loadBindingInfo()">↻ Refresh</button>
+                </div>
+                <div class="info-grid">
+                    <div class="info-item"><div class="label">Device bound</div><div class="value" id="deviceBound">—</div></div>
+                    <div class="info-item"><div class="label">PC manufacturer</div><div class="value" id="pcManufacturer">—</div></div>
+                    <div class="info-item"><div class="label">Windows version</div><div class="value" id="windowsVersion">—</div></div>
+                    <div class="info-item"><div class="label">Hardware fingerprint</div><div class="value" id="hardwareFingerprint">—</div></div>
+                    <div class="info-item"><div class="label">Bound IP</div><div class="value" id="boundIp">—</div></div>
+                    <div class="info-item"><div class="label">Bound at</div><div class="value" id="boundAt">—</div></div>
+                    <div class="info-item"><div class="label">Last verified</div><div class="value" id="lastVerified">—</div></div>
+                    <div class="info-item"><div class="label">Verification failures</div><div class="value" id="verificationFailures">0</div></div>
+                    <div class="info-item"><div class="label">Verified device</div><div class="value" id="verifiedDevice">—</div></div>
+                    <div class="info-item"><div class="label">Bound HWID</div><div class="value" id="boundHwidPreview">—</div></div>
+                </div>
+            </div>
+
             <!-- Registered Devices Card -->
             <div class="card">
                 <div class="card-header"><h2>📱 Registered devices</h2><button class="btn-secondary btn-sm" onclick="loadDevices()">↻ Refresh</button></div>
@@ -821,7 +842,8 @@
             <div class="logs-container">
                 <table class="logs-table">
                     <thead><tr><th>Time</th><th>Type</th><th>Activity</th></tr></thead>
-                    <tbody id="logsBody"><tr><td colspan="3" style="text-align:center;padding:20px;"><div class="spinner"></div><p style="color:#a0aec0;">Loading logs...</p></td></tr></tbody>
+                    <tbody id="logsBody"><tr><td colspan="3" style="text-align:center;padding:20px;"><div class="spinner"></div><p style="color:#a0aec0;">Loading logs...</p></td></tr>
+                </tbody>
                 </table>
             </div>
         </div>
@@ -847,6 +869,7 @@
             loadUserData();
             loadDevices();
             loadResetOptions();
+            loadBindingInfo();  // Load device binding info
             loadActivityLogs();
             setInterval(loadActivityLogs, 10000);
             
@@ -866,7 +889,10 @@
                 const response = await fetch('/api/user/profile', { credentials: 'same-origin' });
                 if (!response.ok) { if (response.status === 401) { window.location.href = '/login'; return; } throw new Error('HTTP error'); }
                 const data = await response.json();
-                if (data.success) updateUserInfo(data);
+                if (data.success) {
+                    updateUserInfo(data);
+                    updateBindingInfo(data);  // Update binding info from same data
+                }
                 else showError('Failed to load user data');
             } catch (error) { console.error(error); showError('Network error'); }
         }
@@ -931,7 +957,7 @@
                 document.getElementById('daysLeft').textContent = daysRemaining + ' days remaining';
                 
                 // Calculate license percent elapsed
-                const totalDays = data.license_duration || 365;
+                const totalDays = 365; // Default
                 const elapsedPercent = ((totalDays - daysRemaining) / totalDays) * 100;
                 document.getElementById('licenseProgress').style.width = Math.min(100, elapsedPercent) + '%';
                 document.getElementById('licensePercent').textContent = Math.round(elapsedPercent) + '% elapsed';
@@ -946,6 +972,31 @@
                 document.getElementById('bottomCredits').textContent = `CREDITS: ${data.credits || 0}`;
                 document.getElementById('bottomDevices').textContent = `DEVICES: ${deviceCount}${isUnlimited ? '/∞' : '/' + deviceLimit}`;
             }
+        }
+
+        // Device Binding Information Functions
+        async function loadBindingInfo() {
+            try {
+                const response = await fetch('/api/user/profile', { credentials: 'same-origin' });
+                if (!response.ok) throw new Error('HTTP error');
+                const data = await response.json();
+                if (data.success) updateBindingInfo(data);
+            } catch (error) {
+                console.error('Error loading binding info:', error);
+            }
+        }
+
+        function updateBindingInfo(data) {
+            document.getElementById('deviceBound').innerHTML = data.is_device_bound ? '<span style="color:#28a745;">✅ Yes</span>' : '<span style="color:#dc3545;">❌ No</span>';
+            document.getElementById('pcManufacturer').textContent = data.pc_manufacturer || 'Not bound';
+            document.getElementById('windowsVersion').textContent = data.windows_version || 'Not bound';
+            document.getElementById('hardwareFingerprint').textContent = data.hardware_fingerprint || 'Not bound';
+            document.getElementById('boundIp').textContent = data.bound_ip || 'Not bound';
+            document.getElementById('boundAt').textContent = data.bound_at ? new Date(data.bound_at).toLocaleString() : '—';
+            document.getElementById('lastVerified').textContent = data.last_verified ? new Date(data.last_verified).toLocaleString() : '—';
+            document.getElementById('verificationFailures').textContent = data.verification_failures || 0;
+            document.getElementById('verifiedDevice').innerHTML = data.is_verified_device ? '<span style="color:#28a745;">✅ Yes</span>' : '<span style="color:#dc3545;">❌ No</span>';
+            document.getElementById('boundHwidPreview').textContent = data.bound_hwid_preview || 'Not bound';
         }
 
         async function loadDevices() {
@@ -967,10 +1018,10 @@
             devices.forEach(d => {
                 html += `<div class="device-item">
                     <div class="device-info">
-                        <h4>${d.device_name || 'Unknown Device'} <span class="device-badge ${d.is_active ? 'badge-active' : 'badge-inactive'}">${d.is_active ? 'Active' : 'Inactive'}</span></h4>
+                        <h4>${escapeHtml(d.device_name || 'Unknown Device')} <span class="device-badge ${d.is_active ? 'badge-active' : 'badge-inactive'}">${d.is_active ? 'Active' : 'Inactive'}</span></h4>
                         <p>HWID: ${d.hwid ? d.hwid.substring(0, 16) + '...' : 'N/A'}  |  Added ${new Date(d.created_at).toLocaleDateString('en-US', { month: 'short', day: 'numeric', year: 'numeric' })}</p>
                     </div>
-                    <button class="btn-danger btn-sm" onclick="showSingleResetConfirm(${d.id}, '${d.device_name}')">Reset</button>
+                    <button class="btn-danger btn-sm" onclick="showSingleResetConfirm(${d.id}, '${escapeHtml(d.device_name)}')">Reset</button>
                 </div>`;
             });
             container.innerHTML = html;
@@ -996,7 +1047,7 @@
                     <div><h4>Reset all devices</h4><p>Total cost: <span class="cost-badge">${data.total_cost_all} credits</span></p></div>
                     <button class="btn-danger btn-sm" onclick="showAllResetConfirm()" ${!data.can_reset_all ? 'disabled' : ''}>Reset all</button>
                 </div>
-                ${data.devices && data.devices.length > 0 ? `<div class="form-group"><select id="deviceSelect" style="width:100%;padding:8px;background:#0f0f1a;border:1px solid #2d2d44;border-radius:8px;color:white;"><option value="">Select device...</option>${data.devices.map(d => `<option value="${d.id}">${d.name}</option>`).join('')}</select></div>` : ''}
+                ${data.devices && data.devices.length > 0 ? `<div class="form-group"><select id="deviceSelect" style="width:100%;padding:8px;background:#0f0f1a;border:1px solid #2d2d44;border-radius:8px;color:white;"><option value="">Select device...</option>${data.devices.map(d => `<option value="${d.id}">${escapeHtml(d.name)}</option>`).join('')}</select></div>` : ''}
                 <div style="padding:10px;background:#0f0f1a;border-radius:8px;text-align:center;"><p style="color:#a0aec0;">Your credits: ${data.user_credits}  |  Active devices: ${data.total_devices}</p></div>
             `;
         }
