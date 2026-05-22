@@ -1129,7 +1129,7 @@ def create_app(config_class=Config):
         
         return render_template('reset_password.html', token=token)
 
-    ##########DESKTOP VALIDATION SPOT #################################################
+##########DESKTOP VALIDATION SPOT #################################################
     
     @app.route('/api/validate-license', methods=['POST'])
     def validate_license():
@@ -1159,16 +1159,15 @@ def create_app(config_class=Config):
             password = data.get('password', '')[:128]
             hwid = data.get('hwid', '')[:256] if data.get('hwid') else None
             
-            # ========== NEW: EXTRACT DEVICE BINDING INFORMATION ==========
+            # ========== EXTRACT DEVICE BINDING INFORMATION ==========
             pc_manufacturer = data.get('pc_manufacturer', '').strip()[:200]
             windows_version = data.get('windows_version', '').strip()[:100]
             hardware_fingerprint = data.get('hardware_fingerprint', '').strip()[:256]
             system_info = data.get('system_info', {})
             tool_version = data.get('tool_version', '').strip()[:20]
             
-            # Log device info for debugging
-            if pc_manufacturer or windows_version:
-                print(f"🔐 Device Binding Info - PC: {pc_manufacturer}, OS: {windows_version[:50] if windows_version else 'Unknown'}...")
+            # Debug print
+            print(f"\n🔐 [LOGIN] Device Binding Info - PC: {pc_manufacturer}, OS: {windows_version[:50] if windows_version else 'Unknown'}...")
             
             # Get IP for rate limiting
             client_ip = get_real_ip()
@@ -1194,6 +1193,7 @@ def create_app(config_class=Config):
                     'retry_after': wait_seconds
                 }), 403
             
+            # Find user
             user = None
             if email:
                 user = User.query.filter_by(email=email).first()
@@ -1221,7 +1221,7 @@ def create_app(config_class=Config):
             if user.suspended_until:
                 user.suspended_until = None
                 user.failed_login_count = 0
-                db.session.commit()
+                db_session.commit()
                 print(f"✅ Suspension cleared for user {user.username}")
             
             # Delete old failed attempts on successful login
@@ -1309,18 +1309,18 @@ def create_app(config_class=Config):
                             'requires_reset': True
                         }), 403
                     
-                    ## Register new device
+                    # Register new device
                     new_device = Device(
-                    user_id=user.id,
-                    hardware_id=hwid,
-                    hwid_hash=hashed_hwid,
-                    device_name=f"Desktop-{hwid[:8]}" if hwid else "Unknown-Device",
-                    ip_address=get_real_ip(),
-                    is_active=True,
-                    is_bound=True,
-               # Add device binding details
-                    pc_manufacturer=pc_manufacturer if pc_manufacturer else None,
-                    windows_version=windows_version if windows_version else None,
+                        user_id=user.id,
+                        hardware_id=hwid,
+                        hwid_hash=hashed_hwid,
+                        device_name=f"Desktop-{hwid[:8]}" if hwid else "Unknown-Device",
+                        ip_address=get_real_ip(),
+                        is_active=True,
+                        is_bound=True,
+                        pc_manufacturer=pc_manufacturer if pc_manufacturer else None,
+                        windows_version=windows_version if windows_version else None,
+                        hardware_fingerprint=hardware_fingerprint if hardware_fingerprint else None
                     )
                     db_session.add(new_device)
                     db_session.flush()
@@ -1345,8 +1345,8 @@ def create_app(config_class=Config):
                     log_system_action(user.id, 'device_register', f'New desktop client registered: {device_name}')
                     print(f"✅ New device registered: {device_name} for user {user.username}")
             
-            # ========== NEW: UPDATE DEVICE BINDING INFORMATION ==========
-            # Store device binding information on successful login (after HWID check)
+            # ========== STORE DEVICE BINDING INFORMATION ==========
+            # Store device binding information on successful login
             if pc_manufacturer or windows_version or hardware_fingerprint:
                 # Check if this is first time binding (no bound HWID yet)
                 if not user.bound_hwid_hash and hashed_hwid:
@@ -1362,7 +1362,7 @@ def create_app(config_class=Config):
                     user.is_verified_device = True
                     user.verification_failures = 0
                     db_session.commit()
-                    print(f"✅ Device bound to user {user.username} - Manufacturer: {pc_manufacturer}")
+                    print(f"✅✅✅ Device bound to user {user.username} - Manufacturer: {pc_manufacturer}")
                     log_system_action(user.id, 'device_bound', 
                                     f'Device bound - Manufacturer: {pc_manufacturer}, OS: {windows_version[:50] if windows_version else "Unknown"}')
                 elif hashed_hwid and hashed_hwid == user.bound_hwid_hash:
@@ -1371,7 +1371,7 @@ def create_app(config_class=Config):
                     db_session.commit()
                     print(f"✅ Device verified for user {user.username}")
                 elif hashed_hwid and hashed_hwid != user.bound_hwid_hash and user.bound_hwid_hash:
-                    # Device mismatch - increment failure counter (only if bound HWID exists)
+                    # Device mismatch - increment failure counter
                     user.verification_failures = (user.verification_failures or 0) + 1
                     db_session.commit()
                     log_system_action(user.id, 'device_mismatch', 
@@ -1387,6 +1387,7 @@ def create_app(config_class=Config):
                             'code': 'DEVICE_MISMATCH_SUSPENDED'
                         }), 403
             
+            # Create session if not exists
             if not session_obj:
                 session_obj = UserSession(
                     user_id=user.id,
@@ -1416,7 +1417,7 @@ def create_app(config_class=Config):
                 if days_remaining < 0:
                     days_remaining = 0
 
-            # Update last login (ONLY ONCE)
+            # Update last login
             user.last_login = datetime.utcnow()
             db_session.commit()
             
@@ -1458,7 +1459,7 @@ def create_app(config_class=Config):
             import traceback
             traceback.print_exc()
             return jsonify({'success': False, 'error': str(e)}), 500
-
+            
         ############################# ##SESSION VALIDATION
     @app.route('/api/user/validate-session', methods=['POST'])
     def validate_session_endpoint():
