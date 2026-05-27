@@ -4,9 +4,10 @@
   "functions": {
     "read_info": {
       "type": "adb_commands",
-      "description": "Read device information",
+      "description": "Read device information including IMEI",
       "requires_device": true,
       "device_type": "adb",
+      "cost": 0,
       "progress_steps": [
         {"percent": 5, "message": "🔍 Reading device information..."},
         {"percent": 20, "message": "📱 ADB connection established"},
@@ -19,17 +20,27 @@
         "adb shell getprop ro.product.manufacturer",
         "adb shell getprop ro.build.version.release",
         "adb shell getprop ro.product.board",
-        "adb shell getprop ro.build.display.id"
+        "adb shell getprop ro.build.display.id",
+        "adb shell service call iphonesubinfo 1",
+        "adb shell settings get secure android_id",
+        "adb shell getprop ro.serialno"
       ],
       "filter_keywords": {
         "ro.product.model": "Model",
         "ro.product.manufacturer": "Manufacturer",
         "ro.build.version.release": "Android Version",
         "ro.product.board": "Platform",
-        "ro.build.display.id": "Build"
+        "ro.build.display.id": "Build",
+        "imei": "IMEI",
+        "android_id": "Android ID",
+        "ro.serialno": "Serial Number"
       },
       "success_message": "✅ Device information retrieved successfully",
-      "error_message": "❌ Failed to read device info"
+      "error_message": "❌ Failed to read device info",
+      "parse_response": {
+        "imei": "service call iphonesubinfo 1",
+        "imei_pattern": "\\d{15}"
+      }
     },
     
     "reboot_bootloader": {
@@ -37,6 +48,7 @@
       "description": "Reboot device to bootloader",
       "requires_device": true,
       "device_type": "adb",
+      "cost": 0,
       "progress_steps": [
         {"percent": 10, "message": "🔄 Rebooting to bootloader..."},
         {"percent": 30, "message": "📱 ADB device detected"},
@@ -49,11 +61,48 @@
       "error_message": "❌ Failed to reboot"
     },
     
+    "reboot_download": {
+      "type": "adb_command",
+      "description": "Reboot device to download mode",
+      "requires_device": true,
+      "device_type": "adb",
+      "cost": 0,
+      "progress_steps": [
+        {"percent": 10, "message": "🔄 Rebooting to download mode..."},
+        {"percent": 30, "message": "📱 ADB device detected"},
+        {"percent": 50, "message": "📡 Sending reboot command..."}
+      ],
+      "commands": [
+        "adb reboot download"
+      ],
+      "success_message": "✅ Device rebooting to download mode",
+      "error_message": "❌ Failed to reboot"
+    },
+    
+    "reboot_meta": {
+      "type": "adb_command",
+      "description": "Reboot device to META mode",
+      "requires_device": true,
+      "device_type": "adb",
+      "cost": 0,
+      "progress_steps": [
+        {"percent": 10, "message": "🔄 Rebooting to META mode..."},
+        {"percent": 30, "message": "📱 ADB device detected"},
+        {"percent": 50, "message": "📡 Sending reboot command..."}
+      ],
+      "commands": [
+        "adb reboot meta"
+      ],
+      "success_message": "✅ Device rebooting to META mode",
+      "error_message": "❌ Failed to reboot"
+    },
+    
     "factory_reset": {
       "type": "adb_commands",
       "description": "Factory reset device",
       "requires_device": true,
       "device_type": "adb",
+      "cost": 5,
       "progress_steps": [
         {"percent": 10, "message": "⚠️ Factory Reset initiated..."},
         {"percent": 20, "message": "📱 ADB device detected"},
@@ -71,6 +120,7 @@
       "description": "Unlock bootloader",
       "requires_device": true,
       "device_type": "adb",
+      "cost": 10,
       "progress_steps": [
         {"percent": 10, "message": "🔓 Unlocking bootloader..."},
         {"percent": 20, "message": "📱 Checking OEM unlocking..."}
@@ -87,6 +137,7 @@
       "description": "Clear ads using Method 1",
       "requires_device": true,
       "device_type": "adb",
+      "cost": 0,
       "progress_steps": [
         {"percent": 10, "message": "🧹 Clearing ads using Method 1..."}
       ],
@@ -98,11 +149,29 @@
       "error_message": "❌ Failed to disable ads"
     },
     
+    "clear_ads_2": {
+      "type": "adb_commands",
+      "description": "Clear ads using Method 2",
+      "requires_device": true,
+      "device_type": "adb",
+      "cost": 0,
+      "progress_steps": [
+        {"percent": 10, "message": "🧹 Clearing ads using Method 2..."}
+      ],
+      "commands": [
+        "adb shell pm disable-user --user 0 com.google.android.gms/.ads.AdActivity",
+        "adb shell pm disable-user --user 0 com.google.android.gms/.ads.social.AdSocialActivity"
+      ],
+      "success_message": "✅ Ad packages disabled successfully",
+      "error_message": "❌ Failed to disable ads"
+    },
+    
     "read_lockscreen": {
       "type": "adb_analysis",
       "description": "Read lockscreen status",
       "requires_device": true,
       "device_type": "adb",
+      "cost": 0,
       "progress_steps": [
         {"percent": 10, "message": "🔐 Analyzing lockscreen..."},
         {"percent": 20, "message": "📱 ADB device detected"},
@@ -117,6 +186,106 @@
       },
       "success_message": "✅ Lockscreen status retrieved",
       "error_message": "❌ Failed to read lockscreen"
+    },
+    
+    "read_network_code": {
+      "type": "adb_commands",
+      "description": "Read network code",
+      "requires_device": true,
+      "device_type": "adb",
+      "cost": 0,
+      "progress_steps": [
+        {"percent": 10, "message": "📡 Reading network code..."},
+        {"percent": 20, "message": "📱 ADB device detected"}
+      ],
+      "commands": [
+        "adb shell content query --uri content://telephony/carriers/current"
+      ],
+      "filter_keywords": {
+        "numeric": "Network Code",
+        "name": "Carrier Name"
+      },
+      "success_message": "✅ Network code retrieved",
+      "error_message": "❌ Failed to read network code"
+    },
+    
+    "disable_google_frameworks": {
+      "type": "adb_commands",
+      "description": "Disable Google frameworks",
+      "requires_device": true,
+      "device_type": "adb",
+      "cost": 0,
+      "progress_steps": [
+        {"percent": 10, "message": "🛡️ Disabling Google frameworks..."}
+      ],
+      "commands": [
+        "adb shell pm disable-user --user 0 com.google.android.gms",
+        "adb shell pm disable-user --user 0 com.google.android.gsf"
+      ],
+      "success_message": "✅ Google frameworks disabled",
+      "error_message": "❌ Failed to disable Google frameworks"
+    },
+    
+    "fix_app_notifications": {
+      "type": "adb_commands",
+      "description": "Fix app notifications",
+      "requires_device": true,
+      "device_type": "adb",
+      "cost": 0,
+      "progress_steps": [
+        {"percent": 10, "message": "🔔 Fixing app notifications..."}
+      ],
+      "commands": [
+        "adb shell dumpsys notification --reset"
+      ],
+      "success_message": "✅ App notifications fixed",
+      "error_message": "❌ Failed to fix notifications"
+    },
+
+    "backup_apks": {
+      "type": "local_operation",
+      "description": "Backup all APKs from device to PC",
+      "requires_device": true,
+      "device_type": "adb",
+      "cost": 5,
+      "requires_admin": false,
+      "timeout": 600,
+      "progress_steps": [
+        {"percent": 10, "message": "🔐 Validating user with server..."},
+        {"percent": 20, "message": "📱 Checking device connection..."},
+        {"percent": 30, "message": "📦 Reading installed packages..."},
+        {"percent": 40, "message": "💾 Backing up system apps..."},
+        {"percent": 60, "message": "📱 Backing up user apps..."},
+        {"percent": 85, "message": "📊 Finalizing backup..."},
+        {"percent": 100, "message": "✅ Backup completed"}
+      ],
+      "success_message": "✅ APK backup completed successfully",
+      "error_message": "❌ APK backup failed",
+      "requires_apk": false,
+      "reboot": false
+    },
+
+    "restore_apks": {
+      "type": "local_operation",
+      "description": "Restore APKs from backup folder to device",
+      "requires_device": true,
+      "device_type": "adb",
+      "cost": 5,
+      "requires_admin": false,
+      "timeout": 600,
+      "progress_steps": [
+        {"percent": 10, "message": "🔐 Validating user with server..."},
+        {"percent": 20, "message": "📱 Checking device connection..."},
+        {"percent": 30, "message": "📁 Reading APK files from folder..."},
+        {"percent": 40, "message": "🗑️ Uninstalling existing versions..."},
+        {"percent": 70, "message": "📲 Installing APKs..."},
+        {"percent": 90, "message": "📊 Finalizing restore..."},
+        {"percent": 100, "message": "✅ Restore completed"}
+      ],
+      "success_message": "✅ APK restore completed successfully",
+      "error_message": "❌ APK restore failed",
+      "requires_apk": false,
+      "reboot": false
     }
   }
 }
