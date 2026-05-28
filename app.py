@@ -4091,23 +4091,47 @@ def create_app(config_class=Config):
                 'disconnect_command': function_data.get('disconnect_command', ''),
                 'disconnect_delay': function_data.get('disconnect_delay', 0.5),
                 'reset_connection': function_data.get('reset_connection', False),
-                # APK Download Information
+                
+                # ========== APK DOWNLOAD INFORMATION ==========
                 'requires_apk': function_data.get('requires_apk', False),
                 'apk_name': function_data.get('apk_name', ''),
                 'apk_download_url': function_data.get('apk_download_url', ''),
                 'apk_package': function_data.get('apk_package', ''),
+                
+                # ========== PHASES (for progress display) ==========
                 'phases': function_data.get('phases', []),
+                
+                # ========== FOR Dolphin_app_method_v1 (Block method) ==========
                 'block_apps': function_data.get('block_apps', []),
                 'block_commands_per_app': function_data.get('block_commands_per_app', []),
+                
+                # ========== FOR Dolphin_No_Dns_Method_v01 (Target apps - CRITICAL!) ==========
+                'target_apps': function_data.get('target_apps', []),
+                'commands_per_app': function_data.get('commands_per_app', []),
+                
+                # ========== FOR Dolphin_app_method_v2 (Uninstall method) ==========
+                'uninstall_apps': function_data.get('uninstall_apps', []),
+                'uninstall_commands': function_data.get('uninstall_commands', []),
+                
+                # ========== FOR Dolphin_No_Dns_Method_v02 (Pre-uninstall + Uninstall) ==========
+                'pre_uninstall_commands': function_data.get('pre_uninstall_commands', []),
+                
+                # ========== FOR Disable_System_Updates ==========
+                'disable_commands': function_data.get('disable_commands', []),
+                
+                # ========== GLOBAL SETTINGS / COMMANDS ==========
                 'global_settings': function_data.get('global_settings', []),
+                'global_commands': function_data.get('global_commands', []),
+                'global_cleanup': function_data.get('global_cleanup', []),
+                
+                # ========== DEVICE OWNER & PERMISSIONS ==========
                 'set_device_owner': function_data.get('set_device_owner', {}),
                 'grant_permissions': function_data.get('grant_permissions', []),
                 'launch_methods': function_data.get('launch_methods', []),
-                'uninstall_apps': function_data.get('uninstall_apps', []),
-                'uninstall_commands': function_data.get('uninstall_commands', []),
+                
+                # ========== REBOOT FLAG ==========
                 'reboot': function_data.get('reboot', False)
             }
-
             print(f"✅ Command fetched: {tab}/{mode}/{action} (Cost: {cost} credits) (Command {new_command_count}/100 today)")
             
             # 🔒 ENCRYPT RESPONSE
