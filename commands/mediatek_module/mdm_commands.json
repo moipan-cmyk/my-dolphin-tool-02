@@ -443,13 +443,13 @@
     
     "Dolphin_No_App_No_Dns_Method_v02": {
       "type": "quick_frp",
-      "description": "Quick FRP bypass",
+      "description": "later will add",
       "requires_device": true,
       "pre_commands": [
         {"type": "wait_for_device", "timeout": 30}
       ],
       "bypass_method": "frp",
-      "success_message": "✅ Quick FRP Bypass Complete!"
+      "success_message": "✅soon"
     },
     
     "Blackscreen_Bypass": {
