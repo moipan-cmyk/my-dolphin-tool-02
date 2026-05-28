@@ -84,7 +84,7 @@
         "adb shell settings put global captive_portal_detection_enabled 0",
         "adb shell settings put global captive_portal_mode 0"
       ],
-      "block_apps": [
+      "target_apps": [
         "com.transsion.plat.appupdate",
         "com.transsion.tabe",
         "com.android.certinstaller",
@@ -126,7 +126,7 @@
         "com.mediatek.mdmlsample",
         "com.google.android.feedback"
       ],
-      "block_commands_per_app": [
+      "commands_per_app": [
         "adb shell pm clear {app}",
         "adb shell pm disable-user --user 0 {app}",
         "adb shell pm revoke {app} android.permission.INTERNET",
@@ -136,7 +136,7 @@
         "adb shell am force-stop {app}",
         "adb shell dumpsys deviceidle whitelist -{app}"
       ],
-      "global_settings": [
+      "global_commands": [
         "adb shell pm disable-user --user 0 com.android.packageinstaller",
         "adb shell settings put secure install_non_market_apps 0",
         "adb shell settings put global network_restrictions 1",
@@ -246,7 +246,7 @@
         "adb shell settings put global private_dns_specifier 8b6326.dns.nextdns.io",
         "adb shell settings put global captive_portal_detection_enabled 0"
       ],
-      "block_apps": [
+      "target_apps": [
         "com.transsion.plat.appupdate",
         "com.transsion.tabe",
         "com.android.managedprovisioning",
@@ -281,147 +281,147 @@
     },
     
     "Dolphin_No_Dns_Method_v01": {
-  "type": "mdm_aggressive_block",
-  "description": "Aggressive blocking - clear data, revoke permissions, disable apps with no network access",
-  "requires_device": true,
-  "pre_commands": [
-    {"type": "wait_for_device", "timeout": 30}
-  ],
-  "phases": [
-    {"name": "Phase 1: Preparing", "percent_start": 0, "percent_end": 10, "message": "📱 Phase 1: Preparing device..."},
-    {"name": "Phase 2: Clearing App Data", "percent_start": 10, "percent_end": 30, "message": "🗑️ Clearing app data and cache..."},
-    {"name": "Phase 3: Revoking Permissions", "percent_start": 30, "percent_end": 50, "message": "🔒 Revoking all permissions including network..."},
-    {"name": "Phase 4: Disabling Apps", "percent_start": 50, "percent_end": 80, "message": "📱 Disabling MDM apps completely..."},
-    {"name": "Phase 5: Finalizing", "percent_start": 80, "percent_end": 100, "message": "✅ Finalizing lockdown..."}
-  ],
-  "target_apps": [
-    "com.transsion.plat.appupdate",
-    "com.transsion.tabe",
-    "com.android.certinstaller",
-    "com.android.imsserviceentitlement",
-    "com.google.android.configupdater",
-    "com.android.dynsystem",
-    "com.mediatek.magtapp",
-    "com.transsion.overlaysuw",
-    "com.transsnet.store",
-    "android.autoinstalls.config.transsion.device",
-    "com.android.proxyhandler",
-    "com.google.android.rkpdapp",
-    "com.transsion.statisticalsales",
-    "com.transsion.systemupdate",
-    "com.android.managedprovisioning",
-    "com.android.storagemanager",
-    "com.transsion.spacesaversdk",
-    "com.transsnet.palmpay",
-    "com.android.mms.service",
-    "com.mediatek.mdmconfig",
-    "com.mediatek.mdmlsample",
-    "com.google.android.feedback"
-  ],
-  "commands_per_app": [
-    "adb shell pm clear {app}",
-    "adb shell pm delete {app}",
-    "adb shell pm disable-user --user 0 {app}",
-    "adb shell pm disable {app}",
-    "adb shell pm revoke {app} android.permission.INTERNET",
-    "adb shell pm revoke {app} android.permission.ACCESS_NETWORK_STATE",
-    "adb shell pm revoke {app} android.permission.ACCESS_WIFI_STATE",
-    "adb shell pm revoke {app} android.permission.CHANGE_WIFI_STATE",
-    "adb shell pm revoke {app} android.permission.CHANGE_NETWORK_STATE",
-    "adb shell pm revoke {app} android.permission.READ_PHONE_STATE",
-    "adb shell pm revoke {app} android.permission.CALL_PHONE",
-    "adb shell pm revoke {app} android.permission.READ_CONTACTS",
-    "adb shell pm revoke {app} android.permission.WRITE_CONTACTS",
-    "adb shell pm revoke {app} android.permission.RECEIVE_BOOT_COMPLETED",
-    "adb shell pm revoke {app} android.permission.WAKE_LOCK",
-    "adb shell pm revoke {app} android.permission.VIBRATE",
-    "adb shell pm revoke {app} android.permission.SYSTEM_ALERT_WINDOW",
-    "adb shell pm revoke {app} android.permission.WRITE_SETTINGS",
-    "adb shell pm revoke {app} android.permission.WRITE_SECURE_SETTINGS",
-    "adb shell cmd appops set {app} RUN_IN_BACKGROUND ignore",
-    "adb shell cmd appops set {app} WAKE_LOCK ignore",
-    "adb shell cmd appops set {app} START_FOREGROUND ignore",
-    "adb shell cmd netpolicy set uid-policy {app} blocked",
-    "adb shell am force-stop {app}"
-  ],
-  "global_commands": [
-    "adb shell settings put global network_restrictions 1",
-    "adb shell settings put global restrict_background_data 1",
-    "adb shell settings put global auto_sync 0",
-    "adb shell settings put global mobile_data_always_on 0",
-    "adb shell settings put global wifi_scan_always_enabled 0",
-    "adb shell settings put global captive_portal_detection_enabled 0",
-    "adb shell settings put global captive_portal_mode 0"
-  ],
-  "success_message": "✅ All MDM apps have been: Cleared, Disabled, Network blocked, Background restricted, No boot permissions, No system modifications allowed!"
-},
+      "type": "mdm_aggressive_block",
+      "description": "Aggressive blocking - clear data, revoke permissions, disable apps with no network access",
+      "requires_device": true,
+      "pre_commands": [
+        {"type": "wait_for_device", "timeout": 30}
+      ],
+      "phases": [
+        {"name": "Phase 1: Preparing", "percent_start": 0, "percent_end": 10, "message": "📱 Phase 1: Preparing device..."},
+        {"name": "Phase 2: Clearing App Data", "percent_start": 10, "percent_end": 30, "message": "🗑️ Clearing app data and cache..."},
+        {"name": "Phase 3: Revoking Permissions", "percent_start": 30, "percent_end": 50, "message": "🔒 Revoking all permissions including network..."},
+        {"name": "Phase 4: Disabling Apps", "percent_start": 50, "percent_end": 80, "message": "📱 Disabling MDM apps completely..."},
+        {"name": "Phase 5: Finalizing", "percent_start": 80, "percent_end": 100, "message": "✅ Finalizing lockdown..."}
+      ],
+      "target_apps": [
+        "com.transsion.plat.appupdate",
+        "com.transsion.tabe",
+        "com.android.certinstaller",
+        "com.android.imsserviceentitlement",
+        "com.google.android.configupdater",
+        "com.android.dynsystem",
+        "com.mediatek.magtapp",
+        "com.transsion.overlaysuw",
+        "com.transsnet.store",
+        "android.autoinstalls.config.transsion.device",
+        "com.android.proxyhandler",
+        "com.google.android.rkpdapp",
+        "com.transsion.statisticalsales",
+        "com.transsion.systemupdate",
+        "com.android.managedprovisioning",
+        "com.android.storagemanager",
+        "com.transsion.spacesaversdk",
+        "com.transsnet.palmpay",
+        "com.android.mms.service",
+        "com.mediatek.mdmconfig",
+        "com.mediatek.mdmlsample",
+        "com.google.android.feedback"
+      ],
+      "commands_per_app": [
+        "adb shell pm clear {app}",
+        "adb shell pm delete {app}",
+        "adb shell pm disable-user --user 0 {app}",
+        "adb shell pm disable {app}",
+        "adb shell pm revoke {app} android.permission.INTERNET",
+        "adb shell pm revoke {app} android.permission.ACCESS_NETWORK_STATE",
+        "adb shell pm revoke {app} android.permission.ACCESS_WIFI_STATE",
+        "adb shell pm revoke {app} android.permission.CHANGE_WIFI_STATE",
+        "adb shell pm revoke {app} android.permission.CHANGE_NETWORK_STATE",
+        "adb shell pm revoke {app} android.permission.READ_PHONE_STATE",
+        "adb shell pm revoke {app} android.permission.CALL_PHONE",
+        "adb shell pm revoke {app} android.permission.READ_CONTACTS",
+        "adb shell pm revoke {app} android.permission.WRITE_CONTACTS",
+        "adb shell pm revoke {app} android.permission.RECEIVE_BOOT_COMPLETED",
+        "adb shell pm revoke {app} android.permission.WAKE_LOCK",
+        "adb shell pm revoke {app} android.permission.VIBRATE",
+        "adb shell pm revoke {app} android.permission.SYSTEM_ALERT_WINDOW",
+        "adb shell pm revoke {app} android.permission.WRITE_SETTINGS",
+        "adb shell pm revoke {app} android.permission.WRITE_SECURE_SETTINGS",
+        "adb shell cmd appops set {app} RUN_IN_BACKGROUND ignore",
+        "adb shell cmd appops set {app} WAKE_LOCK ignore",
+        "adb shell cmd appops set {app} START_FOREGROUND ignore",
+        "adb shell cmd netpolicy set uid-policy {app} blocked",
+        "adb shell am force-stop {app}"
+      ],
+      "global_commands": [
+        "adb shell settings put global network_restrictions 1",
+        "adb shell settings put global restrict_background_data 1",
+        "adb shell settings put global auto_sync 0",
+        "adb shell settings put global mobile_data_always_on 0",
+        "adb shell settings put global wifi_scan_always_enabled 0",
+        "adb shell settings put global captive_portal_detection_enabled 0",
+        "adb shell settings put global captive_portal_mode 0"
+      ],
+      "success_message": "✅ All MDM apps have been: Cleared, Disabled, Network blocked, Background restricted, No boot permissions, No system modifications allowed!"
+    },
 
-"Dolphin_No_Dns_Method_v02": {
-  "type": "mdm_aggressive_uninstall",
-  "description": "Aggressive uninstall - completely remove all MDM apps from system",
-  "requires_device": true,
-  "requires_root": false,
-  "pre_commands": [
-    {"type": "wait_for_device", "timeout": 30}
-  ],
-  "phases": [
-    {"name": "Phase 1: Preparing", "percent_start": 0, "percent_end": 10, "message": "📱 Phase 1: Preparing device..."},
-    {"name": "Phase 2: Clearing Data", "percent_start": 10, "percent_end": 25, "message": "🗑️ Clearing app data and cache..."},
-    {"name": "Phase 3: Revoking Permissions", "percent_start": 25, "percent_end": 40, "message": "🔒 Revoking all permissions..."},
-    {"name": "Phase 4: Uninstalling Apps", "percent_start": 40, "percent_end": 80, "message": "🗑️ Completely uninstalling MDM apps..."},
-    {"name": "Phase 5: Finalizing", "percent_start": 80, "percent_end": 100, "message": "✅ Finalizing cleanup..."}
-  ],
-  "target_apps": [
-    "com.transsion.plat.appupdate",
-    "com.transsion.tabe",
-    "com.android.certinstaller",
-    "com.android.imsserviceentitlement",
-    "com.google.android.configupdater",
-    "com.android.dynsystem",
-    "com.mediatek.magtapp",
-    "com.transsion.overlaysuw",
-    "com.transsnet.store",
-    "android.autoinstalls.config.transsion.device",
-    "com.android.proxyhandler",
-    "com.google.android.rkpdapp",
-    "com.transsion.statisticalsales",
-    "com.transsion.systemupdate",
-    "com.android.managedprovisioning",
-    "com.android.storagemanager",
-    "com.transsion.spacesaversdk",
-    "com.transsnet.palmpay",
-    "com.android.mms.service",
-    "com.mediatek.mdmconfig",
-    "com.mediatek.mdmlsample",
-    "com.google.android.feedback"
-  ],
-  "pre_uninstall_commands": [
-    "adb shell pm clear {app}",
-    "adb shell pm revoke {app} android.permission.INTERNET",
-    "adb shell pm revoke {app} android.permission.ACCESS_NETWORK_STATE",
-    "adb shell pm revoke {app} android.permission.RECEIVE_BOOT_COMPLETED",
-    "adb shell pm revoke {app} android.permission.CALL_PHONE",
-    "adb shell cmd appops set {app} RUN_IN_BACKGROUND ignore",
-    "adb shell am force-stop {app}"
-  ],
-  "uninstall_commands": [
-    "adb uninstall {app}",
-    "adb shell pm uninstall -k --user 0 {app}",
-    "adb shell pm uninstall {app}"
-  ],
-  "global_cleanup": [
-    "adb shell pm disable-user --user 0 com.android.packageinstaller",
-    "adb shell settings put secure install_non_market_apps 0",
-    "adb shell settings put global network_restrictions 1",
-    "adb shell settings put global restrict_background_data 1",
-    "adb shell settings put global auto_sync 0",
-    "adb shell settings put global mobile_data_always_on 0",
-    "adb shell settings put global wifi_scan_always_enabled 0",
-    "adb shell settings put global captive_portal_detection_enabled 0",
-    "adb shell settings put global captive_portal_mode 0"
-  ],
-  "success_message": "✅ All MDM apps have been: Cleared, Permissions revoked, Completely UNINSTALLED from system! No traces left."
-},
+    "Dolphin_No_Dns_Method_v02": {
+      "type": "mdm_aggressive_uninstall",
+      "description": "Aggressive uninstall - completely remove all MDM apps from system",
+      "requires_device": true,
+      "requires_root": false,
+      "pre_commands": [
+        {"type": "wait_for_device", "timeout": 30}
+      ],
+      "phases": [
+        {"name": "Phase 1: Preparing", "percent_start": 0, "percent_end": 10, "message": "📱 Phase 1: Preparing device..."},
+        {"name": "Phase 2: Clearing Data", "percent_start": 10, "percent_end": 25, "message": "🗑️ Clearing app data and cache..."},
+        {"name": "Phase 3: Revoking Permissions", "percent_start": 25, "percent_end": 40, "message": "🔒 Revoking all permissions..."},
+        {"name": "Phase 4: Uninstalling Apps", "percent_start": 40, "percent_end": 80, "message": "🗑️ Completely uninstalling MDM apps..."},
+        {"name": "Phase 5: Finalizing", "percent_start": 80, "percent_end": 100, "message": "✅ Finalizing cleanup..."}
+      ],
+      "target_apps": [
+        "com.transsion.plat.appupdate",
+        "com.transsion.tabe",
+        "com.android.certinstaller",
+        "com.android.imsserviceentitlement",
+        "com.google.android.configupdater",
+        "com.android.dynsystem",
+        "com.mediatek.magtapp",
+        "com.transsion.overlaysuw",
+        "com.transsnet.store",
+        "android.autoinstalls.config.transsion.device",
+        "com.android.proxyhandler",
+        "com.google.android.rkpdapp",
+        "com.transsion.statisticalsales",
+        "com.transsion.systemupdate",
+        "com.android.managedprovisioning",
+        "com.android.storagemanager",
+        "com.transsion.spacesaversdk",
+        "com.transsnet.palmpay",
+        "com.android.mms.service",
+        "com.mediatek.mdmconfig",
+        "com.mediatek.mdmlsample",
+        "com.google.android.feedback"
+      ],
+      "pre_uninstall_commands": [
+        "adb shell pm clear {app}",
+        "adb shell pm revoke {app} android.permission.INTERNET",
+        "adb shell pm revoke {app} android.permission.ACCESS_NETWORK_STATE",
+        "adb shell pm revoke {app} android.permission.RECEIVE_BOOT_COMPLETED",
+        "adb shell pm revoke {app} android.permission.CALL_PHONE",
+        "adb shell cmd appops set {app} RUN_IN_BACKGROUND ignore",
+        "adb shell am force-stop {app}"
+      ],
+      "uninstall_commands": [
+        "adb uninstall {app}",
+        "adb shell pm uninstall -k --user 0 {app}",
+        "adb shell pm uninstall {app}"
+      ],
+      "global_cleanup": [
+        "adb shell pm disable-user --user 0 com.android.packageinstaller",
+        "adb shell settings put secure install_non_market_apps 0",
+        "adb shell settings put global network_restrictions 1",
+        "adb shell settings put global restrict_background_data 1",
+        "adb shell settings put global auto_sync 0",
+        "adb shell settings put global mobile_data_always_on 0",
+        "adb shell settings put global wifi_scan_always_enabled 0",
+        "adb shell settings put global captive_portal_detection_enabled 0",
+        "adb shell settings put global captive_portal_mode 0"
+      ],
+      "success_message": "✅ All MDM apps have been: Cleared, Permissions revoked, Completely UNINSTALLED from system! No traces left."
+    },
     
     "Dolphin_No_App_No_Dns_Method_v01": {
       "type": "quick_bypass",
@@ -430,7 +430,7 @@
       "pre_commands": [
         {"type": "wait_for_device", "timeout": 30}
       ],
-      "block_apps": [
+      "target_apps": [
         "com.android.managedprovisioning",
         "com.google.android.apps.work.oobconfig"
       ],
