@@ -801,7 +801,6 @@ def get_user_command_stats(user_id, days=7):
         'remaining_today': max(0, 100 - today_usage)
     }
 
-
 # ==========================
 # DATABASE MIGRATION HELPER
 # ==========================
@@ -811,7 +810,104 @@ def run_migrations():
         from sqlalchemy import text
         print("\n🔄 Running database migrations...")
         
-        # New device binding columns for users table
+        # ========== SECURITY COLUMNS FOR USERS TABLE ==========
+        security_columns_to_add = [
+            ('ban_reason', "ALTER TABLE users ADD COLUMN IF NOT EXISTS ban_reason VARCHAR(500)"),
+            ('tamper_attempt_count', "ALTER TABLE users ADD COLUMN IF NOT EXISTS tamper_attempt_count INTEGER DEFAULT 0"),
+            ('last_tamper_at', "ALTER TABLE users ADD COLUMN IF NOT EXISTS last_tamper_at TIMESTAMP"),
+            ('ban_type', "ALTER TABLE users ADD COLUMN IF NOT EXISTS ban_type VARCHAR(50) DEFAULT 'manual'")
+        ]
+        
+        for col_name, alter_statement in security_columns_to_add:
+            try:
+                db.session.execute(text(alter_statement))
+                db.session.commit()
+                print(f"✅ Added security column: {col_name}")
+            except Exception as e:
+                if "duplicate column" not in str(e).lower():
+                    print(f"⚠️ Could not add {col_name}: {e}")
+                db.session.rollback()
+        
+        # ========== SECURITY TABLES ==========
+        
+        # Security Challenges Table
+        try:
+            db.session.execute(text("""
+                CREATE TABLE IF NOT EXISTS security_challenges (
+                    id INTEGER PRIMARY KEY AUTOINCREMENT,
+                    challenge_id TEXT UNIQUE NOT NULL,
+                    challenge TEXT NOT NULL,
+                    user_id INTEGER NOT NULL,
+                    created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+                    expires_at TIMESTAMP NOT NULL,
+                    used BOOLEAN DEFAULT 0,
+                    FOREIGN KEY (user_id) REFERENCES users(id)
+                )
+            """))
+            db.session.commit()
+            print("✅ Created security_challenges table")
+        except Exception as e:
+            print(f"⚠️ security_challenges table: {e}")
+            db.session.rollback()
+        
+        # Challenge Logs Table
+        try:
+            db.session.execute(text("""
+                CREATE TABLE IF NOT EXISTS challenge_logs (
+                    id INTEGER PRIMARY KEY AUTOINCREMENT,
+                    user_id INTEGER NOT NULL,
+                    challenge_id TEXT NOT NULL,
+                    success BOOLEAN DEFAULT 0,
+                    device_fingerprint TEXT,
+                    ip_address TEXT,
+                    created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+                    FOREIGN KEY (user_id) REFERENCES users(id)
+                )
+            """))
+            db.session.commit()
+            print("✅ Created challenge_logs table")
+        except Exception as e:
+            print(f"⚠️ challenge_logs table: {e}")
+            db.session.rollback()
+        
+        # Tamper Reports Table
+        try:
+            db.session.execute(text("""
+                CREATE TABLE IF NOT EXISTS tamper_reports (
+                    id INTEGER PRIMARY KEY AUTOINCREMENT,
+                    email TEXT NOT NULL,
+                    device_fingerprint TEXT NOT NULL,
+                    tamper_flags TEXT NOT NULL,
+                    ip_address TEXT,
+                    username TEXT,
+                    hostname TEXT,
+                    reported_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
+                )
+            """))
+            db.session.commit()
+            print("✅ Created tamper_reports table")
+        except Exception as e:
+            print(f"⚠️ tamper_reports table: {e}")
+            db.session.rollback()
+        
+        # Tamper Counters Table
+        try:
+            db.session.execute(text("""
+                CREATE TABLE IF NOT EXISTS tamper_counters (
+                    email TEXT PRIMARY KEY,
+                    tamper_count INTEGER DEFAULT 0,
+                    last_tamper_at TIMESTAMP,
+                    banned_at TIMESTAMP,
+                    ban_reason TEXT
+                )
+            """))
+            db.session.commit()
+            print("✅ Created tamper_counters table")
+        except Exception as e:
+            print(f"⚠️ tamper_counters table: {e}")
+            db.session.rollback()
+        
+        # ========== NEW DEVICE BINDING COLUMNS FOR USERS TABLE ==========
         binding_columns_to_add = [
             ('bound_hwid_hash', "ALTER TABLE users ADD COLUMN IF NOT EXISTS bound_hwid_hash VARCHAR(256)"),
             ('bound_pc_manufacturer', "ALTER TABLE users ADD COLUMN IF NOT EXISTS bound_pc_manufacturer VARCHAR(200)"),
@@ -874,6 +970,12 @@ def run_migrations():
             'CREATE INDEX IF NOT EXISTS idx_users_verified_device ON users(is_verified_device) WHERE is_verified_device = true;',
             'CREATE INDEX IF NOT EXISTS idx_devices_hardware_fingerprint ON devices(hardware_fingerprint) WHERE hardware_fingerprint IS NOT NULL;',
             'CREATE INDEX IF NOT EXISTS idx_sessions_hwid ON user_sessions(session_hwid_hash) WHERE session_hwid_hash IS NOT NULL;',
+            'CREATE INDEX IF NOT EXISTS idx_tamper_reports_email ON tamper_reports(email);',
+            'CREATE INDEX IF NOT EXISTS idx_tamper_reports_reported_at ON tamper_reports(reported_at);',
+            'CREATE INDEX IF NOT EXISTS idx_challenge_logs_user_id ON challenge_logs(user_id);',
+            'CREATE INDEX IF NOT EXISTS idx_challenge_logs_created_at ON challenge_logs(created_at);',
+            'CREATE INDEX IF NOT EXISTS idx_security_challenges_user_id ON security_challenges(user_id);',
+            'CREATE INDEX IF NOT EXISTS idx_security_challenges_expires_at ON security_challenges(expires_at);',
         ]
         
         for index_statement in indexes_to_create:
@@ -944,5 +1046,12 @@ def create_postgres_indexes():
         'CREATE INDEX IF NOT EXISTS idx_users_bound_hwid ON users(bound_hwid_hash) WHERE bound_hwid_hash IS NOT NULL;',
         'CREATE INDEX IF NOT EXISTS idx_users_bound_fingerprint ON users(bound_hardware_fingerprint) WHERE bound_hardware_fingerprint IS NOT NULL;',
         'CREATE INDEX IF NOT EXISTS idx_devices_hardware_fingerprint ON devices(hardware_fingerprint);',
+        # Security table indexes for PostgreSQL
+        'CREATE INDEX IF NOT EXISTS idx_tamper_reports_email ON tamper_reports(email);',
+        'CREATE INDEX IF NOT EXISTS idx_tamper_reports_reported_at ON tamper_reports(reported_at);',
+        'CREATE INDEX IF NOT EXISTS idx_challenge_logs_user_id ON challenge_logs(user_id);',
+        'CREATE INDEX IF NOT EXISTS idx_challenge_logs_created_at ON challenge_logs(created_at);',
+        'CREATE INDEX IF NOT EXISTS idx_security_challenges_user_id ON security_challenges(user_id);',
+        'CREATE INDEX IF NOT EXISTS idx_security_challenges_expires_at ON security_challenges(expires_at);',
     ]
     return indexes
