@@ -800,7 +800,6 @@ def get_user_command_stats(user_id, days=7):
         'daily_limit': 100,
         'remaining_today': max(0, 100 - today_usage)
     }
-
 # ==========================
 # DATABASE MIGRATION HELPER
 # ==========================
@@ -824,24 +823,23 @@ def run_migrations():
                 db.session.commit()
                 print(f"✅ Added security column: {col_name}")
             except Exception as e:
-                if "duplicate column" not in str(e).lower():
+                if "duplicate column" not in str(e).lower() and "already exists" not in str(e).lower():
                     print(f"⚠️ Could not add {col_name}: {e}")
                 db.session.rollback()
         
-        # ========== SECURITY TABLES ==========
+        # ========== SECURITY TABLES (POSTGRESQL SYNTAX) ==========
         
         # Security Challenges Table
         try:
             db.session.execute(text("""
                 CREATE TABLE IF NOT EXISTS security_challenges (
-                    id INTEGER PRIMARY KEY AUTOINCREMENT,
+                    id SERIAL PRIMARY KEY,
                     challenge_id TEXT UNIQUE NOT NULL,
                     challenge TEXT NOT NULL,
-                    user_id INTEGER NOT NULL,
+                    user_id INTEGER NOT NULL REFERENCES users(id) ON DELETE CASCADE,
                     created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
                     expires_at TIMESTAMP NOT NULL,
-                    used BOOLEAN DEFAULT 0,
-                    FOREIGN KEY (user_id) REFERENCES users(id)
+                    used BOOLEAN DEFAULT FALSE
                 )
             """))
             db.session.commit()
@@ -854,14 +852,13 @@ def run_migrations():
         try:
             db.session.execute(text("""
                 CREATE TABLE IF NOT EXISTS challenge_logs (
-                    id INTEGER PRIMARY KEY AUTOINCREMENT,
-                    user_id INTEGER NOT NULL,
+                    id SERIAL PRIMARY KEY,
+                    user_id INTEGER NOT NULL REFERENCES users(id) ON DELETE CASCADE,
                     challenge_id TEXT NOT NULL,
-                    success BOOLEAN DEFAULT 0,
+                    success BOOLEAN DEFAULT FALSE,
                     device_fingerprint TEXT,
                     ip_address TEXT,
-                    created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
-                    FOREIGN KEY (user_id) REFERENCES users(id)
+                    created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
                 )
             """))
             db.session.commit()
@@ -874,7 +871,7 @@ def run_migrations():
         try:
             db.session.execute(text("""
                 CREATE TABLE IF NOT EXISTS tamper_reports (
-                    id INTEGER PRIMARY KEY AUTOINCREMENT,
+                    id SERIAL PRIMARY KEY,
                     email TEXT NOT NULL,
                     device_fingerprint TEXT NOT NULL,
                     tamper_flags TEXT NOT NULL,
@@ -927,7 +924,8 @@ def run_migrations():
                 db.session.commit()
                 print(f"✅ Added column: {col_name}")
             except Exception as e:
-                print(f"⚠️ Could not add {col_name}: {e}")
+                if "duplicate column" not in str(e).lower() and "already exists" not in str(e).lower():
+                    print(f"⚠️ Could not add {col_name}: {e}")
                 db.session.rollback()
         
         # New columns for devices table
@@ -943,7 +941,8 @@ def run_migrations():
                 db.session.commit()
                 print(f"✅ Added column to devices: {col_name}")
             except Exception as e:
-                print(f"⚠️ Could not add {col_name} to devices: {e}")
+                if "duplicate column" not in str(e).lower() and "already exists" not in str(e).lower():
+                    print(f"⚠️ Could not add {col_name} to devices: {e}")
                 db.session.rollback()
         
         # New columns for user_sessions table
@@ -960,7 +959,8 @@ def run_migrations():
                 db.session.commit()
                 print(f"✅ Added column to user_sessions: {col_name}")
             except Exception as e:
-                print(f"⚠️ Could not add {col_name} to user_sessions: {e}")
+                if "duplicate column" not in str(e).lower() and "already exists" not in str(e).lower():
+                    print(f"⚠️ Could not add {col_name} to user_sessions: {e}")
                 db.session.rollback()
         
         # Create indexes for new columns
@@ -968,8 +968,8 @@ def run_migrations():
             'CREATE INDEX IF NOT EXISTS idx_users_bound_hwid ON users(bound_hwid_hash) WHERE bound_hwid_hash IS NOT NULL;',
             'CREATE INDEX IF NOT EXISTS idx_users_bound_fingerprint ON users(bound_hardware_fingerprint) WHERE bound_hardware_fingerprint IS NOT NULL;',
             'CREATE INDEX IF NOT EXISTS idx_users_verified_device ON users(is_verified_device) WHERE is_verified_device = true;',
-            'CREATE INDEX IF NOT EXISTS idx_devices_hardware_fingerprint ON devices(hardware_fingerprint) WHERE hardware_fingerprint IS NOT NULL;',
-            'CREATE INDEX IF NOT EXISTS idx_sessions_hwid ON user_sessions(session_hwid_hash) WHERE session_hwid_hash IS NOT NULL;',
+            'CREATE INDEX IF NOT EXISTS idx_devices_hardware_fingerprint ON devices(hardware_fingerprint);',
+            'CREATE INDEX IF NOT EXISTS idx_sessions_hwid ON user_sessions(session_hwid_hash);',
             'CREATE INDEX IF NOT EXISTS idx_tamper_reports_email ON tamper_reports(email);',
             'CREATE INDEX IF NOT EXISTS idx_tamper_reports_reported_at ON tamper_reports(reported_at);',
             'CREATE INDEX IF NOT EXISTS idx_challenge_logs_user_id ON challenge_logs(user_id);',
