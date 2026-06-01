@@ -5326,7 +5326,7 @@ def create_app(config_class=Config):
             from sqlalchemy import text
             db.session.execute(text("""
                 INSERT INTO security_challenges (challenge_id, challenge, user_id, expires_at, used)
-                VALUES (:challenge_id, :challenge, :user_id, :expires_at, 0)
+                VALUES (:challenge_id, :challenge, :user_id, :expires_at, FALSE)  # ← CHANGED 0 TO FALSE
             """), {
                 'challenge_id': challenge_id,
                 'challenge': challenge,
@@ -5411,20 +5411,22 @@ def create_app(config_class=Config):
                 f"{challenge}:{expected_private_key}:{device_fingerprint}".encode()
             ).hexdigest()
             
+            # FIX 1: Change 1/0 to proper boolean True/False
             db.session.execute(text("""
                 INSERT INTO challenge_logs (user_id, challenge_id, success, device_fingerprint, ip_address)
                 VALUES (:user_id, :challenge_id, :success, :fingerprint, :ip)
             """), {
                 'user_id': user.id,
                 'challenge_id': challenge_id,
-                'success': 1 if client_response == expected_response else 0,
+                'success': client_response == expected_response,  # Returns True or False
                 'fingerprint': device_fingerprint,
                 'ip': get_real_ip()
             })
             
+            # FIX 2: Change 1 to TRUE for PostgreSQL boolean
             if client_response == expected_response:
                 db.session.execute(text("""
-                    UPDATE security_challenges SET used = 1 
+                    UPDATE security_challenges SET used = TRUE 
                     WHERE challenge_id = :challenge_id
                 """), {'challenge_id': challenge_id})
                 db.session.commit()
@@ -5489,21 +5491,23 @@ def create_app(config_class=Config):
                                            {'email': email}).fetchone()
             tamper_count = count_row[0] if count_row else 0
             
+            # FIXED: MAX TAMPER ATTEMPTS = 10
+            MAX_TAMPER_ATTEMPTS = 10
+            
             print(f"\n{'='*70}")
             print(f"🚨 TAMPER DETECTED!")
             print(f"   Email: {email}")
             print(f"   Username: {username}")
             print(f"   Flags: {', '.join(tamper_flags)}")
             print(f"   IP: {ip}")
-            print(f"   Count: {tamper_count}/3")
+            print(f"   Count: {tamper_count}/{MAX_TAMPER_ATTEMPTS}")
             print(f"{'='*70}\n")
             
             user = User.query.filter_by(email=email).first()
-            MAX_TAMPER_ATTEMPTS = 3
             
             if tamper_count >= MAX_TAMPER_ATTEMPTS and user and not user.is_banned:
                 user.is_banned = True
-                user.ban_reason = f"Auto-banned: {', '.join(tamper_flags)} (Attempts: {tamper_count}/3)"
+                user.ban_reason = f"Auto-banned after {tamper_count} tampering attempts"
                 user.ban_type = 'auto'
                 user.tamper_attempt_count = tamper_count
                 user.last_tamper_at = datetime.utcnow()
@@ -5516,14 +5520,18 @@ def create_app(config_class=Config):
                 UserSession.query.filter_by(user_id=user.id, is_active=True).update({'is_active': False})
                 db.session.commit()
                 
-                print(f"🔨 USER AUTO-BANNED: {email}")
+                print(f"🔨 USER AUTO-BANNED: {email} after {tamper_count} attempts")
+            
+            remaining_attempts = max(0, MAX_TAMPER_ATTEMPTS - tamper_count)
             
             return jsonify({
                 'success': True,
                 'received': True,
                 'tamper_count': tamper_count,
-                'banned': tamper_count >= MAX_TAMPER_ATTEMPTS,
-                'remaining_attempts': max(0, MAX_TAMPER_ATTEMPTS - tamper_count)
+                'max_attempts': MAX_TAMPER_ATTEMPTS,
+                'remaining_attempts': remaining_attempts,
+                'warning': remaining_attempts <= 3,
+                'banned': tamper_count >= MAX_TAMPER_ATTEMPTS
             }), 200
             
         except Exception as e:
@@ -5539,7 +5547,7 @@ def create_app(config_class=Config):
         return jsonify({
             'status': 'operational',
             'challenge_expiry': 60,
-            'max_tamper_attempts': 3,
+            'max_tamper_attempts': 10,  # ← CHANGED TO 10
             'timestamp': datetime.utcnow().isoformat()
         }), 200
 
@@ -5577,9 +5585,9 @@ def create_app(config_class=Config):
             params = {}
             
             if filter_status == 'banned':
-                query += " AND u.is_banned = 1"
+                query += " AND u.is_banned = TRUE"
             elif filter_status == 'warning':
-                query += " AND tc.tamper_count >= 2 AND u.is_banned = 0"
+                query += " AND tc.tamper_count >= 8 AND (u.is_banned = FALSE OR u.is_banned IS NULL)"
             
             query += " ORDER BY tr.reported_at DESC LIMIT :limit OFFSET :offset"
             params['limit'] = limit
@@ -5609,7 +5617,7 @@ def create_app(config_class=Config):
             stats = db.session.execute(text("""
                 SELECT 
                     COUNT(DISTINCT tr.email) as unique_users,
-                    SUM(CASE WHEN u.is_banned = 1 THEN 1 ELSE 0 END) as banned_users,
+                    SUM(CASE WHEN u.is_banned = TRUE THEN 1 ELSE 0 END) as banned_users,
                     AVG(tc.tamper_count) as avg_attempts
                 FROM tamper_reports tr
                 LEFT JOIN tamper_counters tc ON tr.email = tc.email
@@ -5631,7 +5639,7 @@ def create_app(config_class=Config):
             print(f"Error in admin_tamper_reports: {e}")
             traceback.print_exc()
             return jsonify({'error': str(e)}), 500
-
+            
 
     @app.route('/api/admin/security/reset-public-key', methods=['POST'])
     @login_required
@@ -5777,9 +5785,9 @@ def create_app(config_class=Config):
             params = {}
             
             if filter_type == 'success':
-                query += " AND cl.success = 1"
+                query += " AND cl.success = TRUE"
             elif filter_type == 'failed':
-                query += " AND cl.success = 0"
+                query += " AND cl.success = FALSE"
             
             query += " ORDER BY cl.created_at DESC LIMIT :limit OFFSET :offset"
             params['limit'] = limit
@@ -5790,8 +5798,8 @@ def create_app(config_class=Config):
             stats = db.session.execute(text("""
                 SELECT 
                     COUNT(*) as total,
-                    SUM(CASE WHEN success = 1 THEN 1 ELSE 0 END) as successful,
-                    SUM(CASE WHEN success = 0 THEN 1 ELSE 0 END) as failed,
+                    SUM(CASE WHEN success = TRUE THEN 1 ELSE 0 END) as successful,
+                    SUM(CASE WHEN success = FALSE THEN 1 ELSE 0 END) as failed,
                     COUNT(DISTINCT user_id) as unique_users
                 FROM challenge_logs
             """)).fetchone()
@@ -5827,7 +5835,6 @@ def create_app(config_class=Config):
             print(f"Error in admin_challenge_logs: {e}")
             traceback.print_exc()
             return jsonify({'error': str(e)}), 500
-
 
         
     return app
