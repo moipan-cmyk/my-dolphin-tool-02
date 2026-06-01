@@ -5289,6 +5289,547 @@ def create_app(config_class=Config):
                 print(f"⚠️ Credit transaction constraint: {e}")
             app._otp_constraint_fixed = True
 
+                # ==================== SECURITY ENDPOINTS FOR ANTI-TAMPERING ====================
+
+    @app.route('/api/security/challenge', methods=['POST'])
+    def create_security_challenge():
+        """Create a cryptographic challenge for client verification"""
+        try:
+            if is_maintenance_mode():
+                return jsonify({'error': 'Server under maintenance'}), 503
+            
+            data = request.get_json()
+            if not data:
+                return jsonify({'error': 'No JSON data'}), 400
+            
+            session_token = data.get('session_token', '')
+            
+            if not session_token:
+                return jsonify({'error': 'Session token required'}), 400
+            
+            session_obj = UserSession.query.filter_by(
+                session_token=session_token,
+                is_active=True
+            ).filter(UserSession.expires_at > datetime.utcnow()).first()
+            
+            if not session_obj:
+                return jsonify({'error': 'Invalid or expired session'}), 401
+            
+            user = User.query.get(session_obj.user_id)
+            if not user or user.is_banned:
+                return jsonify({'error': 'User not found or banned'}), 401
+            
+            challenge = secrets.token_hex(32)
+            challenge_id = secrets.token_hex(16)
+            expiry = datetime.utcnow() + timedelta(seconds=60)
+            
+            from sqlalchemy import text
+            db.session.execute(text("""
+                INSERT INTO security_challenges (challenge_id, challenge, user_id, expires_at, used)
+                VALUES (:challenge_id, :challenge, :user_id, :expires_at, 0)
+            """), {
+                'challenge_id': challenge_id,
+                'challenge': challenge,
+                'user_id': user.id,
+                'expires_at': expiry
+            })
+            db.session.commit()
+            
+            print(f"🔐 Challenge created for user {user.username}: {challenge_id[:16]}...")
+            
+            return jsonify({
+                'success': True,
+                'challenge_id': challenge_id,
+                'challenge': challenge,
+                'expiry': 60
+            }), 200
+            
+        except Exception as e:
+            db.session.rollback()
+            print(f"Error in create_security_challenge: {e}")
+            traceback.print_exc()
+            return jsonify({'error': str(e)}), 500
+
+
+    @app.route('/api/security/verify-challenge', methods=['POST'])
+    def verify_security_challenge():
+        """Verify client's response to cryptographic challenge"""
+        try:
+            data = request.get_json()
+            if not data:
+                return jsonify({'error': 'No JSON data'}), 400
+            
+            challenge_id = data.get('challenge_id', '')
+            client_response = data.get('response', '')
+            session_token = data.get('session_token', '')
+            device_fingerprint = data.get('device_fingerprint', '')
+            
+            if not challenge_id or not client_response:
+                return jsonify({'error': 'Challenge ID and response required'}), 400
+            
+            from sqlalchemy import text
+            
+            challenge_row = db.session.execute(text("""
+                SELECT challenge, user_id, expires_at, used 
+                FROM security_challenges 
+                WHERE challenge_id = :challenge_id
+            """), {'challenge_id': challenge_id}).fetchone()
+            
+            if not challenge_row:
+                return jsonify({'error': 'Challenge not found'}), 404
+            
+            challenge = challenge_row[0]
+            user_id = challenge_row[1]
+            expires_at = datetime.fromisoformat(challenge_row[2]) if isinstance(challenge_row[2], str) else challenge_row[2]
+            used = challenge_row[3]
+            
+            if expires_at < datetime.utcnow():
+                db.session.execute(text("DELETE FROM security_challenges WHERE challenge_id = :challenge_id"), 
+                                 {'challenge_id': challenge_id})
+                db.session.commit()
+                return jsonify({'error': 'Challenge expired'}), 401
+            
+            if used:
+                return jsonify({'error': 'Challenge already used'}), 401
+            
+            session_obj = UserSession.query.filter_by(
+                session_token=session_token,
+                is_active=True
+            ).filter(UserSession.expires_at > datetime.utcnow()).first()
+            
+            if not session_obj or session_obj.user_id != user_id:
+                return jsonify({'error': 'Invalid session'}), 401
+            
+            user = User.query.get(user_id)
+            if not user:
+                return jsonify({'error': 'User not found'}), 401
+            
+            expected_private_key_seed = hashlib.sha512(f"{device_fingerprint}:{user.email}:dolphin_bypass_key_v2".encode()).digest()
+            expected_private_key = base64.b64encode(expected_private_key_seed).decode()
+            
+            expected_response = hashlib.sha512(
+                f"{challenge}:{expected_private_key}:{device_fingerprint}".encode()
+            ).hexdigest()
+            
+            db.session.execute(text("""
+                INSERT INTO challenge_logs (user_id, challenge_id, success, device_fingerprint, ip_address)
+                VALUES (:user_id, :challenge_id, :success, :fingerprint, :ip)
+            """), {
+                'user_id': user.id,
+                'challenge_id': challenge_id,
+                'success': 1 if client_response == expected_response else 0,
+                'fingerprint': device_fingerprint,
+                'ip': get_real_ip()
+            })
+            
+            if client_response == expected_response:
+                db.session.execute(text("""
+                    UPDATE security_challenges SET used = 1 
+                    WHERE challenge_id = :challenge_id
+                """), {'challenge_id': challenge_id})
+                db.session.commit()
+                print(f"✅ Challenge verified for user {user.username}")
+                return jsonify({'success': True, 'verified': True}), 200
+            else:
+                db.session.commit()
+                print(f"❌ Challenge verification failed for user {user.username}")
+                return jsonify({'error': 'Invalid challenge response'}), 401
+                
+        except Exception as e:
+            db.session.rollback()
+            print(f"Error in verify_security_challenge: {e}")
+            traceback.print_exc()
+            return jsonify({'error': str(e)}), 500
+
+
+    @app.route('/api/security/tamper-report', methods=['POST'])
+    def handle_tamper_report():
+        """Receive and process tamper detection reports from client"""
+        try:
+            data = request.get_json()
+            if not data:
+                return jsonify({'error': 'No JSON data'}), 400
+            
+            tamper_flags = data.get('tamper_flags', [])
+            email = data.get('email', '')
+            device_fingerprint = data.get('device_fingerprint', '')
+            ip = data.get('ip', get_real_ip())
+            username = data.get('username', 'Unknown')
+            hostname = data.get('hostname', 'Unknown')
+            
+            if not email:
+                return jsonify({'error': 'Email required'}), 400
+            
+            from sqlalchemy import text
+            
+            flags_json = json.dumps(tamper_flags)
+            db.session.execute(text("""
+                INSERT INTO tamper_reports (email, device_fingerprint, tamper_flags, ip_address, username, hostname)
+                VALUES (:email, :fingerprint, :flags, :ip, :username, :hostname)
+            """), {
+                'email': email,
+                'fingerprint': device_fingerprint,
+                'flags': flags_json,
+                'ip': ip,
+                'username': username,
+                'hostname': hostname
+            })
+            
+            db.session.execute(text("""
+                INSERT INTO tamper_counters (email, tamper_count, last_tamper_at)
+                VALUES (:email, 1, :now)
+                ON CONFLICT(email) DO UPDATE SET
+                    tamper_count = tamper_count + 1,
+                    last_tamper_at = :now
+            """), {'email': email, 'now': datetime.utcnow()})
+            
+            db.session.commit()
+            
+            count_row = db.session.execute(text("SELECT tamper_count FROM tamper_counters WHERE email = :email"), 
+                                           {'email': email}).fetchone()
+            tamper_count = count_row[0] if count_row else 0
+            
+            print(f"\n{'='*70}")
+            print(f"🚨 TAMPER DETECTED!")
+            print(f"   Email: {email}")
+            print(f"   Username: {username}")
+            print(f"   Flags: {', '.join(tamper_flags)}")
+            print(f"   IP: {ip}")
+            print(f"   Count: {tamper_count}/3")
+            print(f"{'='*70}\n")
+            
+            user = User.query.filter_by(email=email).first()
+            MAX_TAMPER_ATTEMPTS = 3
+            
+            if tamper_count >= MAX_TAMPER_ATTEMPTS and user and not user.is_banned:
+                user.is_banned = True
+                user.ban_reason = f"Auto-banned: {', '.join(tamper_flags)} (Attempts: {tamper_count}/3)"
+                user.ban_type = 'auto'
+                user.tamper_attempt_count = tamper_count
+                user.last_tamper_at = datetime.utcnow()
+                
+                db.session.execute(text("""
+                    UPDATE tamper_counters SET banned_at = :now, ban_reason = :reason
+                    WHERE email = :email
+                """), {'now': datetime.utcnow(), 'reason': user.ban_reason, 'email': email})
+                
+                UserSession.query.filter_by(user_id=user.id, is_active=True).update({'is_active': False})
+                db.session.commit()
+                
+                print(f"🔨 USER AUTO-BANNED: {email}")
+            
+            return jsonify({
+                'success': True,
+                'received': True,
+                'tamper_count': tamper_count,
+                'banned': tamper_count >= MAX_TAMPER_ATTEMPTS,
+                'remaining_attempts': max(0, MAX_TAMPER_ATTEMPTS - tamper_count)
+            }), 200
+            
+        except Exception as e:
+            db.session.rollback()
+            print(f"Error in handle_tamper_report: {e}")
+            traceback.print_exc()
+            return jsonify({'error': str(e)}), 500
+
+
+    @app.route('/api/security/health', methods=['GET'])
+    def security_health():
+        """Security system health check endpoint"""
+        return jsonify({
+            'status': 'operational',
+            'challenge_expiry': 60,
+            'max_tamper_attempts': 3,
+            'timestamp': datetime.utcnow().isoformat()
+        }), 200
+
+
+    @app.route('/api/admin/security/tamper-reports', methods=['GET'])
+    @login_required
+    def admin_tamper_reports():
+        """Admin: View all tamper reports with ban reasons"""
+        if not current_user.is_admin:
+            return jsonify({'error': 'Unauthorized'}), 403
+        
+        try:
+            from sqlalchemy import text
+            
+            filter_status = request.args.get('status', 'all')
+            page = int(request.args.get('page', 1))
+            limit = int(request.args.get('limit', 50))
+            offset = (page - 1) * limit
+            
+            query = """
+                SELECT 
+                    tr.*, 
+                    tc.tamper_count, 
+                    tc.banned_at, 
+                    tc.ban_reason,
+                    u.is_banned,
+                    u.ban_reason as user_ban_reason,
+                    u.ban_type,
+                    u.username
+                FROM tamper_reports tr
+                LEFT JOIN tamper_counters tc ON tr.email = tc.email
+                LEFT JOIN users u ON tr.email = u.email
+                WHERE 1=1
+            """
+            params = {}
+            
+            if filter_status == 'banned':
+                query += " AND u.is_banned = 1"
+            elif filter_status == 'warning':
+                query += " AND tc.tamper_count >= 2 AND u.is_banned = 0"
+            
+            query += " ORDER BY tr.reported_at DESC LIMIT :limit OFFSET :offset"
+            params['limit'] = limit
+            params['offset'] = offset
+            
+            reports = db.session.execute(text(query), params).fetchall()
+            
+            reports_data = []
+            for report in reports:
+                flags = json.loads(report[3]) if report[3] else []
+                reports_data.append({
+                    'id': report[0],
+                    'email': report[1],
+                    'device_fingerprint': report[2][:32] + '...' if report[2] and len(report[2]) > 32 else report[2],
+                    'tamper_flags': flags,
+                    'ip_address': report[4],
+                    'username': report[5] or (report[15] if len(report) > 15 else 'Unknown'),
+                    'hostname': report[6],
+                    'reported_at': report[7].isoformat() if report[7] else None,
+                    'tamper_count': report[8] if len(report) > 8 else 0,
+                    'banned_at': report[9].isoformat() if len(report) > 9 and report[9] else None,
+                    'is_banned': bool(report[11]) if len(report) > 11 else False,
+                    'ban_reason': report[12] if len(report) > 12 else None,
+                    'ban_type': report[13] if len(report) > 13 else 'manual'
+                })
+            
+            stats = db.session.execute(text("""
+                SELECT 
+                    COUNT(DISTINCT tr.email) as unique_users,
+                    SUM(CASE WHEN u.is_banned = 1 THEN 1 ELSE 0 END) as banned_users,
+                    AVG(tc.tamper_count) as avg_attempts
+                FROM tamper_reports tr
+                LEFT JOIN tamper_counters tc ON tr.email = tc.email
+                LEFT JOIN users u ON tr.email = u.email
+            """)).fetchone()
+            
+            return jsonify({
+                'success': True,
+                'reports': reports_data,
+                'total': len(reports_data),
+                'stats': {
+                    'unique_users': stats[0] or 0,
+                    'banned_users': stats[1] or 0,
+                    'avg_attempts': round(stats[2] or 0, 2)
+                }
+            }), 200
+            
+        except Exception as e:
+            print(f"Error in admin_tamper_reports: {e}")
+            traceback.print_exc()
+            return jsonify({'error': str(e)}), 500
+
+
+    @app.route('/api/admin/security/reset-public-key', methods=['POST'])
+    @login_required
+    def admin_reset_public_key():
+        """Admin: Reset user's public key (clears device binding)"""
+        if not current_user.is_admin:
+            return jsonify({'error': 'Unauthorized'}), 403
+        
+        try:
+            data = request.get_json()
+            if not data:
+                return jsonify({'error': 'No JSON data'}), 400
+            
+            user_id = data.get('user_id')
+            email = data.get('email')
+            
+            if not user_id and not email:
+                return jsonify({'error': 'User ID or email required'}), 400
+            
+            user = None
+            if user_id:
+                user = User.query.get(user_id)
+            elif email:
+                user = User.query.filter_by(email=email).first()
+            
+            if not user:
+                return jsonify({'error': 'User not found'}), 404
+            
+            user.bound_hwid_hash = None
+            user.bound_pc_manufacturer = None
+            user.bound_windows_version = None
+            user.bound_hardware_fingerprint = None
+            user.bound_system_info = None
+            user.bound_ip_address = None
+            user.bound_at = None
+            user.last_verified_at = None
+            user.is_verified_device = False
+            user.verification_failures = 0
+            
+            Device.query.filter_by(user_id=user.id, is_active=True).update({'is_active': False})
+            UserSession.query.filter_by(user_id=user.id, is_active=True).update({'is_active': False})
+            
+            db.session.commit()
+            
+            log_system_action(current_user.id, 'reset_public_key', 
+                             f'Reset device binding for user {user.username}')
+            
+            return jsonify({
+                'success': True,
+                'message': f'Public key/device binding reset for user {user.username}',
+                'user': {
+                    'id': user.id,
+                    'username': user.username,
+                    'email': user.email
+                }
+            }), 200
+            
+        except Exception as e:
+            db.session.rollback()
+            print(f"Error in admin_reset_public_key: {e}")
+            traceback.print_exc()
+            return jsonify({'error': str(e)}), 500
+
+
+    @app.route('/api/admin/security/unban-user', methods=['POST'])
+    @login_required
+    def admin_unban_user():
+        """Admin: Unban a user who was banned due to tampering"""
+        if not current_user.is_admin:
+            return jsonify({'error': 'Unauthorized'}), 403
+        
+        try:
+            data = request.get_json()
+            if not data:
+                return jsonify({'error': 'No JSON data'}), 400
+            
+            user_id = data.get('user_id')
+            email = data.get('email')
+            
+            if not user_id and not email:
+                return jsonify({'error': 'User ID or email required'}), 400
+            
+            user = None
+            if user_id:
+                user = User.query.get(user_id)
+            elif email:
+                user = User.query.filter_by(email=email).first()
+            
+            if not user:
+                return jsonify({'error': 'User not found'}), 404
+            
+            if not user.is_banned:
+                return jsonify({'error': 'User is not banned'}), 400
+            
+            user.is_banned = False
+            user.ban_reason = None
+            user.suspended_until = None
+            user.failed_login_count = 0
+            
+            db.session.commit()
+            
+            log_system_action(current_user.id, 'unban_user', f'Unbanned user {user.username}')
+            
+            return jsonify({
+                'success': True,
+                'message': f'User {user.username} has been unbanned',
+                'user': {
+                    'id': user.id,
+                    'username': user.username,
+                    'email': user.email,
+                    'is_banned': user.is_banned
+                }
+            }), 200
+            
+        except Exception as e:
+            db.session.rollback()
+            print(f"Error in admin_unban_user: {e}")
+            traceback.print_exc()
+            return jsonify({'error': str(e)}), 500
+
+
+    @app.route('/api/admin/security/challenge-logs', methods=['GET'])
+    @login_required
+    def admin_challenge_logs():
+        """Admin: View all challenge verification logs (success/failure)"""
+        if not current_user.is_admin:
+            return jsonify({'error': 'Unauthorized'}), 403
+        
+        try:
+            from sqlalchemy import text
+            
+            filter_type = request.args.get('filter', 'all')
+            page = int(request.args.get('page', 1))
+            limit = int(request.args.get('limit', 50))
+            offset = (page - 1) * limit
+            
+            query = """
+                SELECT cl.*, u.username, u.email 
+                FROM challenge_logs cl
+                LEFT JOIN users u ON cl.user_id = u.id
+                WHERE 1=1
+            """
+            params = {}
+            
+            if filter_type == 'success':
+                query += " AND cl.success = 1"
+            elif filter_type == 'failed':
+                query += " AND cl.success = 0"
+            
+            query += " ORDER BY cl.created_at DESC LIMIT :limit OFFSET :offset"
+            params['limit'] = limit
+            params['offset'] = offset
+            
+            logs = db.session.execute(text(query), params).fetchall()
+            
+            stats = db.session.execute(text("""
+                SELECT 
+                    COUNT(*) as total,
+                    SUM(CASE WHEN success = 1 THEN 1 ELSE 0 END) as successful,
+                    SUM(CASE WHEN success = 0 THEN 1 ELSE 0 END) as failed,
+                    COUNT(DISTINCT user_id) as unique_users
+                FROM challenge_logs
+            """)).fetchone()
+            
+            logs_data = []
+            for log in logs:
+                logs_data.append({
+                    'id': log[0],
+                    'user_id': log[1],
+                    'challenge_id': log[2][:16] + '...',
+                    'success': bool(log[3]),
+                    'device_fingerprint': log[4][:32] + '...' if log[4] and len(log[4]) > 32 else log[4],
+                    'ip_address': log[5],
+                    'created_at': log[6].isoformat() if log[6] else None,
+                    'username': log[7] if len(log) > 7 else None,
+                    'email': log[8] if len(log) > 8 else None
+                })
+            
+            return jsonify({
+                'success': True,
+                'logs': logs_data,
+                'total': len(logs_data),
+                'stats': {
+                    'total_attempts': stats[0] or 0,
+                    'successful': stats[1] or 0,
+                    'failed': stats[2] or 0,
+                    'unique_users': stats[3] or 0,
+                    'success_rate': round((stats[1] or 0) / (stats[0] or 1) * 100, 2)
+                }
+            }), 200
+            
+        except Exception as e:
+            print(f"Error in admin_challenge_logs: {e}")
+            traceback.print_exc()
+            return jsonify({'error': str(e)}), 500
+
+
+        
     return app
 
 app = create_app()
