@@ -442,6 +442,91 @@ def get_real_ip():
         return forwarded.split(',')[0].strip()
     return request.remote_addr
 
+# ========== ADD THIS FUNCTION RIGHT HERE ==========
+def add_security_columns():
+    """Add security tracking columns to users table"""
+    try:
+        from sqlalchemy import text
+        
+        # Add security tracking columns to users table
+        security_columns = [
+            ('ban_reason', "ALTER TABLE users ADD COLUMN IF NOT EXISTS ban_reason VARCHAR(500)"),
+            ('tamper_attempt_count', "ALTER TABLE users ADD COLUMN IF NOT EXISTS tamper_attempt_count INTEGER DEFAULT 0"),
+            ('last_tamper_at', "ALTER TABLE users ADD COLUMN IF NOT EXISTS last_tamper_at TIMESTAMP"),
+            ('ban_type', "ALTER TABLE users ADD COLUMN IF NOT EXISTS ban_type VARCHAR(50) DEFAULT 'manual'")
+        ]
+        
+        for col_name, alter_stmt in security_columns:
+            try:
+                db.session.execute(text(alter_stmt))
+                db.session.commit()
+                print(f"✅ Added security column: {col_name}")
+            except Exception as e:
+                if "duplicate column" not in str(e).lower():
+                    print(f"⚠️ Column {col_name}: {str(e)[:50]}")
+                db.session.rollback()
+        
+        # Create security_challenges table
+        db.session.execute(text("""
+            CREATE TABLE IF NOT EXISTS security_challenges (
+                id INTEGER PRIMARY KEY AUTOINCREMENT,
+                challenge_id TEXT UNIQUE NOT NULL,
+                challenge TEXT NOT NULL,
+                user_id INTEGER NOT NULL,
+                created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+                expires_at TIMESTAMP NOT NULL,
+                used BOOLEAN DEFAULT 0,
+                FOREIGN KEY (user_id) REFERENCES users(id)
+            )
+        """))
+        
+        # Create challenge_logs table
+        db.session.execute(text("""
+            CREATE TABLE IF NOT EXISTS challenge_logs (
+                id INTEGER PRIMARY KEY AUTOINCREMENT,
+                user_id INTEGER NOT NULL,
+                challenge_id TEXT NOT NULL,
+                success BOOLEAN DEFAULT 0,
+                device_fingerprint TEXT,
+                ip_address TEXT,
+                created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+                FOREIGN KEY (user_id) REFERENCES users(id)
+            )
+        """))
+        
+        # Create tamper_reports table
+        db.session.execute(text("""
+            CREATE TABLE IF NOT EXISTS tamper_reports (
+                id INTEGER PRIMARY KEY AUTOINCREMENT,
+                email TEXT NOT NULL,
+                device_fingerprint TEXT NOT NULL,
+                tamper_flags TEXT NOT NULL,
+                ip_address TEXT,
+                username TEXT,
+                hostname TEXT,
+                reported_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
+            )
+        """))
+        
+        # Create tamper_counters table
+        db.session.execute(text("""
+            CREATE TABLE IF NOT EXISTS tamper_counters (
+                email TEXT PRIMARY KEY,
+                tamper_count INTEGER DEFAULT 0,
+                last_tamper_at TIMESTAMP,
+                banned_at TIMESTAMP,
+                ban_reason TEXT
+            )
+        """))
+        
+        db.session.commit()
+        print("✅ Security tables and columns created successfully")
+        
+    except Exception as e:
+        print(f"⚠️ Security columns warning: {e}")
+        db.session.rollback()
+# ========== END OF ADDED FUNCTION ==========
+
 def create_app(config_class=Config):
     app = Flask(__name__)
     app.config.from_object(config_class)
@@ -567,6 +652,12 @@ def create_app(config_class=Config):
         except Exception as e:
             print(f"❌ Error adding device binding columns: {e}")
             # Don't crash the app if migration fails
+          
+  # ========== ADD THIS LINE RIGHT HERE ==========
+        add_security_columns()
+
+
+        
         
     # ==================== ADMIN USER SETUP FROM ENV ====================
         admin_email = os.environ.get('ADMIN_EMAIL')
