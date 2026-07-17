@@ -3970,14 +3970,14 @@ def create_app(config_class=Config):
         """License agreement page"""
         return render_template('license.html')
 
-            # ==================== COMMAND FETCH ENDPOINT ====================###############################
+                # ==================== COMMAND FETCH ENDPOINT ====================###############################
     @app.route('/api/get-command', methods=['POST'])
     @limiter.limit("100 per day") 
     @api_login_required
     def get_command():
         """
         Fetch command definition for desktop client
-        Expects: {"tab": "mediatek", "mode": "mdm", "action": "read_info", "device_info": {}}
+        Expects: {"tab": "mediatek", "mode": "mdm", "action": "read_info", "device_info": {}, "security_info": {}}
         """
         try:
             # ========== CHECK MAINTENANCE MODE ==========
@@ -3993,6 +3993,7 @@ def create_app(config_class=Config):
             mode = data.get('mode', '').lower()      # mdm, adb, fastboot, etc.
             action = data.get('action', '').lower()  # read_info, factory_reset, etc.
             device_info = data.get('device_info', {})
+            client_security_info = data.get('security_info', {})  # Get security info from client
             
             # DEBUG: Print what we're looking for
             print(f"🔍 [DEBUG] Looking for: tab={tab}, mode={mode}, action={action}")
@@ -4001,10 +4002,49 @@ def create_app(config_class=Config):
             
             # 1. VALIDATION
             if user.is_banned:
-                return jsonify({'error': 'Account banned', 'code': 'BANNED'}), 403
+                ban_msg = "Account banned"
+                if user.suspended_until and user.suspended_until > datetime.utcnow():
+                    remaining = (user.suspended_until - datetime.utcnow())
+                    hours = int(remaining.total_seconds() // 3600)
+                    minutes = int((remaining.total_seconds() % 3600) // 60)
+                    ban_msg += f" - Remaining: {hours}h {minutes}m"
+                
+                return jsonify({
+                    'error': ban_msg,
+                    'code': 'BANNED',
+                    'security_violation': True,
+                    'block_reason': ban_msg,
+                    'banned': True,
+                    'ban_until': user.suspended_until.isoformat() if user.suspended_until else None
+                }), 403
             
             if not user.is_license_valid():
-                return jsonify({'error': 'License expired/not activated', 'code': 'LICENSE_EXPIRED'}), 403
+                return jsonify({
+                    'error': 'License expired/not activated',
+                    'code': 'LICENSE_EXPIRED'
+                }), 403
+            
+            # ========== SECURITY CHECK - SERVER CONTROLS THIS ==========
+            security_allowed, block_reason, tamper_count, remaining_attempts = check_client_security(
+                user.id, client_security_info
+            )
+            
+            if not security_allowed:
+                # Block the command - server controls this
+                return jsonify({
+                    'error': f'⚠️ COMMAND BLOCKED: {block_reason}',
+                    'code': 'SECURITY_BLOCK',
+                    'security_violation': True,
+                    'block_reason': block_reason,
+                    'tamper_count': tamper_count,
+                    'remaining_attempts': remaining_attempts,
+                    'max_attempts': 3,
+                    'warning': remaining_attempts <= 1,
+                    'requires_admin_intervention': tamper_count >= 3,
+                    'commands_used_today': 0,
+                    'commands_limit_today': 100,
+                    'commands_remaining_today': 100
+                }), 403
             
             # ========== COMMAND LIMIT CHECK (100 per day) ==========
             allowed, count, remaining = check_command_limit(user.id)
@@ -4257,6 +4297,7 @@ def create_app(config_class=Config):
             print(f"Error in get_command: {e}")
             traceback.print_exc()
             return jsonify({'error': f'Internal server error: {str(e)}'}), 500
+            
 
                 # ==================== ADMIN SAMSUNG FRP ENDPOINTS ====================
     
@@ -6064,6 +6105,111 @@ def create_app(config_class=Config):
             traceback.print_exc()
             return jsonify({'error': str(e)}), 500
 
+            # Add this function to your server code (after the existing security endpoints)
+
+                # ==================== SECURITY CHECK FUNCTION ====================
+
+    def check_client_security(self, user_id, client_security_info):
+        """
+        Check if client PC has security violations
+        Returns: (allowed, block_reason, tamper_count, remaining_attempts)
+        """
+        from sqlalchemy import text
+        
+        tamper_flags = client_security_info.get('tamper_flags', [])
+        tamper_detected = client_security_info.get('tamper_detected', False)
+        device_fingerprint = client_security_info.get('device_fingerprint', '')
+        
+        # Get user
+        user = User.query.get(user_id)
+        if not user:
+            return False, "User not found", 0, 0
+        
+        # Check if user is already banned
+        if user.is_banned:
+            if user.suspended_until and user.suspended_until > datetime.utcnow():
+                return False, "Device is banned", 0, 0
+            else:
+                # Ban expired, unban
+                user.is_banned = False
+                user.ban_reason = None
+                user.suspended_until = None
+                db.session.commit()
+        
+        # If no tampering detected, allow
+        if not tamper_detected and not tamper_flags:
+            return True, None, 0, 0
+        
+        # ========== RECORD TAMPERING ==========
+        MAX_TAMPER_ATTEMPTS = 3
+        
+        for flag in tamper_flags:
+            # Store tamper report
+            db.session.execute(text("""
+                INSERT INTO tamper_reports (email, device_fingerprint, tamper_flags, ip_address, username, hostname)
+                VALUES (:email, :fingerprint, :flags, :ip, :username, :hostname)
+            """), {
+                'email': user.email,
+                'fingerprint': device_fingerprint or user.device_fingerprint,
+                'flags': json.dumps(tamper_flags),
+                'ip': get_real_ip(),
+                'username': user.username,
+                'hostname': platform.node()
+            })
+        
+        # Update tamper counter
+        db.session.execute(text("""
+            INSERT INTO tamper_counters (email, tamper_count, last_tamper_at)
+            VALUES (:email, 1, :now)
+            ON CONFLICT(email) DO UPDATE SET
+                tamper_count = tamper_count + 1,
+                last_tamper_at = :now
+        """), {'email': user.email, 'now': datetime.utcnow()})
+        
+        db.session.commit()
+        
+        # Get current tamper count
+        count_row = db.session.execute(text(
+            "SELECT tamper_count FROM tamper_counters WHERE email = :email"
+        ), {'email': user.email}).fetchone()
+        
+        tamper_count = count_row[0] if count_row else 0
+        remaining_attempts = max(0, MAX_TAMPER_ATTEMPTS - tamper_count)
+        
+        # ========== AUTO-BAN IF EXCEEDED ==========
+        if tamper_count >= MAX_TAMPER_ATTEMPTS:
+            user.is_banned = True
+            user.ban_reason = f"Auto-banned after {tamper_count} tampering attempts"
+            user.ban_type = 'auto'
+            user.suspended_until = datetime.utcnow() + timedelta(hours=24)
+            user.tamper_attempt_count = tamper_count
+            user.last_tamper_at = datetime.utcnow()
+            
+            db.session.execute(text("""
+                UPDATE tamper_counters SET 
+                    banned_at = :now, 
+                    ban_reason = :reason
+                WHERE email = :email
+            """), {
+                'now': datetime.utcnow(),
+                'reason': user.ban_reason,
+                'email': user.email
+            })
+            
+            # Invalidate all sessions
+            UserSession.query.filter_by(user_id=user.id, is_active=True).update({'is_active': False})
+            db.session.commit()
+            
+            log_system_action(user.id, 'auto_ban', 
+                             f'User auto-banned after {tamper_count} tampering attempts')
+            
+            return False, "Device banned - 24 hour lockout", tamper_count, 0
+        
+        # ========== BLOCK COMMAND BUT DON'T BAN YET ==========
+        log_system_action(user.id, 'tamper_block', 
+                         f'Command blocked - Tampering flags: {", ".join(tamper_flags)}')
+        
+        return False, f"Security violation detected - {remaining_attempts} attempts remaining", tamper_count, remaining_attempts
         
     return app
 
