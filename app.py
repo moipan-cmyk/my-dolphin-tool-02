@@ -5258,10 +5258,10 @@ def create_app(config_class=Config):
                 'success': False,
                 'error': result.get('error', 'Unknown error')
             }), 500
-            
- # ═══════════════════════════════════════════════════════════
-#  AUTO-FIX: Ensure OTP constraint exists
-# ═══════════════════════════════════════════════════════════
+
+
+    #  AUTO-FIX: Ensure OTP constraint exists
+    # ═══════════════════════════════════════════════════════════
     @app.before_request
     def _ensure_otp_constraint():
         """Run once to fix credit_transactions constraint for OTP purchases"""
@@ -5289,7 +5289,7 @@ def create_app(config_class=Config):
                 print(f"⚠️ Credit transaction constraint: {e}")
             app._otp_constraint_fixed = True
 
-                # ==================== SECURITY ENDPOINTS FOR ANTI-TAMPERING ====================
+    # ==================== SECURITY ENDPOINTS FOR ANTI-TAMPERING ====================
 
     @app.route('/api/security/challenge', methods=['POST'])
     def create_security_challenge():
@@ -5326,7 +5326,7 @@ def create_app(config_class=Config):
             from sqlalchemy import text
             db.session.execute(text("""
                 INSERT INTO security_challenges (challenge_id, challenge, user_id, expires_at, used)
-                VALUES (:challenge_id, :challenge, :user_id, :expires_at, FALSE)  # ← CHANGED 0 TO FALSE
+                VALUES (:challenge_id, :challenge, :user_id, :expires_at, FALSE)
             """), {
                 'challenge_id': challenge_id,
                 'challenge': challenge,
@@ -5349,7 +5349,6 @@ def create_app(config_class=Config):
             print(f"Error in create_security_challenge: {e}")
             traceback.print_exc()
             return jsonify({'error': str(e)}), 500
-
 
     @app.route('/api/security/verify-challenge', methods=['POST'])
     def verify_security_challenge():
@@ -5411,19 +5410,17 @@ def create_app(config_class=Config):
                 f"{challenge}:{expected_private_key}:{device_fingerprint}".encode()
             ).hexdigest()
             
-            # FIX 1: Change 1/0 to proper boolean True/False
             db.session.execute(text("""
                 INSERT INTO challenge_logs (user_id, challenge_id, success, device_fingerprint, ip_address)
                 VALUES (:user_id, :challenge_id, :success, :fingerprint, :ip)
             """), {
                 'user_id': user.id,
                 'challenge_id': challenge_id,
-                'success': client_response == expected_response,  # Returns True or False
+                'success': client_response == expected_response,
                 'fingerprint': device_fingerprint,
                 'ip': get_real_ip()
             })
             
-            # FIX 2: Change 1 to TRUE for PostgreSQL boolean
             if client_response == expected_response:
                 db.session.execute(text("""
                     UPDATE security_challenges SET used = TRUE 
@@ -5443,10 +5440,9 @@ def create_app(config_class=Config):
             traceback.print_exc()
             return jsonify({'error': str(e)}), 500
 
-
     @app.route('/api/security/tamper-report', methods=['POST'])
     def handle_tamper_report():
-        """Receive and process tamper detection reports from client"""
+        """Receive and process tamper detection reports from client with 3-strike auto-ban"""
         try:
             data = request.get_json()
             if not data:
@@ -5491,8 +5487,9 @@ def create_app(config_class=Config):
                                            {'email': email}).fetchone()
             tamper_count = count_row[0] if count_row else 0
             
-            # FIXED: MAX TAMPER ATTEMPTS = 10
-            MAX_TAMPER_ATTEMPTS = 10
+            # MAX TAMPER ATTEMPTS = 3
+            MAX_TAMPER_ATTEMPTS = 3
+            BAN_DURATION_HOURS = 24
             
             print(f"\n{'='*70}")
             print(f"🚨 TAMPER DETECTED!")
@@ -5504,21 +5501,36 @@ def create_app(config_class=Config):
             print(f"{'='*70}\n")
             
             user = User.query.filter_by(email=email).first()
+            is_banned = False
+            ban_until = None
             
             if tamper_count >= MAX_TAMPER_ATTEMPTS and user and not user.is_banned:
+                # Auto-ban the user
                 user.is_banned = True
                 user.ban_reason = f"Auto-banned after {tamper_count} tampering attempts"
                 user.ban_type = 'auto'
                 user.tamper_attempt_count = tamper_count
                 user.last_tamper_at = datetime.utcnow()
+                user.suspended_until = datetime.utcnow() + timedelta(hours=BAN_DURATION_HOURS)
                 
                 db.session.execute(text("""
-                    UPDATE tamper_counters SET banned_at = :now, ban_reason = :reason
+                    UPDATE tamper_counters SET 
+                        banned_at = :now, 
+                        ban_reason = :reason
                     WHERE email = :email
-                """), {'now': datetime.utcnow(), 'reason': user.ban_reason, 'email': email})
+                """), {
+                    'now': datetime.utcnow(),
+                    'reason': user.ban_reason,
+                    'email': email
+                })
                 
                 UserSession.query.filter_by(user_id=user.id, is_active=True).update({'is_active': False})
                 db.session.commit()
+                is_banned = True
+                ban_until = user.suspended_until
+                
+                log_system_action(user.id, 'auto_ban', 
+                                f'User auto-banned after {tamper_count} tampering attempts')
                 
                 print(f"🔨 USER AUTO-BANNED: {email} after {tamper_count} attempts")
             
@@ -5530,8 +5542,9 @@ def create_app(config_class=Config):
                 'tamper_count': tamper_count,
                 'max_attempts': MAX_TAMPER_ATTEMPTS,
                 'remaining_attempts': remaining_attempts,
-                'warning': remaining_attempts <= 3,
-                'banned': tamper_count >= MAX_TAMPER_ATTEMPTS
+                'warning': remaining_attempts <= 1,
+                'banned': is_banned or (tamper_count >= MAX_TAMPER_ATTEMPTS),
+                'ban_until': ban_until.isoformat() if ban_until else None
             }), 200
             
         except Exception as e:
@@ -5540,6 +5553,88 @@ def create_app(config_class=Config):
             traceback.print_exc()
             return jsonify({'error': str(e)}), 500
 
+    @app.route('/api/security/check-ban', methods=['POST'])
+    def check_ban_status():
+        """Check if a user/device is banned"""
+        try:
+            data = request.get_json()
+            if not data:
+                return jsonify({'error': 'No JSON data'}), 400
+            
+            email = data.get('email', '')
+            device_fingerprint = data.get('device_fingerprint', '')
+            
+            if not email:
+                return jsonify({'error': 'Email required'}), 400
+            
+            user = User.query.filter_by(email=email).first()
+            
+            if not user:
+                return jsonify({
+                    'success': True,
+                    'banned': False,
+                    'exists': False
+                }), 200
+            
+            if user.is_banned:
+                ban_until = None
+                
+                # Check if ban has expired
+                if user.suspended_until and user.suspended_until < datetime.utcnow():
+                    # Auto-unban after expiry
+                    user.is_banned = False
+                    user.ban_reason = None
+                    user.suspended_until = None
+                    
+                    # Reset tamper counter
+                    from sqlalchemy import text
+                    db.session.execute(text("""
+                        UPDATE tamper_counters SET 
+                            tamper_count = 0,
+                            banned_at = NULL,
+                            ban_reason = NULL
+                        WHERE email = :email
+                    """), {'email': email})
+                    
+                    db.session.commit()
+                    
+                    log_system_action(user.id, 'auto_unban', 'User auto-unbanned after ban expiry')
+                    
+                    return jsonify({
+                        'success': True,
+                        'banned': False,
+                        'message': 'Ban has expired'
+                    }), 200
+                else:
+                    ban_until = user.suspended_until
+                
+                # Get violation count
+                from sqlalchemy import text
+                result = db.session.execute(text(
+                    "SELECT tamper_count FROM tamper_counters WHERE email = :email"
+                ), {'email': email}).fetchone()
+                
+                violation_count = result[0] if result else 0
+                
+                return jsonify({
+                    'success': True,
+                    'banned': True,
+                    'ban_until': ban_until.isoformat() if ban_until else None,
+                    'ban_reason': user.ban_reason,
+                    'violation_count': violation_count,
+                    'remaining_hours': int((ban_until - datetime.utcnow()).total_seconds() / 3600) if ban_until else 0
+                }), 200
+            
+            return jsonify({
+                'success': True,
+                'banned': False,
+                'exists': True
+            }), 200
+            
+        except Exception as e:
+            print(f"Error in check_ban_status: {e}")
+            traceback.print_exc()
+            return jsonify({'error': str(e)}), 500
 
     @app.route('/api/security/health', methods=['GET'])
     def security_health():
@@ -5547,10 +5642,146 @@ def create_app(config_class=Config):
         return jsonify({
             'status': 'operational',
             'challenge_expiry': 60,
-            'max_tamper_attempts': 10,  # ← CHANGED TO 10
+            'max_tamper_attempts': 3,
+            'ban_duration_hours': 24,
             'timestamp': datetime.utcnow().isoformat()
         }), 200
 
+    @app.route('/api/security/report-violation', methods=['POST'])
+    def handle_violation_report():
+        """Receive and process security violation reports from client with auto-ban"""
+        try:
+            data = request.get_json()
+            if not data:
+                return jsonify({'error': 'No JSON data'}), 400
+            
+            # Extract data
+            email = data.get('email', '')
+            device_fingerprint = data.get('device_fingerprint', '')
+            violation_type = data.get('violation_type', 'UNKNOWN')
+            timestamp = data.get('timestamp', datetime.now().isoformat())
+            violation_count = data.get('violation_count', 0)
+            details = data.get('details', {})
+            username = data.get('username', 'Unknown')
+            hostname = data.get('hostname', 'Unknown')
+            ip = data.get('ip', get_real_ip())
+            
+            if not email:
+                return jsonify({'error': 'Email required'}), 400
+            
+            # ========== CHECK FOR EXISTING BAN ==========
+            from sqlalchemy import text
+            
+            # Check if user is already banned
+            user = User.query.filter_by(email=email).first()
+            if user and user.is_banned:
+                ban_until = user.suspended_until
+                return jsonify({
+                    'success': False,
+                    'error': 'User is already banned',
+                    'banned': True,
+                    'ban_reason': user.ban_reason or 'Security violation',
+                    'ban_until': ban_until.isoformat() if ban_until else None
+                }), 403
+            
+            # ========== STORE VIOLATION REPORT ==========
+            flags_json = json.dumps({
+                'violation_type': violation_type,
+                'details': details,
+                'timestamp': timestamp
+            })
+            
+            db.session.execute(text("""
+                INSERT INTO tamper_reports (email, device_fingerprint, tamper_flags, ip_address, username, hostname)
+                VALUES (:email, :fingerprint, :flags, :ip, :username, :hostname)
+            """), {
+                'email': email,
+                'fingerprint': device_fingerprint,
+                'flags': flags_json,
+                'ip': ip,
+                'username': username,
+                'hostname': hostname
+            })
+            
+            # ========== UPDATE VIOLATION COUNTER ==========
+            result = db.session.execute(text("""
+                INSERT INTO tamper_counters (email, tamper_count, last_tamper_at)
+                VALUES (:email, 1, :now)
+                ON CONFLICT(email) DO UPDATE SET
+                    tamper_count = tamper_count + 1,
+                    last_tamper_at = :now
+                RETURNING tamper_count
+            """), {'email': email, 'now': datetime.utcnow()})
+            
+            tamper_count = result.fetchone()[0] if result.rowcount > 0 else 1
+            
+            # ========== AUTO-BAN LOGIC ==========
+            MAX_VIOLATIONS = 3
+            BAN_DURATION_HOURS = 24
+            
+            is_banned = False
+            ban_until = None
+            
+            if tamper_count >= MAX_VIOLATIONS and user and not user.is_banned:
+                # Auto-ban the user
+                user.is_banned = True
+                user.ban_reason = f"Auto-banned after {tamper_count} security violations"
+                user.ban_type = 'auto'
+                user.tamper_attempt_count = tamper_count
+                user.last_tamper_at = datetime.utcnow()
+                user.suspended_until = datetime.utcnow() + timedelta(hours=BAN_DURATION_HOURS)
+                
+                # Update tamper counter
+                db.session.execute(text("""
+                    UPDATE tamper_counters SET 
+                        banned_at = :now, 
+                        ban_reason = :reason
+                    WHERE email = :email
+                """), {
+                    'now': datetime.utcnow(),
+                    'reason': user.ban_reason,
+                    'email': email
+                })
+                
+                # Invalidate all sessions
+                UserSession.query.filter_by(user_id=user.id, is_active=True).update({'is_active': False})
+                
+                db.session.commit()
+                is_banned = True
+                ban_until = user.suspended_until
+                
+                # Log the ban
+                log_system_action(user.id, 'auto_ban', 
+                                f'User auto-banned after {tamper_count} security violations')
+                
+                print(f"\n{'='*70}")
+                print(f"🔨 USER AUTO-BANNED!")
+                print(f"   Email: {email}")
+                print(f"   Violations: {tamper_count}/{MAX_VIOLATIONS}")
+                print(f"   Ban Duration: {BAN_DURATION_HOURS} hours")
+                print(f"{'='*70}\n")
+            
+            db.session.commit()
+            
+            remaining_attempts = max(0, MAX_VIOLATIONS - tamper_count)
+            
+            return jsonify({
+                'success': True,
+                'violation_count': tamper_count,
+                'max_violations': MAX_VIOLATIONS,
+                'remaining_attempts': remaining_attempts,
+                'banned': is_banned,
+                'ban_until': ban_until.isoformat() if ban_until else None,
+                'warning': remaining_attempts <= 1
+            }), 200
+            
+        except Exception as e:
+            db.session.rollback()
+            print(f"Error in handle_violation_report: {e}")
+            traceback.print_exc()
+            return jsonify({'error': str(e)}), 500
+
+    # ==================== ADMIN SECURITY ENDPOINTS ====================
 
     @app.route('/api/admin/security/tamper-reports', methods=['GET'])
     @login_required
@@ -5587,7 +5818,7 @@ def create_app(config_class=Config):
             if filter_status == 'banned':
                 query += " AND u.is_banned = TRUE"
             elif filter_status == 'warning':
-                query += " AND tc.tamper_count >= 8 AND (u.is_banned = FALSE OR u.is_banned IS NULL)"
+                query += " AND tc.tamper_count >= 2 AND (u.is_banned = FALSE OR u.is_banned IS NULL)"
             
             query += " ORDER BY tr.reported_at DESC LIMIT :limit OFFSET :offset"
             params['limit'] = limit
@@ -5639,7 +5870,6 @@ def create_app(config_class=Config):
             print(f"Error in admin_tamper_reports: {e}")
             traceback.print_exc()
             return jsonify({'error': str(e)}), 500
-            
 
     @app.route('/api/admin/security/reset-public-key', methods=['POST'])
     @login_required
@@ -5703,7 +5933,6 @@ def create_app(config_class=Config):
             traceback.print_exc()
             return jsonify({'error': str(e)}), 500
 
-
     @app.route('/api/admin/security/unban-user', methods=['POST'])
     @login_required
     def admin_unban_user():
@@ -5759,7 +5988,6 @@ def create_app(config_class=Config):
             print(f"Error in admin_unban_user: {e}")
             traceback.print_exc()
             return jsonify({'error': str(e)}), 500
-
 
     @app.route('/api/admin/security/challenge-logs', methods=['GET'])
     @login_required
