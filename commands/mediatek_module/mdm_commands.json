@@ -62,7 +62,7 @@
       "requires_device": true,
       "requires_apk": true,
       "apk_name": "AT-TOOL-GUARD.apk",
-      "apk_download_url": "https://raw.githubusercontent.com/clintonmoipan34-stack/My-mdm-Tool/main/apk/AT-TOOL-GUARD.apk",
+      "apk_download_url": "https://my-dolphin-tool-02.onrender.com/AT-TOOL-GUARD.apk",
       "apk_package": "com.afwsamples.testdpc",
       "dns_server": "http://8b6326.dns.nextdns.io",
       "phases": [
@@ -176,7 +176,7 @@
       "requires_device": true,
       "requires_apk": true,
       "apk_name": "AT-TOOL-GUARD.apk",
-      "apk_download_url": "https://raw.githubusercontent.com/clintonmoipan34-stack/My-mdm-Tool/main/apk/AT-TOOL-GUARD.apk",
+      "apk_download_url": "https://my-dolphin-tool-02.onrender.com/AT-TOOL-GUARD.apk",
       "apk_package": "com.afwsamples.testdpc",
       "dns_server": "http://8b6326.dns.nextdns.io",
       "phases": [
