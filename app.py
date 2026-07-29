@@ -6109,7 +6109,7 @@ def create_app(config_class=Config):
 
                 # ==================== SECURITY CHECK FUNCTION ====================
 
-    def check_client_security(self, user_id, client_security_info):
+    def check_client_security(user_id, client_security_info):
         """
         Check if client PC has security violations
         Returns: (allowed, block_reason, tamper_count, remaining_attempts)
