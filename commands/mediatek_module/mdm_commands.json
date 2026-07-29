@@ -167,7 +167,7 @@
         "adb shell am start -n com.afwsamples.testdpc/.MainActivity"
       ],
       "reboot": false,
-      "success_message": "🎉 MDM BYPASSED SUCCESSFULLY & DOLPHIN BODYGUARD IS PROTECTING YOUR DEVICE!"
+      "success_message": "🐬 Dolphin app method v1 completed successfully! MDM BYPASSED & DOLPHIN BODYGUARD IS PROTECTING YOUR DEVICE!"
     },
     
     "Dolphin_app_method_v2": {
@@ -230,7 +230,7 @@
         "adb shell monkey -p com.afwsamples.testdpc -c android.intent.category.LAUNCHER 1"
       ],
       "reboot": false,
-      "success_message": "🎉 MDM UNINSTALL & INSTALLATION COMPLETE!"
+      "success_message": "🐬 Dolphin app method v2 completed successfully! MDM UNINSTALL & INSTALLATION COMPLETE!"
     },
     
     "Dolphin_No_App_Method_v1": {
@@ -260,7 +260,7 @@
         "adb shell pm clear {app}",
         "adb shell am force-stop {app}"
       ],
-      "success_message": "✅ MDM Bypass Complete! DNS configured."
+      "success_message": "🐬 Dolphin No App method v1 completed successfully! MDM Bypass Complete! DNS configured."
     },
     
     "Dolphin_No_App_Method_v2": {
@@ -276,7 +276,7 @@
         "adb shell settings put global private_dns_specifier 8b6326.dns.nextdns.io"
       ],
       "bypass_method": "frp",
-      "success_message": "✅ FRP Bypass Complete! DNS configured.",
+      "success_message": "🐬 Dolphin No App method v2 completed successfully! FRP Bypass Complete! DNS configured.",
       "note": "⚠️ This method may not work on all devices"
     },
     
@@ -353,7 +353,7 @@
         "adb shell settings put global captive_portal_detection_enabled 0",
         "adb shell settings put global captive_portal_mode 0"
       ],
-      "success_message": "✅ All MDM apps have been: Cleared, Disabled, Network blocked, Background restricted, No boot permissions, No system modifications allowed!"
+      "success_message": "🐬 Dolphin No DNS method v01 completed successfully! All MDM apps have been: Cleared, Disabled, Network blocked, Background restricted, No boot permissions, No system modifications allowed!"
     },
 
     "Dolphin_No_Dns_Method_v02": {
@@ -420,7 +420,7 @@
         "adb shell settings put global captive_portal_detection_enabled 0",
         "adb shell settings put global captive_portal_mode 0"
       ],
-      "success_message": "✅ All MDM apps have been: Cleared, Permissions revoked, Completely UNINSTALLED from system! No traces left."
+      "success_message": "🐬 Dolphin No DNS method v02 completed successfully! All MDM apps have been: Cleared, Permissions revoked, Completely UNINSTALLED from system! No traces left."
     },
     
     "Dolphin_No_App_No_Dns_Method_v01": {
@@ -438,7 +438,7 @@
         "adb shell pm disable-user --user 0 {app}",
         "adb shell am force-stop {app}"
       ],
-      "success_message": "✅ Quick Bypass Complete!"
+      "success_message": "🐬 Dolphin No App No DNS method v01 completed successfully! Quick Bypass Complete!"
     },
     
     "Dolphin_No_App_No_Dns_Method_v02": {
@@ -449,7 +449,7 @@
         {"type": "wait_for_device", "timeout": 30}
       ],
       "bypass_method": "frp",
-      "success_message": "✅soon"
+      "success_message": "🐬 Dolphin No App No DNS method v02 completed successfully!"
     },
     
     "Blackscreen_Bypass": {
